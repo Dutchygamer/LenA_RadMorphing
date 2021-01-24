@@ -1,5 +1,13 @@
+; HOW THIS MOD STARTS:
+; You have the compiled LenARM:LenARM_Main.psx in your FO4/Data/Scripts folder.
+; You have the LenA_RadMorphing.esp enabled in your mod loader.
+; The .esp triggers the quest on game load, which in return runs this script file as it were an actual quest.
+; With the generic OnQuestInit() and OnQuestShutdown() entry points we do the remaining setup and start the actual logic.
 Scriptname LenARM:LenARM_Main extends Quest
 
+; ------------------------
+; Register the .esp Quest properties so we can act on them
+; ------------------------
 Group Properties
 	Actor Property PlayerRef Auto Const
 
@@ -26,9 +34,11 @@ Group Properties
 
 	Potion Property GlowingOneBlood Auto Const
 EndGroup
+; ------------------------
 
-
-
+; ------------------------
+; MCM selector enums
+; ------------------------
 Group EnumTimerId
 	int Property ETimerMorphTick = 1 Auto Const
 	int Property ETimerForgetStateCalledByUserTick = 2 Auto Const
@@ -59,13 +69,14 @@ Group EnumSex
 	int Property ESexFemale = 1 Auto Const
 EndGroup
 
-
 Group Constants
 	int Property _NUMBER_OF_SLIDERSETS_ = 20 Auto Const
 EndGroup
+; ------------------------
 
-
-
+; ------------------------
+; MCM Slider class / struct
+; ------------------------
 Struct SliderSet
 	bool IsUsed
 
@@ -89,7 +100,16 @@ Struct SliderSet
 	float BaseMorph
 	float CurrentMorph
 EndStruct
+; ------------------------
 
+; ------------------------
+; All the local variables the mod uses.
+; Do not rename these without a very good reason; you will break the current active ingame scripts.
+;
+; I've tried to stick to the recommended Papyrus naming conventions, but I've added a couple of my own.
+; For arrays, I used the prefix of the property (k for object, b for boolean, etc), following by a.
+; So in example the prefix of an array of strings becomes 'sa'
+; ------------------------
 SliderSet[] SliderSets
 
 ; flattened two-dimensional array[idxSliderSet][idxSliderName]
@@ -129,6 +149,7 @@ bool IsShuttingDown
 
 
 string Version
+; ------------------------
 
 
 
@@ -312,6 +333,9 @@ EndFunction
 
 
 
+; ------------------------
+; Register all generic Quest public events / entry points to setup, start and stop the actual mod
+; ------------------------
 Event OnQuestInit()
 	Log("OnQuestInit")
 	RegisterForRemoteEvent(PlayerRef, "OnPlayerLoadGame")
@@ -323,10 +347,14 @@ Event OnQuestShutdown()
 	Log("OnQuestShutdown")
 	Shutdown()
 EndEvent
+; ------------------------
 
 
 
 
+; ------------------------
+; On savegame loaded, check for mod updates based on version
+; ------------------------
 Event Actor.OnPlayerLoadGame(Actor akSender)
 	Log("Actor.OnPlayerLoadGame: " + akSender)
 	PerformUpdateIfNecessary()
@@ -344,6 +372,7 @@ Function OnMCMSettingChange(string modName, string id)
 	EndIf
 	Restart()
 EndFunction
+; ------------------------
 
 
 
@@ -442,6 +471,11 @@ Function Startup()
 	EndIf
 EndFunction
 
+; ------------------------
+; Read the slider sets from the MCM config, and store them into the local variables.
+; Will perform the initial local variables setup if these are not yet initialized.
+; Will cleanup no longer existing slider sets if these existed in the local variables but are no longer in the MCM config.
+; ------------------------
 Function LoadSliderSets()
 	Log("LoadSliderSets")
 	; create arrays if not exist
@@ -525,6 +559,7 @@ Function LoadSliderSets()
 
 	RetrieveAllOriginalCompanionMorphs()
 EndFunction
+; ------------------------
 
 
 Function Shutdown(bool withRestore=true)
