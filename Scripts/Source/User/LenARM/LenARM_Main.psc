@@ -51,6 +51,37 @@ string Version
 ; ------------------------
 
 ; ------------------------
+; Register the .esp Quest properties so we can act on them
+; ------------------------
+Group Properties
+	Actor Property PlayerRef Auto Const
+
+	Keyword Property kwMorph Auto Const
+
+	ActorValue Property Rads Auto Const
+
+	; Base Game
+	Scene Property DoctorMedicineScene03_AllDone Auto Const
+	; Far Harbor
+	Scene Property DLC03DialogueFarHarbor_TeddyFinished Auto Const
+	Scene Property DialogueNucleusArchemist_GreetScene03_AllDone Auto Const
+	Scene Property DLC03AcadiaDialogueAsterPostExamScene Auto Const
+	; Nuka World
+	Scene Property DLC04SettlementDoctor_EndScene Auto Const
+
+	GenericDoctorsScript Property DialogueGenericDoctors Auto Const
+
+	Sound Property LenARM_DropClothesSound Auto Const
+	Sound Property LenARM_MorphSound Auto Const
+
+	Faction Property CurrentCompanionFaction Auto Const
+	Faction Property PlayerAllyFation Auto Const
+
+	Potion Property GlowingOneBlood Auto Const
+EndGroup
+; ------------------------
+
+; ------------------------
 ; Register all generic Quest public events / entry points to setup, start and stop the actual mod
 ; ------------------------
 Event OnQuestInit()
@@ -93,103 +124,6 @@ EndFunction
 
 
 
-
-; ------------------------
-; Register the .esp Quest properties so we can act on them
-; ------------------------
-Group Properties
-	Actor Property PlayerRef Auto Const
-
-	Keyword Property kwMorph Auto Const
-
-	ActorValue Property Rads Auto Const
-
-	; Base Game
-	Scene Property DoctorMedicineScene03_AllDone Auto Const
-	; Far Harbor
-	Scene Property DLC03DialogueFarHarbor_TeddyFinished Auto Const
-	Scene Property DialogueNucleusArchemist_GreetScene03_AllDone Auto Const
-	Scene Property DLC03AcadiaDialogueAsterPostExamScene Auto Const
-	; Nuka World
-	Scene Property DLC04SettlementDoctor_EndScene Auto Const
-
-	GenericDoctorsScript Property DialogueGenericDoctors Auto Const
-
-	Sound Property LenARM_DropClothesSound Auto Const
-	Sound Property LenARM_MorphSound Auto Const
-
-	Faction Property CurrentCompanionFaction Auto Const
-	Faction Property PlayerAllyFation Auto Const
-
-	Potion Property GlowingOneBlood Auto Const
-EndGroup
-; ------------------------
-
-; ------------------------
-; MCM selector enums
-; ------------------------
-Group EnumTimerId
-	int Property ETimerMorphTick = 1 Auto Const
-	int Property ETimerForgetStateCalledByUserTick = 2 Auto Const
-	int Property ETimerShutdownRestoreMorphs = 3 Auto Const
-	int Property ETimerUnequipSlots = 4 Auto Const
-	int Property ETimerFakeRads = 5 Auto Const
-EndGroup
-
-Group EnumApplyCompanion
-	int Property EApplyCompanionNone = 0 Auto Const
-	int Property EApplyCompanionFemale = 1 Auto Const
-	int Property EApplyCompanionMale = 2 Auto Const
-	int Property EApplyCompanionAll = 3 Auto Const
-EndGroup
-
-Group EnumUpdateType
-	int Property EUpdateTypeImmediately = 0 Auto Const
-	int Property EUpdateTypeOnSleep = 1 Auto Const
-EndGroup
-
-Group EnumRadsDetectionType
-	int Property ERadsDetectionTypeRads = 0 Auto Const
-	int Property ERadsDetectionTypeRandom = 1 Auto Const
-EndGroup
-
-Group EnumSex
-	int Property ESexMale = 0 Auto Const
-	int Property ESexFemale = 1 Auto Const
-EndGroup
-
-Group Constants
-	int Property _NUMBER_OF_SLIDERSETS_ = 20 Auto Const
-EndGroup
-; ------------------------
-
-; ------------------------
-; MCM Slider class / struct
-; ------------------------
-Struct SliderSet
-	bool IsUsed
-
-	; MCM values
-	string SliderName
-	float TargetMorph
-	float ThresholdMin
-	float ThresholdMax
-	string UnequipSlot
-	float ThresholdUnequip
-	bool OnlyDoctorCanReset
-	bool IsAdditive
-	bool HasAdditiveLimit
-	float AdditiveLimit
-	int ApplyCompanion
-	; END: MCM values
-
-	int NumberOfSliderNames
-	int NumberOfUnequipSlots
-
-	float BaseMorph
-	float CurrentMorph
-EndStruct
-; ------------------------
 
 
 
@@ -1086,3 +1020,72 @@ Function PlayMorphSound(Actor akSender)
 	Log("  playing morph sound")
 	LenARM_MorphSound.PlayAndWait(akSender)
 EndFunction
+
+
+
+
+; ------------------------
+; MCM selector enums
+; ------------------------
+Group EnumTimerId
+	int Property ETimerMorphTick = 1 Auto Const
+	int Property ETimerForgetStateCalledByUserTick = 2 Auto Const
+	int Property ETimerShutdownRestoreMorphs = 3 Auto Const
+	int Property ETimerUnequipSlots = 4 Auto Const
+	int Property ETimerFakeRads = 5 Auto Const
+EndGroup
+
+Group EnumApplyCompanion
+	int Property EApplyCompanionNone = 0 Auto Const
+	int Property EApplyCompanionFemale = 1 Auto Const
+	int Property EApplyCompanionMale = 2 Auto Const
+	int Property EApplyCompanionAll = 3 Auto Const
+EndGroup
+
+Group EnumUpdateType
+	int Property EUpdateTypeImmediately = 0 Auto Const
+	int Property EUpdateTypeOnSleep = 1 Auto Const
+EndGroup
+
+Group EnumRadsDetectionType
+	int Property ERadsDetectionTypeRads = 0 Auto Const
+	int Property ERadsDetectionTypeRandom = 1 Auto Const
+EndGroup
+
+Group EnumSex
+	int Property ESexMale = 0 Auto Const
+	int Property ESexFemale = 1 Auto Const
+EndGroup
+
+Group Constants
+	int Property _NUMBER_OF_SLIDERSETS_ = 20 Auto Const
+EndGroup
+; ------------------------
+
+; ------------------------
+; MCM Slider class / struct
+; ------------------------
+Struct SliderSet
+	bool IsUsed
+
+	; MCM values
+	string SliderName
+	float TargetMorph
+	float ThresholdMin
+	float ThresholdMax
+	string UnequipSlot
+	float ThresholdUnequip
+	bool OnlyDoctorCanReset
+	bool IsAdditive
+	bool HasAdditiveLimit
+	float AdditiveLimit
+	int ApplyCompanion
+	; END: MCM values
+
+	int NumberOfSliderNames
+	int NumberOfUnequipSlots
+
+	float BaseMorph
+	float CurrentMorph
+EndStruct
+; ------------------------
