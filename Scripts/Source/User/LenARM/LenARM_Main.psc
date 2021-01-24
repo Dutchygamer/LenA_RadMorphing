@@ -6,6 +6,95 @@
 Scriptname LenARM:LenARM_Main extends Quest
 
 ; ------------------------
+; All the local variables the mod uses.
+; Do not rename these without a very good reason; you will break the current active ingame scripts.
+;
+; I've tried to stick to the recommended Papyrus naming conventions, but I've added a couple of my own.
+; For arrays, I used the prefix of the property (k for object, b for boolean, etc), following by a.
+; So in example the prefix of an array of strings becomes 'sa'
+; ------------------------
+SliderSet[] SliderSets
+
+; flattened two-dimensional array[idxSliderSet][idxSliderName]
+string[] SliderNames
+
+; flattened two-dimensional array[idxSliderSet][idxSlot]
+int[] UnequipSlots
+
+; flattened two-dimensional array[idxSliderSet][idxSliderName]
+float[] OriginalMorphs
+
+; flattened array[idxCompanion][idxSliderSet][idxSliderName]
+float[] OriginalCompanionMorphs
+
+Actor[] CurrentCompanions
+
+int UpdateType
+float UpdateDelay
+int RadsDetectionType
+float RandomRadsLower
+float RandomRadsUpper
+
+float CurrentRads
+float FakeRads
+bool TakeFakeRads
+
+int RestartStackSize
+int UnequipStackSize
+
+int ForgetStateCalledByUserCount
+bool IsForgetStateBusy
+
+bool IsShuttingDown
+
+string Version
+; ------------------------
+
+; ------------------------
+; Register all generic Quest public events / entry points to setup, start and stop the actual mod
+; ------------------------
+Event OnQuestInit()
+	Log("OnQuestInit")
+	RegisterForRemoteEvent(PlayerRef, "OnPlayerLoadGame")
+	RegisterForExternalEvent("OnMCMSettingChange|LenA_RadMorphing", "OnMCMSettingChange")
+	Startup()
+EndEvent
+
+Event OnQuestShutdown()
+	Log("OnQuestShutdown")
+	Shutdown()
+EndEvent
+; ------------------------
+
+; ------------------------
+; On savegame loaded, check for mod updates based on version
+; ------------------------
+Event Actor.OnPlayerLoadGame(Actor akSender)
+	Log("Actor.OnPlayerLoadGame: " + akSender)
+	PerformUpdateIfNecessary()
+EndEvent
+
+Function OnMCMSettingChange(string modName, string id)
+	Log("OnMCMSettingChange: " + modName + "; " + id)
+	If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
+		string value = MCM.GetModSettingString(modName, id)
+		If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
+			string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
+			Debug.MessageBox(msg)
+		EndIf
+	EndIf
+	Restart()
+EndFunction
+; ------------------------
+
+
+
+
+
+
+
+
+; ------------------------
 ; Register the .esp Quest properties so we can act on them
 ; ------------------------
 Group Properties
@@ -102,54 +191,7 @@ Struct SliderSet
 EndStruct
 ; ------------------------
 
-; ------------------------
-; All the local variables the mod uses.
-; Do not rename these without a very good reason; you will break the current active ingame scripts.
-;
-; I've tried to stick to the recommended Papyrus naming conventions, but I've added a couple of my own.
-; For arrays, I used the prefix of the property (k for object, b for boolean, etc), following by a.
-; So in example the prefix of an array of strings becomes 'sa'
-; ------------------------
-SliderSet[] SliderSets
 
-; flattened two-dimensional array[idxSliderSet][idxSliderName]
-string[] SliderNames
-
-; flattened two-dimensional array[idxSliderSet][idxSlot]
-int[] UnequipSlots
-
-; flattened two-dimensional array[idxSliderSet][idxSliderName]
-float[] OriginalMorphs
-
-; flattened array[idxCompanion][idxSliderSet][idxSliderName]
-float[] OriginalCompanionMorphs
-
-Actor[] CurrentCompanions
-
-
-int UpdateType
-float UpdateDelay
-int RadsDetectionType
-float RandomRadsLower
-float RandomRadsUpper
-
-
-float CurrentRads
-float FakeRads
-bool TakeFakeRads
-
-
-int RestartStackSize
-int UnequipStackSize
-
-int ForgetStateCalledByUserCount
-bool IsForgetStateBusy
-
-bool IsShuttingDown
-
-
-string Version
-; ------------------------
 
 
 
@@ -333,46 +375,8 @@ EndFunction
 
 
 
-; ------------------------
-; Register all generic Quest public events / entry points to setup, start and stop the actual mod
-; ------------------------
-Event OnQuestInit()
-	Log("OnQuestInit")
-	RegisterForRemoteEvent(PlayerRef, "OnPlayerLoadGame")
-	RegisterForExternalEvent("OnMCMSettingChange|LenA_RadMorphing", "OnMCMSettingChange")
-	Startup()
-EndEvent
-
-Event OnQuestShutdown()
-	Log("OnQuestShutdown")
-	Shutdown()
-EndEvent
-; ------------------------
 
 
-
-
-; ------------------------
-; On savegame loaded, check for mod updates based on version
-; ------------------------
-Event Actor.OnPlayerLoadGame(Actor akSender)
-	Log("Actor.OnPlayerLoadGame: " + akSender)
-	PerformUpdateIfNecessary()
-EndEvent
-
-
-Function OnMCMSettingChange(string modName, string id)
-	Log("OnMCMSettingChange: " + modName + "; " + id)
-	If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
-		string value = MCM.GetModSettingString(modName, id)
-		If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
-			string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-			Debug.MessageBox(msg)
-		EndIf
-	EndIf
-	Restart()
-EndFunction
-; ------------------------
 
 
 
