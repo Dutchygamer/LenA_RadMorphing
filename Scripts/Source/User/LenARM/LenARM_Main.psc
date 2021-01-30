@@ -7,11 +7,7 @@ Scriptname LenARM:LenARM_Main extends Quest
 
 ; ------------------------
 ; All the local variables the mod uses.
-; Do not rename these without a very good reason; you will break the current active ingame scripts.
-;
-; I've tried to stick to the recommended Papyrus naming conventions, but I've added a couple of my own.
-; For arrays, I used the prefix of the property (k for object, b for boolean, etc), following by a.
-; So in example the prefix of an array of strings becomes 'sa'
+; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
 ; ------------------------
 SliderSet[] SliderSets
 
@@ -34,6 +30,10 @@ float UpdateDelay
 int RadsDetectionType
 float RandomRadsLower
 float RandomRadsUpper
+
+float LowRadsThreshold
+float MediumRadsThreshold
+float HighRadsThreshold
 
 float CurrentRads
 float FakeRads
@@ -119,28 +119,19 @@ EndFunction
 ; ------------------------
 
 
-
-
-
-
-
-
-
-
-
-
-;
-; wrappers for debug functions
-;
-Function Note(string msg)
-	Debug.Notification("[LenARM] " + msg)
-	Log(msg)
+string Function GetVersion()
+	return "0.7.1"; Thu Dec 17 09:11:27 CET 2020
 EndFunction
-Function Log(string msg)
-	Debug.Trace("[LenARM] " + msg)
-EndFunction
-;
-; END: wrappers for debug functions
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -149,21 +140,21 @@ EndFunction
 ; utility functions
 ;
 string[] Function StringSplit(string target, string delimiter)
-	Log("splitting '" + target + "' with '" + delimiter + "'")
+	;Log("splitting '" + target + "' with '" + delimiter + "'")
 	string[] result = new string[0]
 	string current = target
 	int idx = LL_Fourplay.StringFind(current, delimiter)
-	Log("split idx: " + idx + " current: '" + current + "'")
+	;Log("split idx: " + idx + " current: '" + current + "'")
 	While (idx > -1 && current)
 		result.Add(LL_Fourplay.StringSubstring(current, 0, idx))
 		current = LL_Fourplay.StringSubstring(current, idx+1)
 		idx = LL_Fourplay.StringFind(current, delimiter)
-		Log("split idx: " + idx + " current: '" + current + "'")
+		;Log("split idx: " + idx + " current: '" + current + "'")
 	EndWhile
 	If (current)
 		result.Add(current)
 	EndIf
-	Log("split result: " + result)
+	;Log("split result: " + result)
 	return result
 EndFunction
 
@@ -177,11 +168,6 @@ EndFunction
 ; END: utility functions
 
 
-
-
-string Function GetVersion()
-	return "0.7.1"; Thu Dec 17 09:11:27 CET 2020
-EndFunction
 
 
 
@@ -219,7 +205,7 @@ SliderSet Function SliderSet_Constructor(int idxSet)
 		set.IsUsed = false
 	EndIf
 
-	Log("  " + set)
+	;Log("  " + set)
 	return set
 EndFunction
 
@@ -353,6 +339,12 @@ Function Startup()
 		RadsDetectionType = MCM.GetModSettingInt("LenA_RadMorphing", "iRadiationDetection:General")
 		RandomRadsLower = MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsLower:General")
 		RandomRadsUpper = MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
+
+		; get radiation threshold (currently used for morph sounds)
+		; the division by 1000 is needed as rads run from 0 to 1, while the MCM settings are in displayed rads for player's convenience
+		LowRadsThreshold = 20.0  / 1000.0 ;MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
+		MediumRadsThreshold = 50.0  / 1000.0 ;MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
+		HighRadsThreshold = 100.0  / 1000.0 ;MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -495,7 +487,7 @@ Function LoadSliderSets()
 	Log("  OriginalMorphs: " + OriginalMorphs)
 	Log("  UnequipSlots: " + UnequipSlots)
 
-	RetrieveAllOriginalCompanionMorphs()
+	;RetrieveAllOriginalCompanionMorphs()
 EndFunction
 ; ------------------------
 
@@ -623,7 +615,9 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	;TODO check if slot is allowed
 	;TODO if slot is not allowed -> unequip
 	Utility.Wait(1.0)
-	TriggerUnequipSlots()
+	;TODO dit klapt nu keihard, gooit dikke error genaamd "Unbound scripts cannot start timers"
+	;dit gaat sowieso af op alles wat je equipped. Echter hier vallen ook dingen onder zoals 'neem voedsel in' en 'kies wapen', niet alleen wissel clothes
+	;TriggerUnequipSlots()
 EndEvent
 
 
@@ -680,6 +674,87 @@ EndFunction
 
 
 
+; ------------------------
+; Timer-based morphs
+; ------------------------
+Function TimerMorphTick()
+	; get the player's current Rads
+	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
+	float newRads = GetNewRads()
+	If (newRads != CurrentRads)
+		;Log("new rads: " + newRads + " (" + CurrentRads + ")")
+		If (!PlayerRef.IsInPowerArmor())
+
+			; calculate the amount of rads taken
+			; the longer the timer interval, the larger this will be
+			float radsDifference = newRads - CurrentRads;
+			Log("rads taken: " + radsDifference);
+			
+			
+			CurrentRads = newRads
+			; companions
+			;UpdateCompanions()
+
+			; apply morphs
+			bool changedMorphs = false
+			int idxSet = 0
+			While (idxSet < SliderSets.Length)
+				SliderSet sliderSet = SliderSets[idxSet]
+				If (sliderSet.NumberOfSliderNames > 0)
+					;Log("  SliderSet " + idxSet)
+					float newMorph = GetNewMorph(newRads, sliderSet)
+
+					;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph)
+					If (newMorph > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && newMorph != sliderSet.CurrentMorph))
+						float fullMorph = newMorph
+						If (sliderSet.IsAdditive)
+							fullMorph += sliderSet.BaseMorph
+							If (sliderSet.HasAdditiveLimit)
+								fullMorph = Math.Min(fullMorph, 1.0 + sliderSet.AdditiveLimit)
+							EndIf
+						EndIf
+						;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph + " -> " + fullMorph)
+						SetMorphs(idxSet, sliderSet, fullMorph)
+						changedMorphs = true
+						sliderSet.CurrentMorph = newMorph
+						;Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
+					ElseIf (sliderSet.IsAdditive)
+						sliderSet.BaseMorph += sliderSet.CurrentMorph - newMorph
+						;Log("    setting baseMorph " + idxSet + " to " + sliderSet.BaseMorph)
+						sliderSet.CurrentMorph = newMorph
+						;Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
+					EndIf
+				EndIf
+				idxSet += 1
+			EndWhile
+			If (changedMorphs)
+				BodyGen.UpdateMorphs(PlayerRef)
+				PlayMorphSound(PlayerRef, radsDifference)
+				;ApplyAllCompanionMorphs()
+				TriggerUnequipSlots()
+			EndIf
+		Else
+			;Log("skipping due to player in power armor")
+		EndIf
+	EndIf
+	StartTimer(UpdateDelay, ETimerMorphTick)
+EndFunction
+
+
+
+
+
+
+
+
+
+
+
+
+
+; ------------------------
+; Calculate the new morph for the given sliderSet based on the given rads
+; ------------------------
 float Function GetNewMorph(float newRads, SliderSet sliderSet)
 	float newMorph
 	If (newRads < sliderSet.ThresholdMin)
@@ -691,7 +766,11 @@ float Function GetNewMorph(float newRads, SliderSet sliderSet)
 	EndIf
 	return newMorph
 EndFunction
+; ------------------------
 
+; ------------------------
+; Apply the given sliderSet's morphs to the matching BodyGen sliders
+; ------------------------
 Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 	int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
 	int idxSlider = sliderNameOffset
@@ -699,16 +778,20 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + (OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph) + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
-		If (sliderSet.ApplyCompanion != EApplyCompanionNone)
-			SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
-		EndIf
+		;If (sliderSet.ApplyCompanion != EApplyCompanionNone)
+		;	SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
+		;EndIf
 		idxSlider += 1
 	EndWhile
 EndFunction
+; ------------------------
 
 
 
 
+; ------------------------
+; Restore the original BodyGen values for each slider, and set all morphs to 0
+; ------------------------
 Function ResetMorphs()
 	Log("ResetMorphs")
 	RestoreOriginalMorphs()
@@ -733,8 +816,9 @@ Function RestoreOriginalMorphs()
 	EndWhile
 	BodyGen.UpdateMorphs(PlayerRef)
 
-	RestoreAllOriginalCompanionMorphs()
+	;RestoreAllOriginalCompanionMorphs()
 EndFunction
+; ------------------------
 
 
 
@@ -809,7 +893,7 @@ Function ApplyAllCompanionMorphs()
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-		PlayMorphSound(CurrentCompanions[idxComp])
+		PlayMorphSound(CurrentCompanions[idxComp], 0);TODO die 0 is temp
 		idxComp += 1
 	EndWhile
 EndFunction
@@ -882,61 +966,6 @@ EndFunction
 
 
 
-
-Function TimerMorphTick()
-	; get rads
-	float newRads = GetNewRads()
-	If (newRads != CurrentRads)
-		Log("new rads: " + newRads + " (" + CurrentRads + ")")
-		If (!PlayerRef.IsInPowerArmor())
-			CurrentRads = newRads
-			; companions
-			UpdateCompanions()
-
-			; apply morphs
-			bool changedMorphs = false
-			int idxSet = 0
-			While (idxSet < SliderSets.Length)
-				SliderSet sliderSet = SliderSets[idxSet]
-				If (sliderSet.NumberOfSliderNames > 0)
-					Log("  SliderSet " + idxSet)
-					float newMorph = GetNewMorph(newRads, sliderSet)
-
-					Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph)
-					If (newMorph > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && newMorph != sliderSet.CurrentMorph))
-						float fullMorph = newMorph
-						If (sliderSet.IsAdditive)
-							fullMorph += sliderSet.BaseMorph
-							If (sliderSet.HasAdditiveLimit)
-								fullMorph = Math.Min(fullMorph, 1.0 + sliderSet.AdditiveLimit)
-							EndIf
-						EndIf
-						Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph + " -> " + fullMorph)
-						SetMorphs(idxSet, sliderSet, fullMorph)
-						changedMorphs = true
-						sliderSet.CurrentMorph = newMorph
-						Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
-					ElseIf (sliderSet.IsAdditive)
-						sliderSet.BaseMorph += sliderSet.CurrentMorph - newMorph
-						Log("    setting baseMorph " + idxSet + " to " + sliderSet.BaseMorph)
-						sliderSet.CurrentMorph = newMorph
-						Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
-					EndIf
-				EndIf
-				idxSet += 1
-			EndWhile
-			If (changedMorphs)
-				BodyGen.UpdateMorphs(PlayerRef)
-				PlayMorphSound(PlayerRef)
-				ApplyAllCompanionMorphs()
-				TriggerUnequipSlots()
-			EndIf
-		Else
-			Log("skipping due to player in power armor")
-		EndIf
-	EndIf
-	StartTimer(UpdateDelay, ETimerMorphTick)
-EndFunction
 
 
 Function UnequipSlots()
@@ -1016,11 +1045,37 @@ Function ShowEquippedClothes()
 	Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
-Function PlayMorphSound(Actor akSender)	
-	Log("  playing morph sound")
-	LenARM_MorphSound.PlayAndWait(akSender)
+Function PlayMorphSound(Actor akSender, float radsDifference)	
+	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
+	if(radsDifference < LowRadsThreshold)
+		Log("  minimum rads taken")
+	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
+	elseif (radsDifference < MediumRadsThreshold)
+		Log("  medium rads taken")
+	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
+	elseif (radsDifference < HighRadsThreshold)
+		Log("  high rads taken")
+		LenARM_MorphSound.PlayAndWait(akSender)
+	; everything above HighRadsThreshold rads taken (bombarded by Gamma guns, massive intake of Irradiated blood)
+	Else
+		Log("  very high rads taken")
+		LenARM_MorphSound.PlayAndWait(akSender)
+	endif
 EndFunction
 
+
+
+; ------------------------
+; Debug helpers for writing to Papyrus logs and displaying info messages ingame (top-left)
+; ------------------------
+Function Note(string msg)
+	Debug.Notification("[LenARM] " + msg)
+	Log(msg)
+EndFunction
+Function Log(string msg)
+	Debug.Trace("[LenARM] " + msg)
+EndFunction
+; ------------------------
 
 
 
