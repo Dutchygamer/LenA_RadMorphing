@@ -73,6 +73,8 @@ Group Properties
 
 	Sound Property LenARM_DropClothesSound Auto Const
 	Sound Property LenARM_MorphSound Auto Const
+	Sound Property LenARM_MorphSound_Med Auto Const
+	Sound Property LenARM_MorphSound_High Auto Const
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -342,9 +344,9 @@ Function Startup()
 
 		; get radiation threshold (currently used for morph sounds)
 		; the division by 1000 is needed as rads run from 0 to 1, while the MCM settings are in displayed rads for player's convenience
-		LowRadsThreshold = 20.0  / 1000.0 ;MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
-		MediumRadsThreshold = 50.0  / 1000.0 ;MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
-		HighRadsThreshold = 100.0  / 1000.0 ;MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
+		LowRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fLowRadsThreshold:General") / 1000.0
+		MediumRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fMediumRadsThreshold:General") / 1000.0
+		HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -1045,21 +1047,23 @@ Function ShowEquippedClothes()
 	Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
-Function PlayMorphSound(Actor akSender, float radsDifference)	
+Function PlayMorphSound(Actor akSender, float radsDifference)
+	Log(LowRadsThreshold + "-" + MediumRadsThreshold + "-" + HighRadsThreshold)
 	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
-	if(radsDifference < LowRadsThreshold)
+	if (radsDifference <= LowRadsThreshold)
 		Log("  minimum rads taken")
 	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
-	elseif (radsDifference < MediumRadsThreshold)
+	elseif (radsDifference <= MediumRadsThreshold)
 		Log("  medium rads taken")
+		LenARM_MorphSound.PlayAndWait(akSender)
 	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
-	elseif (radsDifference < HighRadsThreshold)
+	elseif (radsDifference <= HighRadsThreshold)
 		Log("  high rads taken")
-		LenARM_MorphSound.PlayAndWait(akSender)
+		LenARM_MorphSound_Med.PlayAndWait(akSender)
 	; everything above HighRadsThreshold rads taken (bombarded by Gamma guns, massive intake of Irradiated blood)
-	Else
+	elseif (radsDifference > HighRadsThreshold)
 		Log("  very high rads taken")
-		LenARM_MorphSound.PlayAndWait(akSender)
+		LenARM_MorphSound_High.PlayAndWait(akSender)
 	endif
 EndFunction
 
