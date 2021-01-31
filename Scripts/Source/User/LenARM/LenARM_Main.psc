@@ -381,12 +381,17 @@ Function Startup()
 			SliderSet set = SliderSets[idxSet]
 			If (set.OnlyDoctorCanReset && set.IsAdditive && set.BaseMorph > 0)
 				SetMorphs(idxSet, set, set.BaseMorph)
-				SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
+				;SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
 			EndIf
 			idxSet += 1
 		EndWhile
-		ApplyAllCompanionMorphs()
+		;ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
+
+		;TODO nalopen waarom ie hier toch ook de morphsounds kan triggeren
+		;komt het omdat ie de TimerMorphTick aanroept?
+		;echter geluid wat er vervolgens uit komt lijkt niet te kloppen:
+		;had reset getriggered toen ik op volle morphs zat, en speelde geluid van tussen Medium en High rads taken...
 
 		If (UpdateType == EUpdateTypeImmediately)
 			; start timer
@@ -432,9 +437,10 @@ Function LoadSliderSets()
 		SliderSet newSet = SliderSet_Constructor(idxSet)
 		SliderSets[idxSet] = newSet
 
+		; when we found an existing sliderSet, reuse the BaseMorph and CurrentMorph
 		If (oldSet)
 			newSet.BaseMorph = oldSet.BaseMorph
-			newSet.CurrentMorph = 0.0
+			newSet.CurrentMorph = oldSet.CurrentMorph
 		EndIf
 		
 		; populate flattened arrays
@@ -484,10 +490,10 @@ Function LoadSliderSets()
 		EndIf
 		idxSet += 1
 	EndWhile
-	Log("  SliderSets: " + SliderSets)
-	Log("  SliderNames: " + SliderNames)
-	Log("  OriginalMorphs: " + OriginalMorphs)
-	Log("  UnequipSlots: " + UnequipSlots)
+	;Log("  SliderSets: " + SliderSets)
+	;Log("  SliderNames: " + SliderNames)
+	;Log("  OriginalMorphs: " + OriginalMorphs)
+	;Log("  UnequipSlots: " + UnequipSlots)
 
 	;RetrieveAllOriginalCompanionMorphs()
 EndFunction
@@ -686,13 +692,11 @@ Function TimerMorphTick()
 	If (newRads != CurrentRads)
 		;Log("new rads: " + newRads + " (" + CurrentRads + ")")
 		If (!PlayerRef.IsInPowerArmor())
-
 			; calculate the amount of rads taken
 			; the longer the timer interval, the larger this will be
 			float radsDifference = newRads - CurrentRads;
 			Log("rads taken: " + radsDifference);
-			
-			
+						
 			CurrentRads = newRads
 			; companions
 			;UpdateCompanions()
@@ -707,19 +711,40 @@ Function TimerMorphTick()
 					float newMorph = GetNewMorph(newRads, sliderSet)
 
 					;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph)
+
+					; only try to apply the morphs if either
+					; -the new morph is larger then the slider's current morph
+					; -the new morph is unequal to the slider's current morph when slider reset isn't doctor-only
 					If (newMorph > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && newMorph != sliderSet.CurrentMorph))
+						; by default the morph we will apply is the calculated morph, and the max morph is 1.0
+						; both will get modified if we have additive morphs enabled for this sliderSet
 						float fullMorph = newMorph
+						float maxMorphs = 1.0
+
+						; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
+						; limit this to the lower of calculated morph and the additive morph limit when we use additive morph limit
 						If (sliderSet.IsAdditive)
 							fullMorph += sliderSet.BaseMorph
 							If (sliderSet.HasAdditiveLimit)
-								fullMorph = Math.Min(fullMorph, 1.0 + sliderSet.AdditiveLimit)
+								maxMorphs = 1.0 + sliderSet.AdditiveLimit
+								fullMorph = Math.Min(fullMorph, maxMorphs)
 							EndIf
 						EndIf
-						;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph + " -> " + fullMorph)
-						SetMorphs(idxSet, sliderSet, fullMorph)
-						changedMorphs = true
+						
+						; only actually apply the morphs if they are less then our max allowed morphs, or when we have no additive morphs limit
+						if (fullMorph < maxMorphs || (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit))
+							;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph + " -> " + fullMorph)						
+							SetMorphs(idxSet, sliderSet, fullMorph)
+							changedMorphs = true
+						endif
+
+						; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
+						; eventually we have taken enough total rads we won't enter the containing if-statement						
 						sliderSet.CurrentMorph = newMorph
 						;Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
+
+					; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
+					; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
 					ElseIf (sliderSet.IsAdditive)
 						sliderSet.BaseMorph += sliderSet.CurrentMorph - newMorph
 						;Log("    setting baseMorph " + idxSet + " to " + sliderSet.BaseMorph)
@@ -755,7 +780,7 @@ EndFunction
 
 
 ; ------------------------
-; Calculate the new morph for the given sliderSet based on the given rads
+; Calculate the new morph for the given sliderSet based on the given rads and the slider's min / max thresholds
 ; ------------------------
 float Function GetNewMorph(float newRads, SliderSet sliderSet)
 	float newMorph
@@ -1048,7 +1073,6 @@ Function ShowEquippedClothes()
 EndFunction
 
 Function PlayMorphSound(Actor akSender, float radsDifference)
-	Log(LowRadsThreshold + "-" + MediumRadsThreshold + "-" + HighRadsThreshold)
 	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
 	if (radsDifference <= LowRadsThreshold)
 		Log("  minimum rads taken")
