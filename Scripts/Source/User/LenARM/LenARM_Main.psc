@@ -5,6 +5,15 @@
 ; With the generic OnQuestInit() and OnQuestShutdown() entry points we do the remaining setup and start the actual logic.
 Scriptname LenARM:LenARM_Main extends Quest
 
+;GENERIC TO FIX LIST
+;-on restart of the mod, morphsounds can get triggered (?)
+;-on equipping of an item, UnequipSlots should be triggered again (now could cause script error, hence temp disabled)
+;-preferably, check on equipping of an item if it is actually a piece of clothing instead of any item (like consumables)
+;-see if the whole update process can be made faster / more efficient
+;-update companions again
+
+
+
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -392,6 +401,8 @@ Function Startup()
 		;komt het omdat ie de TimerMorphTick aanroept?
 		;echter geluid wat er vervolgens uit komt lijkt niet te kloppen:
 		;had reset getriggered toen ik op volle morphs zat, en speelde geluid van tussen Medium en High rads taken...
+		; => vermoedelijk pakt ie je huidige rads, en gebruikt dat als het verschil
+		; heb je dus al veel rads, dan triggered ie het geluid wat erbij hoort
 
 		If (UpdateType == EUpdateTypeImmediately)
 			; start timer
@@ -619,13 +630,22 @@ EndEvent
 
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
 	Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
+
 	;TODO get slot number
 	;TODO check if slot is allowed
 	;TODO if slot is not allowed -> unequip
-	Utility.Wait(1.0)
-	;TODO dit klapt nu keihard, gooit dikke error genaamd "Unbound scripts cannot start timers"
-	;dit gaat sowieso af op alles wat je equipped. Echter hier vallen ook dingen onder zoals 'neem voedsel in' en 'kies wapen', niet alleen wissel clothes
-	;TriggerUnequipSlots()
+	;lijkt erop dat GetSlotMask niet overeen komt met de slots die we gebruiken voor unequippen
+	;kan over GetSlotMask ook niet echt iets vinden op de CK docs...
+
+	; only check if we need to unequip anything when we equip clothing or armor
+	; this will break the hacky "unequip weapon slots" logic some people use tho...
+	if (akBaseObject as Armor)
+		Utility.Wait(1.0)
+		;TODO dit klapt nu keihard, gooit dikke error genaamd "Unbound scripts cannot start timers"
+		;loop na of het nu nog steeds voorkomt nu we gefilterd hebben naar alleen Armor
+		TriggerUnequipSlots()
+	endif
+
 EndEvent
 
 
