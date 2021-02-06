@@ -7,11 +7,14 @@ Scriptname LenARM:LenARM_Main extends Quest
 
 ;GENERIC TO FIX LIST
 ;-on restart of the mod, morphsounds can get triggered (?)
-;-on equipping of an item, UnequipSlots should be triggered again (now could cause script error, hence temp disabled)
-;-preferably, check on equipping of an item if it is actually a piece of clothing instead of any item (like consumables)
 ;-see if the whole update process can be made faster / more efficient
-;-update companions again
-
+;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
+;-update companions again (see TODO: companions)
+;-check issue with body-covering clothing which also cover the armor slots (ie Hazmat suit), that when on reaching an armor slot unequipment threshold, the unequip logic gets triggered for each additional rad intake beyond that point
+;  -the way to do this is first have a normal outfit + armor equipped, reach the armor unequip threshold, and then equip a body-covering outfit
+;  -note that for now it seems to be an issue with just the hazmat suit; other body-covering clothes that block armor don't have the issue
+;  -sounds like it has issues detecting what slot is covered, and keeps trying to unequip the body-covering clothing while it technically doesn't occupy the slot
+;  -might be the Armor Slot Precedence thing described here: https://www.creationkit.com/fallout4/index.php?title=GetWornItem_-_Actor
 
 
 ; ------------------------
@@ -281,7 +284,7 @@ Function ForgetState(bool isCalledByUser=false)
 		TakeFakeRads = false
 		Startup()
 		IsForgetStateBusy = false
-		Note("Mod state has been reset")
+		TechnicalNote("Mod state has been reset")
 		If (isCalledByUser)
 			Log("  show reset complete message")
 			Debug.MessageBox("Rad Morphing Redux has been reset.")
@@ -390,10 +393,12 @@ Function Startup()
 			SliderSet set = SliderSets[idxSet]
 			If (set.OnlyDoctorCanReset && set.IsAdditive && set.BaseMorph > 0)
 				SetMorphs(idxSet, set, set.BaseMorph)
+				;TODO companions
 				;SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
 			EndIf
 			idxSet += 1
 		EndWhile
+		;TODO companions
 		;ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
 
@@ -629,8 +634,6 @@ EndEvent
 
 
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-	Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
-
 	;TODO get slot number
 	;TODO check if slot is allowed
 	;TODO if slot is not allowed -> unequip
@@ -640,6 +643,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	; only check if we need to unequip anything when we equip clothing or armor
 	; this will break the hacky "unequip weapon slots" logic some people use tho...
 	if (akBaseObject as Armor)
+		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		;TODO dit klapt nu keihard, gooit dikke error genaamd "Unbound scripts cannot start timers"
 		;loop na of het nu nog steeds voorkomt nu we gefilterd hebben naar alleen Armor
@@ -718,6 +722,7 @@ Function TimerMorphTick()
 			Log("rads taken: " + radsDifference);
 						
 			CurrentRads = newRads
+			;TODO companions
 			; companions
 			;UpdateCompanions()
 
@@ -777,8 +782,13 @@ Function TimerMorphTick()
 			If (changedMorphs)
 				BodyGen.UpdateMorphs(PlayerRef)
 				PlayMorphSound(PlayerRef, radsDifference)
+				;TODO companions
 				;ApplyAllCompanionMorphs()
 				TriggerUnequipSlots()
+			Else
+				;TODO trigger only once until rads have decreased or doctor reset
+				;TODO now also triggers on rad decreases
+				Note("I won't get any bigger")
 			EndIf
 		Else
 			;Log("skipping due to player in power armor")
@@ -825,6 +835,7 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + (OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph) + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
+		;TODO companions
 		;If (sliderSet.ApplyCompanion != EApplyCompanionNone)
 		;	SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
 		;EndIf
@@ -940,6 +951,7 @@ Function ApplyAllCompanionMorphs()
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+		;TODO companions
 		PlayMorphSound(CurrentCompanions[idxComp], 0);TODO die 0 is temp
 		idxComp += 1
 	EndWhile
@@ -1022,23 +1034,31 @@ Function UnequipSlots()
 		bool found = false
 		bool[] compFound = new bool[CurrentCompanions.Length]
 		int idxSet = 0
+		; check for each sliderSet
 		While (idxSet < SliderSets.Length)
 			SliderSet sliderSet = SliderSets[idxSet]
+			; continue when the morphs are larger then the unequip threshold
 			If (sliderSet.BaseMorph + sliderSet.CurrentMorph > sliderSet.ThresholdUnequip)
 				int unequipSlotOffset = SliderSet_GetUnequipSlotOffset(idxSet)
 				int idxSlot = unequipSlotOffset
+				; check each slot that should get unequipped
 				While (idxSlot < unequipSlotOffset + sliderSet.NumberOfUnequipSlots)
 					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
+					; when there is an item in the slot, and said item is not an actor or the pipboy, unequip it
 					If (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 						Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
 						PlayerRef.UnequipItemSlot(UnequipSlots[idxSlot])
+						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
+						; play the strip sound if available and display a notification in top-left
 						If (!found && !PlayerRef.IsEquipped(item.item))
-							Log("  playing sound")
+							;Log("  playing sound")
 							LenARM_DropClothesSound.PlayAndWait(PlayerRef)
+							Note("It is too tight for me")
 							found = true
 						EndIf
 					EndIf
-					int idxComp = 0
+					;TODO companions
+					;/int idxComp = 0
 					While (idxComp < CurrentCompanions.Length)
 						Actor companion = CurrentCompanions[idxComp]
 						int sex = companion.GetLeveledActorBase().GetSex()
@@ -1055,7 +1075,7 @@ Function UnequipSlots()
 							EndIf
 						EndIf
 						idxComp += 1
-					EndWhile
+					EndWhile/;
 					idxSlot += 1
 				EndWhile
 			EndIf
@@ -1075,7 +1095,7 @@ EndFunction
 
 
 Function ShowEquippedClothes()
-	Note("ShowEquippedClothes")
+	TechnicalNote("ShowEquippedClothes")
 	string[] items = new string[0]
 	int slot = 0
 	While (slot < 62)
@@ -1104,7 +1124,7 @@ Function PlayMorphSound(Actor akSender, float radsDifference)
 	elseif (radsDifference <= HighRadsThreshold)
 		Log("  high rads taken")
 		LenARM_MorphSound_Med.PlayAndWait(akSender)
-	; everything above HighRadsThreshold rads taken (bombarded by Gamma guns, massive intake of Irradiated blood)
+	; everything above HighRadsThreshold rads taken
 	elseif (radsDifference > HighRadsThreshold)
 		Log("  very high rads taken")
 		LenARM_MorphSound_High.PlayAndWait(akSender)
@@ -1117,6 +1137,12 @@ EndFunction
 ; Debug helpers for writing to Papyrus logs and displaying info messages ingame (top-left)
 ; ------------------------
 Function Note(string msg)
+	;TODO je zou dat als zo'n Vaultboy ding linksbovenin moeten kunnen doen; Player Comments doet dat wel bijvoorbeeld
+	Debug.Notification(msg)
+	Log(msg)
+EndFunction
+; same as Note only the message gets prefixed with [LenARM]
+Function TechnicalNote(string msg)
 	Debug.Notification("[LenARM] " + msg)
 	Log(msg)
 EndFunction
