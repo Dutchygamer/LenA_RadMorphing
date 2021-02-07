@@ -6,7 +6,6 @@
 Scriptname LenARM:LenARM_Main extends Quest
 
 ;GENERIC TO FIX LIST
-;-on restart of the mod, morphsounds can get triggered (?)
 ;-see if the whole update process can be made faster / more efficient
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
@@ -61,6 +60,8 @@ float CurrentRads
 float FakeRads
 bool TakeFakeRads
 
+bool HasReachedMaxMorphs
+
 int RestartStackSize
 int UnequipStackSize
 
@@ -68,6 +69,7 @@ int ForgetStateCalledByUserCount
 bool IsForgetStateBusy
 
 bool IsShuttingDown
+bool IsStartingUp
 
 string Version
 
@@ -183,6 +185,7 @@ Event Scene.OnEnd(Scene akSender)
 	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
 	If (DialogueGenericDoctors.DoctorJustCuredRads == 1)
 		ResetMorphs()
+		; reset the fake rads
 		FakeRads = 0
 		TakeFakeRads = false
 	EndIf
@@ -225,8 +228,10 @@ EndFunction
 ; ------------------------
 Function Startup()
 	Log("Startup")
-	If (MCM.GetModSettingBool("LenA_RadMorphing", "bIsEnabled:General"))
+	If (MCM.GetModSettingBool("LenA_RadMorphing", "bIsEnabled:General") && !IsStartingUp)
 		Log("  is enabled")
+		IsStartingUp = true
+
 		CurrentRads = 0
 
 		LoadSliderSets()
@@ -290,13 +295,6 @@ Function Startup()
 		;ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
 
-		;TODO nalopen waarom ie hier toch ook de morphsounds kan triggeren
-		;komt het omdat ie de TimerMorphTick aanroept?
-		;echter geluid wat er vervolgens uit komt lijkt niet te kloppen:
-		;had reset getriggered toen ik op volle morphs zat, en speelde geluid van tussen Medium en High rads taken...
-		; => vermoedelijk pakt ie je huidige rads, en gebruikt dat als het verschil
-		; heb je dus al veel rads, dan triggered ie het geluid wat erbij hoort
-
 		If (UpdateType == EUpdateTypeImmediately)
 			; start timer
 			TimerMorphTick()
@@ -304,6 +302,9 @@ Function Startup()
 			; listen for sleep events
 			RegisterForPlayerSleep()
 		EndIf
+
+		IsStartingUp = false
+		Log("Startup complete")
 	ElseIf (MCM.GetModSettingBool("LenA_RadMorphing", "bWarnDisabled:General"))
 		Log("  is disabled, with warning")
 		Debug.MessageBox("Rad Morphing is currently disabled. You can enable it in MCM > Rad Morphing > Enable Rad Morphing")
@@ -360,6 +361,9 @@ Function Restart()
 			Utility.Wait(1.0)
 		EndWhile
 		Startup()
+		While (IsStartingUp)
+			Utility.Wait(1.0)
+		EndWhile
 		Log("Restart completed")
 	Else
 		Log("RestartStackSize: " + RestartStackSize)
@@ -608,10 +612,10 @@ Function TimerMorphTick()
 				;TODO companions
 				;ApplyAllCompanionMorphs()
 				TriggerUnequipSlots()
-			Else
-				;TODO trigger only once until rads have decreased or doctor reset
-				;TODO now also triggers on rad decreases
+			; when we have reached max morphs, have taken positive rads and not yet displayed the message, display the message
+			ElseIf (radsDifference > 0 && !HasReachedMaxMorphs && !IsStartingUp)
 				Note("I won't get any bigger")
+				HasReachedMaxMorphs = true
 			EndIf
 		Else
 			;Log("skipping due to player in power armor")
@@ -659,6 +663,11 @@ EndFunction
 Function ResetMorphs()
 	Log("ResetMorphs")
 	RestoreOriginalMorphs()
+
+	;TODO kijken of dit hier moet of in die Doctor Scene.OnEnd
+	; re-enable the display of the max-morphs message
+	HasReachedMaxMorphs = false;
+
 	; reset saved morphs in SliderSets
 	int idxSet = 0
 	While (idxSet < SliderSets.Length)
@@ -919,21 +928,24 @@ EndFunction
 ; Play a sound depending on the rads difference and the MCM settings
 ; ------------------------
 Function PlayMorphSound(Actor akSender, float radsDifference)
-	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
-	if (radsDifference <= LowRadsThreshold)
-		Log("  minimum rads taken")
-	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
-	elseif (radsDifference <= MediumRadsThreshold)
-		Log("  medium rads taken")
-		LenARM_MorphSound.PlayAndWait(akSender)
-	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
-	elseif (radsDifference <= HighRadsThreshold)
-		Log("  high rads taken")
-		LenARM_MorphSound_Med.PlayAndWait(akSender)
-	; everything above HighRadsThreshold rads taken
-	elseif (radsDifference > HighRadsThreshold)
-		Log("  very high rads taken")
-		LenARM_MorphSound_High.PlayAndWait(akSender)
+	; don't try to play sounds on startup
+	if (!IsStartingUp)
+		; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
+		if (radsDifference <= LowRadsThreshold)
+			Log("  minimum rads taken")
+		; everything between LowRadsThreshold and MediumRadsThreshold rads taken
+		elseif (radsDifference <= MediumRadsThreshold)
+			Log("  medium rads taken")
+			LenARM_MorphSound.PlayAndWait(akSender)
+		; everything between MediumRadsThreshold and HighRadsThreshold rads taken
+		elseif (radsDifference <= HighRadsThreshold)
+			Log("  high rads taken")
+			LenARM_MorphSound_Med.PlayAndWait(akSender)
+		; everything above HighRadsThreshold rads taken
+		elseif (radsDifference > HighRadsThreshold)
+			Log("  very high rads taken")
+			LenARM_MorphSound_High.PlayAndWait(akSender)
+		endif
 	endif
 EndFunction
 
