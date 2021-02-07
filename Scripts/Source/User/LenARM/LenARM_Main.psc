@@ -10,11 +10,21 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-see if the whole update process can be made faster / more efficient
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
+;-see if we should replace PlayAndWait with just Play (ie play sound and don't wait until it is finished before continueing)
 ;-check issue with body-covering clothing which also cover the armor slots (ie Hazmat suit), that when on reaching an armor slot unequipment threshold, the unequip logic gets triggered for each additional rad intake beyond that point
 ;  -the way to do this is first have a normal outfit + armor equipped, reach the armor unequip threshold, and then equip a body-covering outfit
 ;  -note that for now it seems to be an issue with just the hazmat suit; other body-covering clothes that block armor don't have the issue
 ;  -sounds like it has issues detecting what slot is covered, and keeps trying to unequip the body-covering clothing while it technically doesn't occupy the slot
 ;  -might be the Armor Slot Precedence thing described here: https://www.creationkit.com/fallout4/index.php?title=GetWornItem_-_Actor
+;  -seems to throw errors in the logs as well:
+;[02/06/2021 - 07:13:57PM] [LenARM] TriggerUnequipSlots
+;[02/06/2021 - 07:13:57PM] [LenARM] UnequipSlots (stack=0)
+;[02/06/2021 - 07:13:57PM] [LenARM]   unequipping slot 11 ( / Armor\HazmatSuit\FOutfit.nif)
+;[02/06/2021 - 07:13:57PM] error:  (000CEAC3): has no 3d and cannot be equipped.
+;stack:
+;	[ (00000014)].Actor.IsEquipped() - "<native>" Line ?
+;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.UnequipSlots() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 1050
+;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.OnTimer() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 584
 
 
 ; ------------------------
@@ -60,7 +70,6 @@ bool IsForgetStateBusy
 bool IsShuttingDown
 
 string Version
-; ------------------------
 
 ; ------------------------
 ; Register the .esp Quest properties so we can act on them
@@ -93,10 +102,9 @@ Group Properties
 
 	Potion Property GlowingOneBlood Auto Const
 EndGroup
-; ------------------------
 
 ; ------------------------
-; Register all generic Quest public events / entry points to setup, start and stop the actual mod
+; Register all generic Quest public events / entry points related to setup, start and stop the actual mod
 ; ------------------------
 Event OnQuestInit()
 	Log("OnQuestInit")
@@ -109,7 +117,6 @@ Event OnQuestShutdown()
 	Log("OnQuestShutdown")
 	Shutdown()
 EndEvent
-; ------------------------
 
 ; ------------------------
 ; On savegame loaded, check for mod updates based on version
@@ -118,202 +125,6 @@ Event Actor.OnPlayerLoadGame(Actor akSender)
 	Log("Actor.OnPlayerLoadGame: " + akSender)
 	PerformUpdateIfNecessary()
 EndEvent
-
-Function OnMCMSettingChange(string modName, string id)
-	Log("OnMCMSettingChange: " + modName + "; " + id)
-	If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
-		string value = MCM.GetModSettingString(modName, id)
-		If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
-			string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-			Debug.MessageBox(msg)
-		EndIf
-	EndIf
-	Restart()
-EndFunction
-; ------------------------
-
-
-string Function GetVersion()
-	return "0.7.1"; Thu Dec 17 09:11:27 CET 2020
-EndFunction
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-;
-; utility functions
-;
-string[] Function StringSplit(string target, string delimiter)
-	;Log("splitting '" + target + "' with '" + delimiter + "'")
-	string[] result = new string[0]
-	string current = target
-	int idx = LL_Fourplay.StringFind(current, delimiter)
-	;Log("split idx: " + idx + " current: '" + current + "'")
-	While (idx > -1 && current)
-		result.Add(LL_Fourplay.StringSubstring(current, 0, idx))
-		current = LL_Fourplay.StringSubstring(current, idx+1)
-		idx = LL_Fourplay.StringFind(current, delimiter)
-		;Log("split idx: " + idx + " current: '" + current + "'")
-	EndWhile
-	If (current)
-		result.Add(current)
-	EndIf
-	;Log("split result: " + result)
-	return result
-EndFunction
-
-
-float Function Clamp(float value, float limit1, float limit2)
-	float lower = Math.Min(limit1, limit2)
-	float upper = Math.Max(limit1, limit2)
-	return Math.Min(Math.Max(value, lower), upper)
-EndFunction
-;
-; END: utility functions
-
-
-
-
-
-
-;
-; SliderSet functions
-;
-SliderSet Function SliderSet_Constructor(int idxSet)
-	Log("SliderSet_Constructor: " + idxSet)
-	SliderSet set = new SliderSet
-	set.SliderName = MCM.GetModSettingString("LenA_RadMorphing", "sSliderName:Slider" + idxSet)
-	If (set.SliderName != "")
-		set.IsUsed = true
-		set.TargetMorph = MCM.GetModSettingFloat("LenA_RadMorphing", "fTargetMorph:Slider" + idxSet) / 100.0
-		set.ThresholdMin = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMin:Slider" + idxSet) / 100.0
-		set.ThresholdMax = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMax:Slider" + idxSet) / 100.0
-		set.UnequipSlot = MCM.GetModSettingString("LenA_RadMorphing", "sUnequipSlot:Slider" + idxSet)
-		set.ThresholdUnequip = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdUnequip:Slider" + idxSet) / 100.0
-		set.OnlyDoctorCanReset = MCM.GetModSettingBool("LenA_RadMorphing", "bOnlyDoctorCanReset:Slider" + idxSet)
-		set.IsAdditive = MCM.GetModSettingBool("LenA_RadMorphing", "bIsAdditive:Slider" + idxSet)
-		set.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
-		set.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
-		set.ApplyCompanion = MCM.GetModSettingInt("LenA_RadMorphing", "iApplyCompanion:Slider" + idxSet)
-
-		string[] names = StringSplit(set.SliderName, "|")
-		set.NumberOfSliderNames = names.Length
-
-		If (set.UnequipSlot != "")
-			string[] slots = StringSplit(set.UnequipSlot, "|")
-			set.NumberOfUnequipSlots = slots.Length
-		Else
-			set.NumberOfUnequipSlots = 0
-		EndIf
-	Else
-		set.IsUsed = false
-	EndIf
-
-	;Log("  " + set)
-	return set
-EndFunction
-
-int Function SliderSet_GetSliderNameOffset(int idxSet)
-	int offset = 0
-	int index = 0
-	While (index < idxSet)
-		offset += SliderSets[index].NumberOfSliderNames
-		index += 1
-	EndWhile
-	return offset
-EndFunction
-
-int Function SliderSet_GetUnequipSlotOffset(int idxSet)
-	int offset = 0
-	int index = 0
-	While (index < idxSet)
-		offset += SliderSets[index].NumberOfUnequipSlots
-		index += 1
-	EndWhile
-	return offset
-EndFunction
-;
-; END: SliderSet functions
-
-
-
-
-;
-; Debug and testing tools
-;
-Function ForgetState(bool isCalledByUser=false)
-	Log("ForgetState: isCalledByUser=" + isCalledByUser + "; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount + "; IsForgetStateBusy=" + IsForgetStateBusy)
-
-	If (isCalledByUser && IsForgetStateBusy)
-		Log("  show busy warning")
-		Debug.MessageBox("This function is already running. Wait until it has completed.")
-	ElseIf (isCalledByUser && ForgetStateCalledByUserCount < 1)
-		Log("  show warning")
-		CancelTimer(ETimerForgetStateCalledByUserTick)
-		Debug.MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body or your companion's body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
-		ForgetStateCalledByUserCount = 1
-		StartTimer(0.1, ETimerForgetStateCalledByUserTick)
-	Else
-		Log("  reset state")
-		IsForgetStateBusy = true
-		If (isCalledByUser)
-			CancelTimer(ETimerForgetStateCalledByUserTick)
-			ForgetStateCalledByUserCount = 0
-			Log("  show reset start message")
-			Debug.MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
-		EndIf
-		Shutdown(false)
-		SliderSets = none
-		SliderNames = none
-		UnequipSlots = none
-		OriginalMorphs = none
-		OriginalCompanionMorphs = none
-		CurrentCompanions = none
-		CurrentRads = 0.0
-		FakeRads = 0
-		TakeFakeRads = false
-		Startup()
-		IsForgetStateBusy = false
-		TechnicalNote("Mod state has been reset")
-		If (isCalledByUser)
-			Log("  show reset complete message")
-			Debug.MessageBox("Rad Morphing Redux has been reset.")
-		EndIf
-	EndIf
-EndFunction
-
-Function ForgetStateCounterReset()
-	Log("ForgetStateCounterReset; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount)
-	ForgetStateCalledByUserCount = 0
-EndFunction
-
-Function GiveIrradiatedBlood()
-	PlayerRef.AddItem(GlowingOneBlood, 50)
-EndFunction
-;
-; END: Debug and testing tools
-
-
-
-
-
-
-
-
-
-
-
-
 
 Function PerformUpdateIfNecessary()
 	Log("PerformUpdateIfNecessary: " + Version + " != " + GetVersion() + " -> " + (Version != GetVersion()))
@@ -332,9 +143,86 @@ Function PerformUpdateIfNecessary()
 	EndIf
 EndFunction
 
+string Function GetVersion()
+	return "0.7.1"; Thu Dec 17 09:11:27 CET 2020
+EndFunction
 
+; ------------------------
+; On equipping of an item, check if it should get unequipped
+; ------------------------
+Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
+	;TODO get slot number
+	;TODO check if slot is allowed
+	;TODO if slot is not allowed -> unequip
 
+	;TODO zou mooi zijn als we hier al weten welke slots er unequipped moeten zijn, dat we gebaseerd daarop meteen al het item kunnen unequippen zonder dat we die dure UnequipSlots() in moeten
+	;das denk ik wat zijn originele 3 TODOs betekenen
+	
+	;lijkt erop dat GetSlotMask niet overeen komt met de slots die we gebruiken voor unequippen
+	;kan over GetSlotMask ook niet echt iets vinden op de CK docs...
 
+	; only check if we need to unequip anything when we equip clothing or armor
+	; this will break the hacky "unequip weapon slots" logic some people use tho...
+	if (akBaseObject as Armor)
+		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
+		Utility.Wait(1.0)
+		TriggerUnequipSlots()
+	endif
+EndEvent
+
+; ------------------------
+; Upon entering and exiting the doctor scenes, reset the morphs
+; ------------------------
+Event Scene.OnBegin(Scene akSender)
+	float radsBeforeDoc = PlayerRef.GetValue(Rads)
+	Log("Scene.OnBegin: " + akSender + " (rads: " + radsBeforeDoc + ")")
+EndEvent
+
+Event Scene.OnEnd(Scene akSender)
+	float radsNow = PlayerRef.GetValue(Rads)
+	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
+	If (DialogueGenericDoctors.DoctorJustCuredRads == 1)
+		ResetMorphs()
+		FakeRads = 0
+		TakeFakeRads = false
+	EndIf
+EndEvent
+
+; ------------------------
+; Setup the various times this mod can use
+; ------------------------
+Event OnTimer(int tid)
+	If (tid == ETimerMorphTick)
+		TimerMorphTick()
+	ElseIf (tid == ETimerForgetStateCalledByUserTick)
+		ForgetStateCounterReset()
+	ElseIf (tid == ETimerShutdownRestoreMorphs)
+		ShutdownRestoreMorphs()
+	ElseIf (tid == ETimerUnequipSlots)
+		UnequipSlots()
+	ElseIf (tid == ETimerFakeRads)
+		AddFakeRads()
+	EndIf
+EndEvent
+
+; ------------------------
+; On MCM change, check if the settings are valid, and restart the mod if this is the case
+; ------------------------
+Function OnMCMSettingChange(string modName, string id)
+	Log("OnMCMSettingChange: " + modName + "; " + id)
+	If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
+		string value = MCM.GetModSettingString(modName, id)
+		If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
+			string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
+			Debug.MessageBox(msg)
+		EndIf
+	EndIf
+	Restart()
+EndFunction
+
+; ------------------------
+; Start / shutdown / reset of the mod
+; ------------------------
 Function Startup()
 	Log("Startup")
 	If (MCM.GetModSettingBool("LenA_RadMorphing", "bIsEnabled:General"))
@@ -424,6 +312,61 @@ Function Startup()
 	EndIf
 EndFunction
 
+Function Shutdown(bool withRestore=true)
+	If (!IsShuttingDown)
+		Log("Shutdown")
+		IsShuttingDown = true
+
+		; stop listening for sleep events
+		UnregisterForPlayerSleep()
+	
+		; stop timer
+		CancelTimer(ETimerMorphTick)
+	
+		; stop listening for equipping items
+		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
+	
+		; stop listening for doctor scene
+		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnBegin")
+		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnEnd")
+		
+		If (withRestore)
+			StartTimer(Math.Max(UpdateDelay + 0.5, 2.0), ETimerShutdownRestoreMorphs)
+		Else
+			FinishShutdown()
+		EndIf
+	EndIf
+EndFunction
+
+Function ShutdownRestoreMorphs()
+	Log("ShutdownRestoreMorphs")
+	; restore base values
+	RestoreOriginalMorphs()
+	FinishShutdown()
+EndFunction
+
+Function FinishShutdown()
+	Log("FinishShutdown")
+	IsShuttingDown = false
+EndFunction
+
+Function Restart()
+	RestartStackSize += 1
+	Utility.Wait(1.0)
+	If (RestartStackSize <= 1)
+		Log("Restart")
+		Shutdown()
+		While (IsShuttingDown)
+			Utility.Wait(1.0)
+		EndWhile
+		Startup()
+		Log("Restart completed")
+	Else
+		Log("RestartStackSize: " + RestartStackSize)
+	EndIf
+	RestartStackSize -= 1
+EndFunction
+
 ; ------------------------
 ; Read the slider sets from the MCM config, and store them into the local variables.
 ; Will perform the initial local variables setup if these are not yet initialized.
@@ -510,94 +453,54 @@ Function LoadSliderSets()
 	;Log("  SliderNames: " + SliderNames)
 	;Log("  OriginalMorphs: " + OriginalMorphs)
 	;Log("  UnequipSlots: " + UnequipSlots)
-
+	
+	;TODO companions
 	;RetrieveAllOriginalCompanionMorphs()
 EndFunction
+
 ; ------------------------
-
-
-Function Shutdown(bool withRestore=true)
-	If (!IsShuttingDown)
-		Log("Shutdown")
-		IsShuttingDown = true
-
-		; stop listening for sleep events
-		UnregisterForPlayerSleep()
-	
-		; stop timer
-		CancelTimer(ETimerMorphTick)
-	
-		; stop listening for equipping items
-		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
-	
-		; stop listening for doctor scene
-		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnBegin")
-		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnEnd")
-		
-		If (withRestore)
-			StartTimer(Math.Max(UpdateDelay + 0.5, 2.0), ETimerShutdownRestoreMorphs)
-		Else
-			FinishShutdown()
-		EndIf
-	EndIf
-EndFunction
-
-Function ShutdownRestoreMorphs()
-	Log("ShutdownRestoreMorphs")
-	; restore base values
-	RestoreOriginalMorphs()
-	FinishShutdown()
-EndFunction
-
-Function FinishShutdown()
-	Log("FinishShutdown")
-	IsShuttingDown = false
-EndFunction
-
-
-Function Restart()
-	RestartStackSize += 1
-	Utility.Wait(1.0)
-	If (RestartStackSize <= 1)
-		Log("Restart")
-		Shutdown()
-		While (IsShuttingDown)
-			Utility.Wait(1.0)
-		EndWhile
-		Startup()
-		Log("Restart completed")
-	Else
-		Log("RestartStackSize: " + RestartStackSize)
-	EndIf
-	RestartStackSize -= 1
-EndFunction
-
-
-
-
-Event OnTimer(int tid)
-	If (tid == ETimerMorphTick)
-		TimerMorphTick()
-	ElseIf (tid == ETimerForgetStateCalledByUserTick)
-		ForgetStateCounterReset()
-	ElseIf (tid == ETimerShutdownRestoreMorphs)
-		ShutdownRestoreMorphs()
-	ElseIf (tid == ETimerUnequipSlots)
-		UnequipSlots()
-	ElseIf (tid == ETimerFakeRads)
-		AddFakeRads()
-	EndIf
+; Radiation detection and what not
+; ------------------------
+;TODO deze is obsolete? wordt nergens gebruikt zover ik zie? de andere worden wel gebruikt
+Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
+	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
+	TakeFakeRads = true
 EndEvent
 
+float Function GetNewRads()
+	float newRads = 0.0
+	If (RadsDetectionType == ERadsDetectionTypeRads)
+		newRads = PlayerRef.GetValue(Rads)
+	ElseIf (RadsDetectionType == ERadsDetectionTypeRandom)
+		newRads = FakeRads
+	EndIf
+	return newRads / 1000
+EndFunction
 
+Function AddFakeRads()
+	Log("AddFakeRads")
+	If (TakeFakeRads)
+		; add fake rads
+		FakeRads += Utility.RandomFloat(RandomRadsLower, RandomRadsUpper)
+		Log("  FakeRads: " + FakeRads)
+		TakeFakeRads = false
+	EndIf
+	; restart timer
+	StartTimer(1.0, ETimerFakeRads)
+	; re-register event listener
+	RegisterForRadiationDamageEvent(PlayerRef)
+EndFunction
 
-
+; ------------------------
+; Sleep-based morphs
+; ------------------------
 Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, ObjectReference akBed)
 	Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
 	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
 	Log("  followers on sleep start: " + allCompanions)
+	;TODO companions
 	; update companions (companions cannot be found on sleep stop)
-	UpdateCompanions()
+	;UpdateCompanions()
 EndEvent
 
 Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
@@ -625,86 +528,11 @@ Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 			idxSet += 1
 		EndWhile
 		BodyGen.UpdateMorphs(PlayerRef)
-		ApplyAllCompanionMorphs()
+		;TODO companions
+		;ApplyAllCompanionMorphs()
 		TriggerUnequipSlots()
 	EndIf
 EndEvent
-
-
-
-
-Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-	;TODO get slot number
-	;TODO check if slot is allowed
-	;TODO if slot is not allowed -> unequip
-	;lijkt erop dat GetSlotMask niet overeen komt met de slots die we gebruiken voor unequippen
-	;kan over GetSlotMask ook niet echt iets vinden op de CK docs...
-
-	; only check if we need to unequip anything when we equip clothing or armor
-	; this will break the hacky "unequip weapon slots" logic some people use tho...
-	if (akBaseObject as Armor)
-		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
-		Utility.Wait(1.0)
-		;TODO dit klapt nu keihard, gooit dikke error genaamd "Unbound scripts cannot start timers"
-		;loop na of het nu nog steeds voorkomt nu we gefilterd hebben naar alleen Armor
-		TriggerUnequipSlots()
-	endif
-
-EndEvent
-
-
-Event Scene.OnBegin(Scene akSender)
-	float radsBeforeDoc = PlayerRef.GetValue(Rads)
-	Log("Scene.OnBegin: " + akSender + " (rads: " + radsBeforeDoc + ")")
-EndEvent
-
-Event Scene.OnEnd(Scene akSender)
-	float radsNow = PlayerRef.GetValue(Rads)
-	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
-	If (DialogueGenericDoctors.DoctorJustCuredRads == 1)
-		ResetMorphs()
-		FakeRads = 0
-		TakeFakeRads = false
-	EndIf
-EndEvent
-
-Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
-	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
-	TakeFakeRads = true
-EndEvent
-
-
-
-
-float Function GetNewRads()
-	float newRads = 0.0
-	If (RadsDetectionType == ERadsDetectionTypeRads)
-		newRads = PlayerRef.GetValue(Rads)
-	ElseIf (RadsDetectionType == ERadsDetectionTypeRandom)
-		newRads = FakeRads
-	EndIf
-	return newRads / 1000
-EndFunction
-
-
-
-
-Function AddFakeRads()
-	Log("AddFakeRads")
-	If (TakeFakeRads)
-		; add fake rads
-		FakeRads += Utility.RandomFloat(RandomRadsLower, RandomRadsUpper)
-		Log("  FakeRads: " + FakeRads)
-		TakeFakeRads = false
-	EndIf
-	; restart timer
-	StartTimer(1.0, ETimerFakeRads)
-	; re-register event listener
-	RegisterForRadiationDamageEvent(PlayerRef)
-EndFunction
-
-
-
 
 ; ------------------------
 ; Timer-based morphs
@@ -719,35 +547,32 @@ Function TimerMorphTick()
 			; calculate the amount of rads taken
 			; the longer the timer interval, the larger this will be
 			float radsDifference = newRads - CurrentRads;
-			Log("rads taken: " + radsDifference);
+			Log("rads taken: " + (radsDifference * 1000));
 						
 			CurrentRads = newRads
 			;TODO companions
 			; companions
 			;UpdateCompanions()
 
-			; apply morphs
 			bool changedMorphs = false
 			int idxSet = 0
+			; check each sliderset whether we need to update the morphs
 			While (idxSet < SliderSets.Length)
 				SliderSet sliderSet = SliderSets[idxSet]
 				If (sliderSet.NumberOfSliderNames > 0)
-					;Log("  SliderSet " + idxSet)
 					float newMorph = GetNewMorph(newRads, sliderSet)
-
-					;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph)
 
 					; only try to apply the morphs if either
 					; -the new morph is larger then the slider's current morph
-					; -the new morph is unequal to the slider's current morph when slider reset isn't doctor-only
+					; -the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
 					If (newMorph > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && newMorph != sliderSet.CurrentMorph))
-						; by default the morph we will apply is the calculated morph, and the max morph is 1.0
+						; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 						; both will get modified if we have additive morphs enabled for this sliderSet
 						float fullMorph = newMorph
 						float maxMorphs = 1.0
 
 						; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
-						; limit this to the lower of calculated morph and the additive morph limit when we use additive morph limit
+						; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
 						If (sliderSet.IsAdditive)
 							fullMorph += sliderSet.BaseMorph
 							If (sliderSet.HasAdditiveLimit)
@@ -757,8 +582,7 @@ Function TimerMorphTick()
 						EndIf
 						
 						; only actually apply the morphs if they are less then our max allowed morphs, or when we have no additive morphs limit
-						if (fullMorph < maxMorphs || (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit))
-							;Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " -> " + newMorph + " -> " + fullMorph)						
+						if (fullMorph < maxMorphs || (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit))				
 							SetMorphs(idxSet, sliderSet, fullMorph)
 							changedMorphs = true
 						endif
@@ -766,19 +590,18 @@ Function TimerMorphTick()
 						; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
 						; eventually we have taken enough total rads we won't enter the containing if-statement						
 						sliderSet.CurrentMorph = newMorph
-						;Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
 
 					; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
 					; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
 					ElseIf (sliderSet.IsAdditive)
 						sliderSet.BaseMorph += sliderSet.CurrentMorph - newMorph
-						;Log("    setting baseMorph " + idxSet + " to " + sliderSet.BaseMorph)
 						sliderSet.CurrentMorph = newMorph
-						;Log("    setting currentMorph " + idxSet + " to " + sliderSet.CurrentMorph)
 					EndIf
 				EndIf
 				idxSet += 1
 			EndWhile
+
+			; when at least one of the sliderSets has applied morphs, perform the actual actions
 			If (changedMorphs)
 				BodyGen.UpdateMorphs(PlayerRef)
 				PlayMorphSound(PlayerRef, radsDifference)
@@ -797,18 +620,6 @@ Function TimerMorphTick()
 	StartTimer(UpdateDelay, ETimerMorphTick)
 EndFunction
 
-
-
-
-
-
-
-
-
-
-
-
-
 ; ------------------------
 ; Calculate the new morph for the given sliderSet based on the given rads and the slider's min / max thresholds
 ; ------------------------
@@ -823,7 +634,6 @@ float Function GetNewMorph(float newRads, SliderSet sliderSet)
 	EndIf
 	return newMorph
 EndFunction
-; ------------------------
 
 ; ------------------------
 ; Apply the given sliderSet's morphs to the matching BodyGen sliders
@@ -842,10 +652,6 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 		idxSlider += 1
 	EndWhile
 EndFunction
-; ------------------------
-
-
-
 
 ; ------------------------
 ; Restore the original BodyGen values for each slider, and set all morphs to 0
@@ -876,11 +682,10 @@ Function RestoreOriginalMorphs()
 
 	;RestoreAllOriginalCompanionMorphs()
 EndFunction
+
 ; ------------------------
-
-
-
-
+; All companion related logic, still WiP / broken
+; ------------------------
 Function RestoreAllOriginalCompanionMorphs()
 	Log("RestoreAllOriginalCompanionMorphs")
 	int idxComp = 0
@@ -903,7 +708,6 @@ Function RestoreOriginalCompanionMorphs(Actor companion, int idxCompanion)
 	BodyGen.UpdateMorphs(companion)
 EndFunction
 
-
 Function RetrieveAllOriginalCompanionMorphs()
 	Log("RetrieveAllOriginalCompanionMorphs")
 	OriginalCompanionMorphs = new float[0]
@@ -923,7 +727,6 @@ Function RetrieveOriginalCompanionMorphs(Actor companion)
 		idxSlider += 1
 	EndWhile
 EndFunction
-
 
 Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 	Log("SetCompanionMorphs: " + idxSlider + "; " + morph + "; " + applyCompanion)
@@ -956,9 +759,6 @@ Function ApplyAllCompanionMorphs()
 		idxComp += 1
 	EndWhile
 EndFunction
-
-
-
 
 Function RemoveDismissedCompanions(Actor[] newCompanions)
 	Log("RemoveDismissedCompanions: " + newCompanions)
@@ -1023,10 +823,9 @@ Function UpdateCompanions()
 	Log("  CurrentCompanions: " + CurrentCompanions)
 EndFunction
 
-
-
-
-
+; ------------------------
+; Check for each slider whether pieces of clothing / armor should get unequipped
+; ------------------------
 Function UnequipSlots()
 	Log("UnequipSlots (stack=" + UnequipStackSize + ")")
 	UnequipStackSize += 1
@@ -1034,26 +833,30 @@ Function UnequipSlots()
 		bool found = false
 		bool[] compFound = new bool[CurrentCompanions.Length]
 		int idxSet = 0
+		
 		; check for each sliderSet
 		While (idxSet < SliderSets.Length)
 			SliderSet sliderSet = SliderSets[idxSet]
+			
 			; continue when the morphs are larger then the unequip threshold
 			If (sliderSet.BaseMorph + sliderSet.CurrentMorph > sliderSet.ThresholdUnequip)
 				int unequipSlotOffset = SliderSet_GetUnequipSlotOffset(idxSet)
 				int idxSlot = unequipSlotOffset
+				
 				; check each slot that should get unequipped
 				While (idxSlot < unequipSlotOffset + sliderSet.NumberOfUnequipSlots)
 					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
+					
 					; when there is an item in the slot, and said item is not an actor or the pipboy, unequip it
 					If (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 						Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
 						PlayerRef.UnequipItemSlot(UnequipSlots[idxSlot])
+
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
 						If (!found && !PlayerRef.IsEquipped(item.item))
-							;Log("  playing sound")
-							LenARM_DropClothesSound.PlayAndWait(PlayerRef)
 							Note("It is too tight for me")
+							LenARM_DropClothesSound.PlayAndWait(PlayerRef)
 							found = true
 						EndIf
 					EndIf
@@ -1091,9 +894,9 @@ Function TriggerUnequipSlots()
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
-
-
-
+; ------------------------
+; Debug function to check which slots the current equipped clothes / armor occupies
+; ------------------------
 Function ShowEquippedClothes()
 	TechnicalNote("ShowEquippedClothes")
 	string[] items = new string[0]
@@ -1112,6 +915,9 @@ Function ShowEquippedClothes()
 	Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
+; ------------------------
+; Play a sound depending on the rads difference and the MCM settings
+; ------------------------
 Function PlayMorphSound(Actor akSender, float radsDifference)
 	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
 	if (radsDifference <= LowRadsThreshold)
@@ -1131,7 +937,86 @@ Function PlayMorphSound(Actor akSender, float radsDifference)
 	endif
 EndFunction
 
+; ------------------------
+; Debug functions from the Debug MCM menu
+; ------------------------
+Function ForgetState(bool isCalledByUser=false)
+	Log("ForgetState: isCalledByUser=" + isCalledByUser + "; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount + "; IsForgetStateBusy=" + IsForgetStateBusy)
 
+	If (isCalledByUser && IsForgetStateBusy)
+		Log("  show busy warning")
+		Debug.MessageBox("This function is already running. Wait until it has completed.")
+	ElseIf (isCalledByUser && ForgetStateCalledByUserCount < 1)
+		Log("  show warning")
+		CancelTimer(ETimerForgetStateCalledByUserTick)
+		Debug.MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body or your companion's body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
+		ForgetStateCalledByUserCount = 1
+		StartTimer(0.1, ETimerForgetStateCalledByUserTick)
+	Else
+		Log("  reset state")
+		IsForgetStateBusy = true
+		If (isCalledByUser)
+			CancelTimer(ETimerForgetStateCalledByUserTick)
+			ForgetStateCalledByUserCount = 0
+			Log("  show reset start message")
+			Debug.MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
+		EndIf
+		Shutdown(false)
+		SliderSets = none
+		SliderNames = none
+		UnequipSlots = none
+		OriginalMorphs = none
+		OriginalCompanionMorphs = none
+		CurrentCompanions = none
+		CurrentRads = 0.0
+		FakeRads = 0
+		TakeFakeRads = false
+		Startup()
+		IsForgetStateBusy = false
+		TechnicalNote("Mod state has been reset")
+		If (isCalledByUser)
+			Log("  show reset complete message")
+			Debug.MessageBox("Rad Morphing Redux has been reset.")
+		EndIf
+	EndIf
+EndFunction
+
+Function ForgetStateCounterReset()
+	Log("ForgetStateCounterReset; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount)
+	ForgetStateCalledByUserCount = 0
+EndFunction
+
+Function GiveIrradiatedBlood()
+	PlayerRef.AddItem(GlowingOneBlood, 50)
+EndFunction
+
+; ------------------------
+; Helper functions for splitting strings
+; ------------------------
+string[] Function StringSplit(string target, string delimiter)
+	;Log("splitting '" + target + "' with '" + delimiter + "'")
+	string[] result = new string[0]
+	string current = target
+	int idx = LL_Fourplay.StringFind(current, delimiter)
+	;Log("split idx: " + idx + " current: '" + current + "'")
+	While (idx > -1 && current)
+		result.Add(LL_Fourplay.StringSubstring(current, 0, idx))
+		current = LL_Fourplay.StringSubstring(current, idx+1)
+		idx = LL_Fourplay.StringFind(current, delimiter)
+		;Log("split idx: " + idx + " current: '" + current + "'")
+	EndWhile
+	If (current)
+		result.Add(current)
+	EndIf
+	;Log("split result: " + result)
+	return result
+EndFunction
+
+float Function Clamp(float value, float limit1, float limit2)
+	float lower = Math.Min(limit1, limit2)
+	float upper = Math.Max(limit1, limit2)
+	return Math.Min(Math.Max(value, lower), upper)
+EndFunction
 
 ; ------------------------
 ; Debug helpers for writing to Papyrus logs and displaying info messages ingame (top-left)
@@ -1141,17 +1026,16 @@ Function Note(string msg)
 	Debug.Notification(msg)
 	Log(msg)
 EndFunction
+
 ; same as Note only the message gets prefixed with [LenARM]
 Function TechnicalNote(string msg)
 	Debug.Notification("[LenARM] " + msg)
 	Log(msg)
 EndFunction
+
 Function Log(string msg)
 	Debug.Trace("[LenARM] " + msg)
 EndFunction
-; ------------------------
-
-
 
 ; ------------------------
 ; MCM selector enums
@@ -1189,11 +1073,64 @@ EndGroup
 Group Constants
 	int Property _NUMBER_OF_SLIDERSETS_ = 20 Auto Const
 EndGroup
-; ------------------------
 
 ; ------------------------
-; MCM Slider class / struct
+; MCM SliderSet functions / struct
 ; ------------------------
+SliderSet Function SliderSet_Constructor(int idxSet)
+	;Log("SliderSet_Constructor: " + idxSet)
+	SliderSet set = new SliderSet
+	set.SliderName = MCM.GetModSettingString("LenA_RadMorphing", "sSliderName:Slider" + idxSet)
+	If (set.SliderName != "")
+		set.IsUsed = true
+		set.TargetMorph = MCM.GetModSettingFloat("LenA_RadMorphing", "fTargetMorph:Slider" + idxSet) / 100.0
+		set.ThresholdMin = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMin:Slider" + idxSet) / 100.0
+		set.ThresholdMax = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMax:Slider" + idxSet) / 100.0
+		set.UnequipSlot = MCM.GetModSettingString("LenA_RadMorphing", "sUnequipSlot:Slider" + idxSet)
+		set.ThresholdUnequip = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdUnequip:Slider" + idxSet) / 100.0
+		set.OnlyDoctorCanReset = MCM.GetModSettingBool("LenA_RadMorphing", "bOnlyDoctorCanReset:Slider" + idxSet)
+		set.IsAdditive = MCM.GetModSettingBool("LenA_RadMorphing", "bIsAdditive:Slider" + idxSet)
+		set.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
+		set.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
+		set.ApplyCompanion = MCM.GetModSettingInt("LenA_RadMorphing", "iApplyCompanion:Slider" + idxSet)
+
+		string[] names = StringSplit(set.SliderName, "|")
+		set.NumberOfSliderNames = names.Length
+
+		If (set.UnequipSlot != "")
+			string[] slots = StringSplit(set.UnequipSlot, "|")
+			set.NumberOfUnequipSlots = slots.Length
+		Else
+			set.NumberOfUnequipSlots = 0
+		EndIf
+	Else
+		set.IsUsed = false
+	EndIf
+
+	;Log("  " + set)
+	return set
+EndFunction
+
+int Function SliderSet_GetSliderNameOffset(int idxSet)
+	int offset = 0
+	int index = 0
+	While (index < idxSet)
+		offset += SliderSets[index].NumberOfSliderNames
+		index += 1
+	EndWhile
+	return offset
+EndFunction
+
+int Function SliderSet_GetUnequipSlotOffset(int idxSet)
+	int offset = 0
+	int index = 0
+	While (index < idxSet)
+		offset += SliderSets[index].NumberOfUnequipSlots
+		index += 1
+	EndWhile
+	return offset
+EndFunction
+
 Struct SliderSet
 	bool IsUsed
 
@@ -1217,4 +1154,3 @@ Struct SliderSet
 	float BaseMorph
 	float CurrentMorph
 EndStruct
-; ------------------------
