@@ -10,6 +10,14 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
 ;-see if we should replace PlayAndWait with just Play (ie play sound and don't wait until it is finished before continueing)
+;-the last bit of radiation you take that puts you on max morphs won't set changedMorphs to true due to, well, reaching max morphs
+;this results in not triggering the final morphs, morph sound, unequipemnt of clothes, etc etc
+;for small radiation increases this isn't much of an issue, but for large radiation increases this is noticable
+;-HasReachedMaxMorphs should also get set to false when you don't use doctor-only morph resets
+;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
+;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
+;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
+
 ;-check issue with body-covering clothing which also cover the armor slots (ie Hazmat suit), that when on reaching an armor slot unequipment threshold, the unequip logic gets triggered for each additional rad intake beyond that point
 ;  -the way to do this is first have a normal outfit + armor equipped, reach the armor unequip threshold, and then equip a body-covering outfit
 ;  -note that for now it seems to be an issue with just the hazmat suit; other body-covering clothes that block armor don't have the issue
@@ -24,7 +32,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;	[ (00000014)].Actor.IsEquipped() - "<native>" Line ?
 ;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.UnequipSlots() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 1050
 ;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.OnTimer() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 584
-
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -60,6 +67,7 @@ float CurrentRads
 float FakeRads
 bool TakeFakeRads
 
+; has the player reached the max on all sliderSets? this includes additive morphing if these are limited
 bool HasReachedMaxMorphs
 
 int RestartStackSize
@@ -400,10 +408,11 @@ Function LoadSliderSets()
 		SliderSet newSet = SliderSet_Constructor(idxSet)
 		SliderSets[idxSet] = newSet
 
-		; when we found an existing sliderSet, reuse the BaseMorph and CurrentMorph
+		; when we found an existing sliderSet, reuse the BaseMorph, CurrentMorph and IsMaxedOut
 		If (oldSet)
 			newSet.BaseMorph = oldSet.BaseMorph
 			newSet.CurrentMorph = oldSet.CurrentMorph
+			newSet.IsMaxedOut = oldSet.IsMaxedOut
 		EndIf
 		
 		; populate flattened arrays
@@ -466,6 +475,7 @@ EndFunction
 ; Radiation detection and what not
 ; ------------------------
 ;TODO deze is obsolete? wordt nergens gebruikt zover ik zie? de andere worden wel gebruikt
+;kijk in de .esp voor je hem nuked!
 Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
 	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
 	TakeFakeRads = true
@@ -550,6 +560,7 @@ Function TimerMorphTick()
 		If (!PlayerRef.IsInPowerArmor())
 			; calculate the amount of rads taken
 			; the longer the timer interval, the larger this will be
+			;TODO dit moet naar FakeRads kijken als je FakeRads gebruikt
 			float radsDifference = newRads - CurrentRads;
 			Log("rads taken: " + (radsDifference * 1000));
 						
@@ -558,11 +569,16 @@ Function TimerMorphTick()
 			; companions
 			;UpdateCompanions()
 
-			bool changedMorphs = false
 			int idxSet = 0
+			; by default, assume we have no changed morphs for all sliderSets
+			bool changedMorphs = false
+			; by default, assume we are at our max morphs for all sliderSets
+			bool maxedOutMorphs = true
+
 			; check each sliderset whether we need to update the morphs
 			While (idxSet < SliderSets.Length)
 				SliderSet sliderSet = SliderSets[idxSet]
+
 				If (sliderSet.NumberOfSliderNames > 0)
 					float newMorph = GetNewMorph(newRads, sliderSet)
 
@@ -585,10 +601,41 @@ Function TimerMorphTick()
 							EndIf
 						EndIf
 						
-						; only actually apply the morphs if they are less then our max allowed morphs, or when we have no additive morphs limit
-						if (fullMorph < maxMorphs || (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit))				
-							SetMorphs(idxSet, sliderSet, fullMorph)
-							changedMorphs = true
+						;Log("    test " + idxSet + " fullMorph: " + fullMorph + "; maxMorphs: " + maxMorphs+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
+
+						; when we have an additive slider with no limit, apply the morphs without further checks
+						if (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit)
+							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
+						; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either
+						ElseIf (fullMorph <= maxMorphs)
+							; -sliderSet is doctor-only reset and the sliderset isn't maxed out
+							if (sliderSet.OnlyDoctorCanReset && !sliderSet.IsMaxedOut)
+								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
+								
+								; when the morphs are maxed out, set this on the sliderSet
+								if (fullMorph == maxMorphs)
+									sliderSet.IsMaxedOut = true
+								; when the morphs are not maxed out, set this on the sliderSet and set maxedOutMorphs to false
+								else
+									sliderSet.IsMaxedOut = false
+									maxedOutMorphs = false
+								endif								
+							; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
+							; the only difference here is that we also want effect the global HasReachedMaxMorphs variable in this case
+							elseif (!sliderSet.OnlyDoctorCanReset && (!sliderSet.IsMaxedOut || radsDifference < 0))
+								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
+								
+								; when the morphs are maxed out, set this on the sliderSet
+								if (fullMorph == maxMorphs)
+									sliderSet.IsMaxedOut = true
+								; when the morphs are not maxed out, set this on the sliderSet, set maxedOutMorphs to false and set the global HasReachedMaxMorphs to false
+								else
+									sliderSet.IsMaxedOut = false
+									maxedOutMorphs = false
+									HasReachedMaxMorphs = false
+								endif
+
+							endif
 						endif
 
 						; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
@@ -612,9 +659,13 @@ Function TimerMorphTick()
 				;TODO companions
 				;ApplyAllCompanionMorphs()
 				TriggerUnequipSlots()
-			; when we have reached max morphs, have taken positive rads and not yet displayed the message, display the message
-			ElseIf (radsDifference > 0 && !HasReachedMaxMorphs && !IsStartingUp)
-				Note("I won't get any bigger")
+			endif
+			; when we have reached max morphs, have taken positive rads and not yet displayed the message,
+			; display the message and set the global variable that we have displayed the max morphs message
+			If (maxedOutMorphs && radsDifference > 0 && !HasReachedMaxMorphs)
+				if (!IsStartingUp)
+					Note("I won't get any bigger")
+				endif
 				HasReachedMaxMorphs = true
 			EndIf
 		Else
@@ -657,6 +708,11 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 	EndWhile
 EndFunction
 
+bool Function SetMorphsAndReturnTrue(int idxSet, SliderSet sliderSet, float fullMorph)
+	SetMorphs(idxSet, sliderSet, fullMorph)
+	return true
+EndFunction
+
 ; ------------------------
 ; Restore the original BodyGen values for each slider, and set all morphs to 0
 ; ------------------------
@@ -664,7 +720,6 @@ Function ResetMorphs()
 	Log("ResetMorphs")
 	RestoreOriginalMorphs()
 
-	;TODO kijken of dit hier moet of in die Doctor Scene.OnEnd
 	; re-enable the display of the max-morphs message
 	HasReachedMaxMorphs = false;
 
@@ -674,6 +729,7 @@ Function ResetMorphs()
 		SliderSet set = SliderSets[idxSet]
 		set.BaseMorph = 0.0
 		set.CurrentMorph = 0.0
+		set.IsMaxedOut = false
 		idxSet += 1
 	EndWhile
 EndFunction
@@ -1165,4 +1221,6 @@ Struct SliderSet
 
 	float BaseMorph
 	float CurrentMorph
+		
+	bool IsMaxedOut
 EndStruct
