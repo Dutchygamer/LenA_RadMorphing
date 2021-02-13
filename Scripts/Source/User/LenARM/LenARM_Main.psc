@@ -10,10 +10,7 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
 ;-see if we should replace PlayAndWait with just Play (ie play sound and don't wait until it is finished before continueing)
-;-the last bit of radiation you take that puts you on max morphs won't set changedMorphs to true due to, well, reaching max morphs
-;this results in not triggering the final morphs, morph sound, unequipemnt of clothes, etc etc
-;for small radiation increases this isn't much of an issue, but for large radiation increases this is noticable
-;-HasReachedMaxMorphs should also get set to false when you don't use doctor-only morph resets
+;-unequip sometimes doesn't actually unequip the clothing / armor
 ;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
@@ -652,6 +649,8 @@ Function TimerMorphTick()
 				idxSet += 1
 			EndWhile
 
+			Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
+
 			; when at least one of the sliderSets has applied morphs, perform the actual actions
 			If (changedMorphs)
 				BodyGen.UpdateMorphs(PlayerRef)
@@ -660,6 +659,28 @@ Function TimerMorphTick()
 				;ApplyAllCompanionMorphs()
 				TriggerUnequipSlots()
 			endif
+			;TODO lijkt erop dat ie hier nu bij max morphs niet komt
+			;dis wat logging zegt:
+;/
+[02/09/2021 - 05:44:56PM] [LenARM] rads taken: 10.044992
+[02/09/2021 - 05:44:56PM] [LenARM]     setting slider 'NipplePerkiness' to 1.075374 (base value is 0.075374) (base morph is 0.981571) (target is 1.000000)
+[02/09/2021 - 05:44:56PM] [LenARM]     setting slider 'NippleAreola' to 0.471449 (base value is 0.221449) (base morph is 0.981571) (target is 0.250000)
+[02/09/2021 - 05:44:56PM] [LenARM]     setting slider 'NippleSize' to -0.169590 (base value is 0.080410) (base morph is 0.981571) (target is -0.250000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Breasts' to 1.126338 (base value is 0.126338) (base morph is 0.981571) (target is 1.000000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'DoubleMelon' to 0.250000 (base value is 0.000000) (base morph is 0.981571) (target is 0.250000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Butt' to 0.731522 (base value is 0.231522) (base morph is 0.981571) (target is 0.500000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'RoundAss' to 0.731521 (base value is 0.231521) (base morph is 0.981571) (target is 0.500000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'BigButt' to 0.250000 (base value is 0.000000) (base morph is 0.981571) (target is 0.250000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Hips' to 0.626324 (base value is 0.126324) (base morph is 0.981571) (target is 0.500000)
+[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Thighs' to 0.610633 (base value is 0.110633) (base morph is 0.981571) (target is 0.500000)
+[02/09/2021 - 05:44:57PM] [LenARM]   minimum rads taken
+[02/09/2021 - 05:44:57PM] [LenARM] TriggerUnequipSlots
+[02/09/2021 - 05:44:57PM] [LenARM] UnequipSlots (stack=0)
+[02/09/2021 - 05:44:57PM] [LenARM] FINISHED UnequipSlots
+/;
+			;zoals je ziet zitten we op max morphs, doet ie wel geluid en unequippen, maar komen we niet hier in vervolgens
+			;vermoed dat het in maxedOutMorphs zit
+
 			; when we have reached max morphs, have taken positive rads and not yet displayed the message,
 			; display the message and set the global variable that we have displayed the max morphs message
 			If (maxedOutMorphs && radsDifference > 0 && !HasReachedMaxMorphs)
@@ -917,11 +938,17 @@ Function UnequipSlots()
 						Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
 						PlayerRef.UnequipItemSlot(UnequipSlots[idxSlot])
 
+
+						;TODO dit lijkt soms nog steeds niet goed te unequippen
+						;ik zie in de logs dat ie slot 11 met Leather Chest Piece unequipped, maar toch is ie nog steeds equipped
+						;doe ik het vervolgens handmatig triggeren door te unequippen en equippen, dan gaat ie wel fatsoenlijk af
+						;of dat nou komt door die hide armor mod...
+
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
 						If (!found && !PlayerRef.IsEquipped(item.item))
 							Note("It is too tight for me")
-							LenARM_DropClothesSound.PlayAndWait(PlayerRef)
+							LenARM_DropClothesSound.Play(PlayerRef)
 							found = true
 						EndIf
 					EndIf
@@ -937,7 +964,7 @@ Function UnequipSlots()
 								companion.UnequipItem(compItem.item)
 								If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
 									Log("  playing companion sound")
-									LenARM_DropClothesSound.PlayAndWait(CurrentCompanions[idxComp])
+									LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
 									compFound[idxComp] = true
 								EndIf
 							EndIf
@@ -992,15 +1019,15 @@ Function PlayMorphSound(Actor akSender, float radsDifference)
 		; everything between LowRadsThreshold and MediumRadsThreshold rads taken
 		elseif (radsDifference <= MediumRadsThreshold)
 			Log("  medium rads taken")
-			LenARM_MorphSound.PlayAndWait(akSender)
+			LenARM_MorphSound.Play(akSender)
 		; everything between MediumRadsThreshold and HighRadsThreshold rads taken
 		elseif (radsDifference <= HighRadsThreshold)
 			Log("  high rads taken")
-			LenARM_MorphSound_Med.PlayAndWait(akSender)
+			LenARM_MorphSound_Med.Play(akSender)
 		; everything above HighRadsThreshold rads taken
 		elseif (radsDifference > HighRadsThreshold)
 			Log("  very high rads taken")
-			LenARM_MorphSound_High.PlayAndWait(akSender)
+			LenARM_MorphSound_High.Play(akSender)
 		endif
 	endif
 EndFunction
