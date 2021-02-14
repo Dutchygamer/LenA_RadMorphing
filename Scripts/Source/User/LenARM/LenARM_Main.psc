@@ -9,7 +9,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-see if the whole update process can be made faster / more efficient
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
-;-see if we should replace PlayAndWait with just Play (ie play sound and don't wait until it is finished before continueing)
 ;-unequip sometimes doesn't actually unequip the clothing / armor
 ;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
@@ -29,6 +28,7 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;	[ (00000014)].Actor.IsEquipped() - "<native>" Line ?
 ;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.UnequipSlots() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 1050
 ;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.OnTimer() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 584
+; Hazmat suit seems to cover both slots 0 and 3... Maybe that is the issue that the slot 0 usage creates all kinds of issues due to overruling all other slots
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -936,13 +936,20 @@ Function UnequipSlots()
 					; when there is an item in the slot, and said item is not an actor or the pipboy, unequip it
 					If (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 						Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
-						PlayerRef.UnequipItemSlot(UnequipSlots[idxSlot])
-
 
 						;TODO dit lijkt soms nog steeds niet goed te unequippen
 						;ik zie in de logs dat ie slot 11 met Leather Chest Piece unequipped, maar toch is ie nog steeds equipped
 						;doe ik het vervolgens handmatig triggeren door te unequippen en equippen, dan gaat ie wel fatsoenlijk af
 						;of dat nou komt door die hide armor mod...
+
+						;TODO ik vermoed dat we hier met de id van de biped werken, terwijl de slot van de biped wordt verwacht
+						;don't ask waarom het de ene keer wel werkt en de andere keer niet tho
+
+						;nee, tis niet de slots. nu heb ik wel dat ie af gaat, ook met slot/id 11, en dat de armor gehide is
+
+						; PlayerRef.UnequipItemSlot(UnequipSlots[idxSlot])
+						PlayerRef.UnequipItem(item.item, false, true)
+
 
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
