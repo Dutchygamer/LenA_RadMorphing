@@ -14,22 +14,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 
-;-check issue with body-covering clothing which also cover the armor slots (ie Hazmat suit), that when on reaching an armor slot unequipment threshold, the unequip logic gets triggered for each additional rad intake beyond that point
-;  -the way to do this is first have a normal outfit + armor equipped, reach the armor unequip threshold, and then equip a body-covering outfit
-;  -note that for now it seems to be an issue with just the hazmat suit; other body-covering clothes that block armor don't have the issue
-;  -sounds like it has issues detecting what slot is covered, and keeps trying to unequip the body-covering clothing while it technically doesn't occupy the slot
-;  -might be the Armor Slot Precedence thing described here: https://www.creationkit.com/fallout4/index.php?title=GetWornItem_-_Actor
-;  -seems to throw errors in the logs as well:
-;[02/06/2021 - 07:13:57PM] [LenARM] TriggerUnequipSlots
-;[02/06/2021 - 07:13:57PM] [LenARM] UnequipSlots (stack=0)
-;[02/06/2021 - 07:13:57PM] [LenARM]   unequipping slot 11 ( / Armor\HazmatSuit\FOutfit.nif)
-;[02/06/2021 - 07:13:57PM] error:  (000CEAC3): has no 3d and cannot be equipped.
-;stack:
-;	[ (00000014)].Actor.IsEquipped() - "<native>" Line ?
-;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.UnequipSlots() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 1050
-;	[LenARM_Main (0C000F99)].LenARM:LenARM_Main.OnTimer() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_Main.psc" Line 584
-; Hazmat suit seems to cover both slots 0 and 3... Maybe that is the issue that the slot 0 usage creates all kinds of issues due to overruling all other slots
-
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -917,9 +901,22 @@ Function UnequipSlots()
 	UnequipStackSize += 1
 	If (UnequipStackSize <= 1)
 		bool found = false
+
 		bool[] compFound = new bool[CurrentCompanions.Length]
 		int idxSet = 0
-		
+
+		; check if we are currently wearing a full-body suit (ie Hazmat suit)
+		; the unequip logic has some issues when wearing full-body suits when unequipping any of the armor slots
+		; it keeps trying to unequip the item with each call, but keeps on failing because the full-body suit technically both does and doesn't use the slots
+		; the workaround is to first check what we have equipped in slot 0 and 3 (as it seems full-body suits cover these two slots)
+		; do both slots have an item, and is this the same item, then mark we are wearing a full-body suit
+		bool hasFullBodyItem = false
+		Actor:WornItem itemSlot0 = PlayerRef.GetWornItem(0)		
+		Actor:WornItem itemSlot3 = PlayerRef.GetWornItem(3)
+		if (itemSlot0 != None && itemSlot0.item != None && itemSlot3 != None && itemSlot3.item != None && itemSlot0.item == itemSlot3.item)
+			hasFullBodyItem = true
+		EndIf
+
 		; check for each sliderSet
 		While (idxSet < SliderSets.Length)
 			SliderSet sliderSet = SliderSets[idxSet]
@@ -933,23 +930,16 @@ Function UnequipSlots()
 				While (idxSlot < unequipSlotOffset + sliderSet.NumberOfUnequipSlots)
 					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
 					
-					; when there is an item in the slot, and said item is not an actor or the pipboy, unequip it
-					If (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+					; check if item in the slot is not an actor or the pipboy
+					bool isArmor = (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+					; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
+					bool canUnequip = (item.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
+
+					; when item is an armor and we can unequip it, do so
+					If (isArmor && canUnequip)
 						Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
-						;TODO dit lijkt soms nog steeds niet goed te unequippen
-						;ik zie in de logs dat ie slot 11 met Leather Chest Piece unequipped, maar toch is ie nog steeds equipped
-						;doe ik het vervolgens handmatig triggeren door te unequippen en equippen, dan gaat ie wel fatsoenlijk af
-						;of dat nou komt door die hide armor mod...
-
-						;TODO ik vermoed dat we hier met de id van de biped werken, terwijl de slot van de biped wordt verwacht
-						;don't ask waarom het de ene keer wel werkt en de andere keer niet tho
-
-						;nee, tis niet de slots. nu heb ik wel dat ie af gaat, ook met slot/id 11, en dat de armor gehide is
-
-						; PlayerRef.UnequipItemSlot(UnequipSlots[idxSlot])
 						PlayerRef.UnequipItem(item.item, false, true)
-
 
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
