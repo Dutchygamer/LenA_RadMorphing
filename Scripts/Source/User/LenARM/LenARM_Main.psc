@@ -275,13 +275,11 @@ Function Startup()
 			SliderSet set = SliderSets[idxSet]
 			If (set.OnlyDoctorCanReset && set.IsAdditive && set.BaseMorph > 0)
 				SetMorphs(idxSet, set, set.BaseMorph)
-				;TODO companions
-				;SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
+				SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
 			EndIf
 			idxSet += 1
 		EndWhile
-		;TODO companions
-		;ApplyAllCompanionMorphs()
+		ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
 
 		If (UpdateType == EUpdateTypeImmediately)
@@ -442,14 +440,8 @@ Function LoadSliderSets()
 			UnequipSlots.Remove(unequipSlotOffset + newSet.NumberOfUnequipSlots, oldSet.NumberOfUnequipSlots - newSet.NumberOfUnequipSlots)
 		EndIf
 		idxSet += 1
-	EndWhile
-	;Log("  SliderSets: " + SliderSets)
-	;Log("  SliderNames: " + SliderNames)
-	;Log("  OriginalMorphs: " + OriginalMorphs)
-	;Log("  UnequipSlots: " + UnequipSlots)
-	
-	;TODO companions
-	;RetrieveAllOriginalCompanionMorphs()
+	EndWhile	
+	RetrieveAllOriginalCompanionMorphs()
 EndFunction
 
 ; ------------------------
@@ -490,16 +482,18 @@ EndFunction
 ; Sleep-based morphs
 ; ------------------------
 Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, ObjectReference akBed)
-	Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
-	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
-	Log("  followers on sleep start: " + allCompanions)
+	;TODO disabled
+	;/Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
+	;Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
+	;Log("  followers on sleep start: " + allCompanions)
 	;TODO companions
 	; update companions (companions cannot be found on sleep stop)
-	;UpdateCompanions()
+	UpdateCompanions()/;
 EndEvent
 
 Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
-	Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
+	;TODO disabled
+	;/Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
 	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
 	Log("  followers on sleep stop: " + allCompanions)
 	; get rads
@@ -526,7 +520,7 @@ Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 		;TODO companions
 		;ApplyAllCompanionMorphs()
 		TriggerUnequipSlots()
-	EndIf
+	EndIf/;
 EndEvent
 
 ; ------------------------
@@ -546,9 +540,8 @@ Function TimerMorphTick()
 			Log("rads taken: " + (radsDifference * 1000));
 						
 			CurrentRads = newRads
-			;TODO companions
 			; companions
-			;UpdateCompanions()
+			UpdateCompanions()
 
 			int idxSet = 0
 			; by default, assume we have no changed morphs for all sliderSets
@@ -639,8 +632,7 @@ Function TimerMorphTick()
 			If (changedMorphs)
 				BodyGen.UpdateMorphs(PlayerRef)
 				PlayMorphSound(PlayerRef, radsDifference)
-				;TODO companions
-				;ApplyAllCompanionMorphs()
+				ApplyAllCompanionMorphsWithSound(radsDifference)
 				TriggerUnequipSlots()
 			endif
 			;TODO lijkt erop dat ie hier nu bij max morphs niet komt
@@ -705,10 +697,9 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + (OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph) + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
-		;TODO companions
-		;If (sliderSet.ApplyCompanion != EApplyCompanionNone)
-		;	SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
-		;EndIf
+		If (sliderSet.ApplyCompanion != EApplyCompanionNone)
+			SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
+		EndIf
 		idxSlider += 1
 	EndWhile
 EndFunction
@@ -820,12 +811,15 @@ Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 EndFunction
 
 Function ApplyAllCompanionMorphs()
+	ApplyAllCompanionMorphsWithSound(0)
+EndFunction
+
+Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-		;TODO companions
-		PlayMorphSound(CurrentCompanions[idxComp], 0);TODO die 0 is temp
+		PlayMorphSound(CurrentCompanions[idxComp], radsDifference)
 		idxComp += 1
 	EndWhile
 EndFunction
