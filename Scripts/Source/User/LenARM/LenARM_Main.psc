@@ -13,6 +13,7 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
+;-don't play MorphSounds when none of the sliders should effect companions
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -142,19 +143,9 @@ EndFunction
 ; On equipping of an item, check if it should get unequipped
 ; ------------------------
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-	;TODO get slot number
-	;TODO check if slot is allowed
-	;TODO if slot is not allowed -> unequip
-
-	;TODO zou mooi zijn als we hier al weten welke slots er unequipped moeten zijn, dat we gebaseerd daarop meteen al het item kunnen unequippen zonder dat we die dure UnequipSlots() in moeten
-	;das denk ik wat zijn originele 3 TODOs betekenen
-	
-	;lijkt erop dat GetSlotMask niet overeen komt met de slots die we gebruiken voor unequippen
-	;kan over GetSlotMask ook niet echt iets vinden op de CK docs...
-
-	; only check if we need to unequip anything when we equip clothing or armor
+	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
 	; this will break the hacky "unequip weapon slots" logic some people use tho...
-	if (akBaseObject as Armor)
+	If (!PlayerRef.IsInPowerArmor() && akBaseObject as Armor)
 		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
