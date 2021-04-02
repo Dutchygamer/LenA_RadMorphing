@@ -539,10 +539,16 @@ Function TimerMorphTick()
 			bool changedMorphs = false
 			; by default, assume we are at our max morphs for all sliderSets
 			bool maxedOutMorphs = true
+			; by default, assume none of the sliders affect our companions
+			bool affectCompanions = false
 
 			; check each sliderset whether we need to update the morphs
 			While (idxSet < SliderSets.Length)
 				SliderSet sliderSet = SliderSets[idxSet]
+				
+				if (sliderSet.ApplyCompanion != EApplyCompanionNone && !affectCompanions)
+					affectCompanions = true
+				endif
 
 				If (sliderSet.NumberOfSliderNames > 0)
 					float newMorph = GetNewMorph(newRads, sliderSet)
@@ -623,7 +629,10 @@ Function TimerMorphTick()
 			If (changedMorphs)
 				BodyGen.UpdateMorphs(PlayerRef)
 				PlayMorphSound(PlayerRef, radsDifference)
-				ApplyAllCompanionMorphsWithSound(radsDifference)
+				; when at least one of the sliderSets affects companion, play the morph sound for them as well
+				if (affectCompanions)
+					ApplyAllCompanionMorphsWithSound(radsDifference)
+				endif
 				TriggerUnequipSlots()
 			endif
 			;TODO lijkt erop dat ie hier nu bij max morphs niet komt
