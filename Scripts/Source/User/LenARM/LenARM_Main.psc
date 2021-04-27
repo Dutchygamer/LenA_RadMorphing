@@ -52,6 +52,9 @@ bool TakeFakeRads
 ; has the player reached the max on all sliderSets? this includes additive morphing if these are limited
 bool HasReachedMaxMorphs
 
+; how many pop warnings have we displayed
+int PopWarnings
+
 int RestartStackSize
 int UnequipStackSize
 
@@ -93,6 +96,8 @@ Group Properties
 	Faction Property PlayerAllyFation Auto Const
 
 	Potion Property GlowingOneBlood Auto Const
+	
+	Spell Property Paralyze Auto Const
 EndGroup
 
 ; ------------------------
@@ -165,9 +170,6 @@ Event Scene.OnEnd(Scene akSender)
 	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
 	If (DialogueGenericDoctors.DoctorJustCuredRads == 1)
 		ResetMorphs()
-		; reset the fake rads
-		FakeRads = 0
-		TakeFakeRads = false
 	EndIf
 EndEvent
 
@@ -637,38 +639,81 @@ Function TimerMorphTick()
 				endif
 				TriggerUnequipSlots()
 			endif
-			;TODO lijkt erop dat ie hier nu bij max morphs niet komt
-			;dis wat logging zegt:
-;/
-[02/09/2021 - 05:44:56PM] [LenARM] rads taken: 10.044992
-[02/09/2021 - 05:44:56PM] [LenARM]     setting slider 'NipplePerkiness' to 1.075374 (base value is 0.075374) (base morph is 0.981571) (target is 1.000000)
-[02/09/2021 - 05:44:56PM] [LenARM]     setting slider 'NippleAreola' to 0.471449 (base value is 0.221449) (base morph is 0.981571) (target is 0.250000)
-[02/09/2021 - 05:44:56PM] [LenARM]     setting slider 'NippleSize' to -0.169590 (base value is 0.080410) (base morph is 0.981571) (target is -0.250000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Breasts' to 1.126338 (base value is 0.126338) (base morph is 0.981571) (target is 1.000000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'DoubleMelon' to 0.250000 (base value is 0.000000) (base morph is 0.981571) (target is 0.250000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Butt' to 0.731522 (base value is 0.231522) (base morph is 0.981571) (target is 0.500000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'RoundAss' to 0.731521 (base value is 0.231521) (base morph is 0.981571) (target is 0.500000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'BigButt' to 0.250000 (base value is 0.000000) (base morph is 0.981571) (target is 0.250000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Hips' to 0.626324 (base value is 0.126324) (base morph is 0.981571) (target is 0.500000)
-[02/09/2021 - 05:44:57PM] [LenARM]     setting slider 'Thighs' to 0.610633 (base value is 0.110633) (base morph is 0.981571) (target is 0.500000)
-[02/09/2021 - 05:44:57PM] [LenARM]   minimum rads taken
-[02/09/2021 - 05:44:57PM] [LenARM] TriggerUnequipSlots
-[02/09/2021 - 05:44:57PM] [LenARM] UnequipSlots (stack=0)
-[02/09/2021 - 05:44:57PM] [LenARM] FINISHED UnequipSlots
-/;
-			;zoals je ziet zitten we op max morphs, doet ie wel geluid en unequippen, maar komen we niet hier in vervolgens
-			;vermoed dat het in maxedOutMorphs zit
 
-			; when we have reached max morphs, have taken positive rads and not yet displayed the message,
-			; display the message and set the global variable that we have displayed the max morphs message
-			; also play a sound effect if we have it
-			If (maxedOutMorphs && radsDifference > 0 && !HasReachedMaxMorphs)
-				if (!IsStartingUp)
-					Note("I won't get any bigger")
-					; TODO new sound effect
-					LenARM_MorphSound_High.Play(akSender)
+			; when we have reached max morphs and have taken positive rads, perform additional actions
+			If (maxedOutMorphs && radsDifference > 0)
+				; when not yet displayed the max morphs, display the message and set the global variable that we have displayed the max morphs message
+				; also play a sound effect if we have it
+				if (!HasReachedMaxMorphs)
+					if (!IsStartingUp)
+						Note("I won't get any bigger")
+						; TODO new sound effect
+						LenARM_MorphSound_High.Play(PlayerRef)
+					endif
+					HasReachedMaxMorphs = true
+				
+				; when popping is enabled, randomly on taking rads increase the PopWarnings
+				; when PopWarnings eventually has reached three, 'pop' the player
+				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
+				Elseif (1 == 0)
+					int random = Utility.RandomInt(1, 10)
+					int popChance = 0 ;TODO temp 3
+					bool shouldPop = random >= popChance
+
+					if (shouldPop)
+						if (PopWarnings == 0)
+							Note("My body still reacts to rads")
+							PopWarnings += 1
+							LenARM_MorphSound.Play(PlayerRef)
+						ElseIf (PopWarnings == 1)
+							Note("My body feels so tight")
+							PopWarnings += 1
+							LenARM_MorphSound_Med.Play(PlayerRef)
+						ElseIf (PopWarnings == 2)
+							Note("I'm going to pop if I take more rads")
+							PopWarnings += 1
+							LenARM_MorphSound_High.Play(PlayerRef)
+						Else
+							Note("pop!")
+							Game.ForceThirdPerson()	
+							; TODO doesn't seem to work properly with 3rd person camera? no matter the camera call is before or after
+							;Paralyze.Cast(PlayerRef, PlayerRef)
+							Utility.Wait(2)
+
+							; TODO new sound effect
+							LenARM_MorphSound_High.Play(PlayerRef)
+							ExtendMorphs(1)
+							Utility.Wait(1)
+
+							; TODO new sound effect
+							LenARM_MorphSound_High.Play(PlayerRef)
+							ExtendMorphs(2)
+							Utility.Wait(1)
+
+							UnequipAll()
+							Utility.Wait(1)
+
+							; TODO new sound effect
+							LenARM_MorphSound_High.Play(PlayerRef)
+							ExtendMorphs(3)
+							Utility.Wait(1)
+							
+							; TODO new sound effect
+							LenARM_MorphSound_High.Play(PlayerRef)
+							ExtendMorphs(4)
+							Utility.Wait(1)
+
+							; TODO new sound effect
+							LenARM_MorphSound_High.Play(PlayerRef)
+							ExtendMorphs(5)
+							Utility.Wait(2)
+
+							; TODO new sound effect
+							LenARM_MorphSound_High.Play(PlayerRef)
+							ResetMorphs()
+						endif
+					endif
 				endif
-				HasReachedMaxMorphs = true
 			EndIf
 		;Else
 		;	Log("skipping due to player in power armor")
@@ -723,6 +768,12 @@ Function ResetMorphs()
 
 	; re-enable the display of the max-morphs message
 	HasReachedMaxMorphs = false;
+	; reset the pop warnings
+	PopWarnings = 0
+
+	; reset the fake rads
+	FakeRads = 0
+	TakeFakeRads = false
 
 	; reset saved morphs in SliderSets
 	int idxSet = 0
@@ -748,6 +799,27 @@ Function RestoreOriginalMorphs()
 
 	;RestoreAllOriginalCompanionMorphs()
 EndFunction
+
+
+Function ExtendMorphs(float step)
+	int idxSet = 0
+
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]
+		
+		If (sliderSet.NumberOfSliderNames > 0)
+			;TODO additive in berekening opnemen
+			;TODO dit gaat verkeerd voor alles onder 1.0 (wordt kleiner)
+			float newMorph = ((sliderSet.TargetMorph * 100.0) * (1.09 * (1 + step/10))) / 100.0 ;sliderSet GetNewMorph(newRads, sliderSet)
+
+			SetMorphs(idxSet, sliderSet, newMorph)
+		EndIf
+		idxSet += 1
+	EndWhile
+	
+	BodyGen.UpdateMorphs(PlayerRef)
+EndFunction
+
 
 ; ------------------------
 ; All companion related logic, still WiP / broken
@@ -980,6 +1052,69 @@ EndFunction
 Function TriggerUnequipSlots()
 	Log("TriggerUnequipSlots")
 	StartTimer(0.1, ETimerUnequipSlots)
+EndFunction
+
+Function UnequipAll()
+	Log("UnequipAll")
+
+	bool found = false
+
+	bool[] compFound = new bool[CurrentCompanions.Length]
+	int idxSlot = 0
+
+	; these are all the slots we want to unequip
+	int[] allSlots = new int[0]
+	allSlots.Add(3)
+	allSlots.Add(11)
+	allSlots.Add(12)
+	allSlots.Add(13)
+	allSlots.Add(14)
+	allSlots.Add(15)
+
+	; check for each slot
+	While (idxSlot < allSlots.Length)
+		int slot = allSlots[idxSlot]
+		
+		Actor:WornItem item = PlayerRef.GetWornItem(slot)
+		
+		; check if item in the slot is not an actor or the pipboy
+		bool isArmor = (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+
+		; when item is an armor and we can unequip it, do so
+		If (isArmor)
+			Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+
+			PlayerRef.UnequipItem(item.item, false, true)
+			
+			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
+			; play the strip sound if available
+			If (!found && !PlayerRef.IsEquipped(item.item))
+				LenARM_DropClothesSound.Play(PlayerRef)
+				found = true
+			EndIf
+		EndIf
+		;TODO companions
+		;/int idxComp = 0
+		While (idxComp < CurrentCompanions.Length)
+			Actor companion = CurrentCompanions[idxComp]
+			int sex = companion.GetLeveledActorBase().GetSex()
+			If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
+				Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
+				If (compItem.item && LL_Fourplay.StringSubstring(compItem.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(compItem.modelName, 0, 6) != "Pipboy")
+					Log("  unequipping companion(" + companion + ") slot " + UnequipSlots[idxSlot] + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
+					companion.UnequipItem(compItem.item)
+					If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
+						Log("  playing companion sound")
+						LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
+						compFound[idxComp] = true
+					EndIf
+				EndIf
+			EndIf
+			idxComp += 1
+		EndWhile/;
+		idxSlot += 1	
+	EndWhile
+	Log("FINISHED UnequipAll")
 EndFunction
 
 ; ------------------------
