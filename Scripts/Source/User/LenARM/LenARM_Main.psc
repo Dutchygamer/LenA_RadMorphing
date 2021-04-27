@@ -577,7 +577,7 @@ Function TimerMorphTick()
 						; when we have an additive slider with no limit, apply the morphs without further checks
 						if (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit)
 							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
-						; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either
+						; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
 						ElseIf (fullMorph <= maxMorphs)
 							; -sliderSet is doctor-only reset and the sliderset isn't maxed out
 							if (sliderSet.OnlyDoctorCanReset && !sliderSet.IsMaxedOut)
@@ -592,7 +592,7 @@ Function TimerMorphTick()
 									maxedOutMorphs = false
 								endif								
 							; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
-							; the only difference here is that we also want effect the global HasReachedMaxMorphs variable in this case
+							; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
 							elseif (!sliderSet.OnlyDoctorCanReset && (!sliderSet.IsMaxedOut || radsDifference < 0))
 								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
 								
@@ -605,7 +605,6 @@ Function TimerMorphTick()
 									maxedOutMorphs = false
 									HasReachedMaxMorphs = false
 								endif
-
 							endif
 						endif
 
@@ -628,7 +627,10 @@ Function TimerMorphTick()
 			; when at least one of the sliderSets has applied morphs, perform the actual actions
 			If (changedMorphs)
 				BodyGen.UpdateMorphs(PlayerRef)
-				PlayMorphSound(PlayerRef, radsDifference)
+				; play morph sound when we haven't reached max morphs yet
+				if (!maxedOutMorphs)
+					PlayMorphSound(PlayerRef, radsDifference)
+				endif
 				; when at least one of the sliderSets affects companion, play the morph sound for them as well
 				if (affectCompanions)
 					ApplyAllCompanionMorphsWithSound(radsDifference)
@@ -659,14 +661,17 @@ Function TimerMorphTick()
 
 			; when we have reached max morphs, have taken positive rads and not yet displayed the message,
 			; display the message and set the global variable that we have displayed the max morphs message
+			; also play a sound effect if we have it
 			If (maxedOutMorphs && radsDifference > 0 && !HasReachedMaxMorphs)
 				if (!IsStartingUp)
 					Note("I won't get any bigger")
+					; TODO new sound effect
+					LenARM_MorphSound_High.Play(akSender)
 				endif
 				HasReachedMaxMorphs = true
 			EndIf
-		Else
-			;Log("skipping due to player in power armor")
+		;Else
+		;	Log("skipping due to player in power armor")
 		EndIf
 	EndIf
 	StartTimer(UpdateDelay, ETimerMorphTick)
