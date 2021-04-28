@@ -96,8 +96,12 @@ Group Properties
 	Faction Property PlayerAllyFation Auto Const
 
 	Potion Property GlowingOneBlood Auto Const
-	
-	Spell Property Paralyze Auto Const
+	;TODO kan weg
+	Spell Property Paralyze Auto Const	
+	;TODO kan weg
+	ActorValue Property ParalysisAV Auto Const
+	;TODO kan weg
+	Idle Property RagdollIdle Auto Const
 EndGroup
 
 ; ------------------------
@@ -655,14 +659,14 @@ Function TimerMorphTick()
 				; when popping is enabled, randomly on taking rads increase the PopWarnings
 				; when PopWarnings eventually has reached three, 'pop' the player
 				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
-				Elseif (1 == 0)
+				Elseif (1 == 1)
 					int random = Utility.RandomInt(1, 10)
-					int popChance = 0 ;TODO temp 3
+					int popChance = 0 ;TODO TEMP 3
 					bool shouldPop = random >= popChance
 
 					if (shouldPop)
 						if (PopWarnings == 0)
-							Note("My body still reacts to rads")
+							;/Note("My body still reacts to rads")
 							PopWarnings += 1
 							LenARM_MorphSound.Play(PlayerRef)
 						ElseIf (PopWarnings == 1)
@@ -673,44 +677,61 @@ Function TimerMorphTick()
 							Note("I'm going to pop if I take more rads")
 							PopWarnings += 1
 							LenARM_MorphSound_High.Play(PlayerRef)
-						Else
+						Else/;
+
 							Note("pop!")
-							Game.ForceThirdPerson()	
-							; TODO doesn't seem to work properly with 3rd person camera? no matter the camera call is before or after
-							;Paralyze.Cast(PlayerRef, PlayerRef)
-							Utility.Wait(2)
+							Game.ForceThirdPerson()
+							PlayerRef.PushActorAway(PlayerRef, 0.5)
+							;TODO this kinda works... shame about the sound pitch change it also applies
+							;PlayerRef.SetValue(ParalysisAV, 1)
+							;PlayerRef.PlayIdle(RagdollIdle)
+							Utility.Wait(0.5)
 
-							; TODO new sound effect
-							LenARM_MorphSound_High.Play(PlayerRef)
-							ExtendMorphs(1)
-							Utility.Wait(1)
+							int popState = 1
+							
+							While (popState <= 5)								
+								; for step 3 we don't want to play the expand sound, but unequip the clothes instead
+								If (popState != 3)
+									; TODO new sound effect
+									LenARM_MorphSound_High.Play(PlayerRef)
+								Else
+									UnequipAll()
+								endif
 
-							; TODO new sound effect
+								PlayerRef.PushActorAway(PlayerRef, 0.5)
+								ExtendMorphs(popState)
+								Utility.Wait(0.5)
+
+								popState += 1
+							EndWhile
+
+
+							;/; TODO new sound effect
 							LenARM_MorphSound_High.Play(PlayerRef)
 							ExtendMorphs(2)
-							Utility.Wait(1)
-
-							UnequipAll()
-							Utility.Wait(1)
+							Utility.Wait(0.5)
 
 							; TODO new sound effect
 							LenARM_MorphSound_High.Play(PlayerRef)
+							;
 							ExtendMorphs(3)
-							Utility.Wait(1)
+							Utility.Wait(0.5)
 							
 							; TODO new sound effect
 							LenARM_MorphSound_High.Play(PlayerRef)
 							ExtendMorphs(4)
-							Utility.Wait(1)
+							Utility.Wait(0.5)
 
 							; TODO new sound effect
 							LenARM_MorphSound_High.Play(PlayerRef)
 							ExtendMorphs(5)
-							Utility.Wait(2)
+							Utility.Wait(0.5)/;
 
 							; TODO new sound effect
 							LenARM_MorphSound_High.Play(PlayerRef)
+							PlayerRef.PushActorAway(PlayerRef, 0.5)
 							ResetMorphs()
+							;PlayerRef.SetValue(ParalysisAV, 0)
 						endif
 					endif
 				endif
@@ -800,8 +821,12 @@ Function RestoreOriginalMorphs()
 	;RestoreAllOriginalCompanionMorphs()
 EndFunction
 
-
+; ------------------------
+; Increase all sliders by a percentage multiplied with the input
+; Does not store the updated sliders' CurrentMorphs
+; ------------------------
 Function ExtendMorphs(float step)
+	Log("extending morphs with: " + step)
 	int idxSet = 0
 
 	While (idxSet < SliderSets.Length)
@@ -809,8 +834,8 @@ Function ExtendMorphs(float step)
 		
 		If (sliderSet.NumberOfSliderNames > 0)
 			;TODO additive in berekening opnemen
-			;TODO dit gaat verkeerd voor alles onder 1.0 (wordt kleiner)
-			float newMorph = ((sliderSet.TargetMorph * 100.0) * (1.09 * (1 + step/10))) / 100.0 ;sliderSet GetNewMorph(newRads, sliderSet)
+			;TODO lijkt nog steeds verkeerd te gaan => loop logs na
+			float newMorph = ((sliderSet.TargetMorph * 100.0) * (1.09 * (1 + step/10))) / 100.0
 
 			SetMorphs(idxSet, sliderSet, newMorph)
 		EndIf
@@ -819,7 +844,6 @@ Function ExtendMorphs(float step)
 	
 	BodyGen.UpdateMorphs(PlayerRef)
 EndFunction
-
 
 ; ------------------------
 ; All companion related logic, still WiP / broken
@@ -1064,7 +1088,11 @@ Function UnequipAll()
 
 	; these are all the slots we want to unequip
 	int[] allSlots = new int[0]
-	allSlots.Add(3)
+	
+	;TODO this combined with the ResetMorphs at the end seems to cause random crashes for me
+	;most likely because I've been toying around with that other skeleton mod...
+	;as long as the player doesn't get fully stripped it seems to work fine
+	;allSlots.Add(3)
 	allSlots.Add(11)
 	allSlots.Add(12)
 	allSlots.Add(13)
