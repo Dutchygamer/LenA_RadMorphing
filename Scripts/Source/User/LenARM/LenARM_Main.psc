@@ -91,6 +91,8 @@ Group Properties
 	Sound Property LenARM_MorphSound Auto Const
 	Sound Property LenARM_MorphSound_Med Auto Const
 	Sound Property LenARM_MorphSound_High Auto Const
+	Sound Property LenARM_FullSound Auto Const
+	Sound Property LenARM_PopSound Auto Const
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -651,8 +653,7 @@ Function TimerMorphTick()
 				if (!HasReachedMaxMorphs)
 					if (!IsStartingUp)
 						Note("I won't get any bigger")
-						; TODO new sound effect
-						LenARM_MorphSound_High.Play(PlayerRef)
+						LenARM_FullSound.Play(PlayerRef)
 					endif
 					HasReachedMaxMorphs = true
 				
@@ -661,77 +662,55 @@ Function TimerMorphTick()
 				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
 				Elseif (1 == 1)
 					int random = Utility.RandomInt(1, 10)
-					int popChance = 0 ;TODO TEMP 3
+					int popChance = 3 ;TODO tweak this
 					bool shouldPop = random >= popChance
 
 					if (shouldPop)
 						if (PopWarnings == 0)
-							;/Note("My body still reacts to rads")
+							Note("My body still reacts to rads")
 							PopWarnings += 1
-							LenARM_MorphSound.Play(PlayerRef)
+							LenARM_MorphSound_Med.Play(PlayerRef)
 						ElseIf (PopWarnings == 1)
 							Note("My body feels so tight")
 							PopWarnings += 1
-							LenARM_MorphSound_Med.Play(PlayerRef)
+							LenARM_MorphSound_High.Play(PlayerRef)
 						ElseIf (PopWarnings == 2)
 							Note("I'm going to pop if I take more rads")
 							PopWarnings += 1
-							LenARM_MorphSound_High.Play(PlayerRef)
-						Else/;
-
-							Note("pop!")
+							LenARM_FullSound.Play(PlayerRef)
+						Else
+							;TODO lijkt nog steeds soms niet af te gaan, of dat die ragdoll je in 1st person houdt
+							;wellicht dat de wait die er nu tussen zit dit probleem fixt?
 							Game.ForceThirdPerson()
-							PlayerRef.PushActorAway(PlayerRef, 0.5)
-							;TODO this kinda works... shame about the sound pitch change it also applies
-							;PlayerRef.SetValue(ParalysisAV, 1)
-							;PlayerRef.PlayIdle(RagdollIdle)
 							Utility.Wait(0.5)
+							LenARM_FullSound.Play(PlayerRef)
+							RagdollAndWait()
+							RagdollAndWait()
 
 							int popState = 1
-							
+							; gradually increase the morphs and unequip the clothes, while continue to ragdoll the player
 							While (popState <= 5)								
 								; for step 3 we don't want to play the expand sound, but unequip the clothes instead
 								If (popState != 3)
-									; TODO new sound effect
-									LenARM_MorphSound_High.Play(PlayerRef)
+									LenARM_FullSound.Play(PlayerRef)
 								Else
 									UnequipAll()
 								endif
 
-								PlayerRef.PushActorAway(PlayerRef, 0.5)
 								ExtendMorphs(popState)
-								Utility.Wait(0.5)
+								RagdollAndWait()
 
 								popState += 1
 							EndWhile
 
-
-							;/; TODO new sound effect
-							LenARM_MorphSound_High.Play(PlayerRef)
-							ExtendMorphs(2)
-							Utility.Wait(0.5)
-
-							; TODO new sound effect
-							LenARM_MorphSound_High.Play(PlayerRef)
-							;
-							ExtendMorphs(3)
-							Utility.Wait(0.5)
-							
-							; TODO new sound effect
-							LenARM_MorphSound_High.Play(PlayerRef)
-							ExtendMorphs(4)
-							Utility.Wait(0.5)
-
-							; TODO new sound effect
-							LenARM_MorphSound_High.Play(PlayerRef)
-							ExtendMorphs(5)
-							Utility.Wait(0.5)/;
-
-							; TODO new sound effect
-							LenARM_MorphSound_High.Play(PlayerRef)
-							PlayerRef.PushActorAway(PlayerRef, 0.5)
+							; the eventual 'pop', resetting all the morphs back to 0
+							; for this situation we want to wait for the sound effect to play
+							LenARM_PopSound.PlayAndWait(PlayerRef)
 							ResetMorphs()
-							;PlayerRef.SetValue(ParalysisAV, 0)
+							
+							; some more ragdolling afterwards
+							RagdollAndWait()
+							RagdollAndWait()
 						endif
 					endif
 				endif
@@ -742,6 +721,12 @@ Function TimerMorphTick()
 	EndIf
 	StartTimer(UpdateDelay, ETimerMorphTick)
 EndFunction
+
+Function RagdollAndWait()
+	PlayerRef.PushActorAway(PlayerRef, 0.5)
+	Utility.Wait(0.5)
+EndFunction
+
 
 ; ------------------------
 ; Calculate the new morph for the given sliderSet based on the given rads and the slider's min / max thresholds
