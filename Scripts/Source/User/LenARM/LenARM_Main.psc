@@ -98,10 +98,10 @@ Group Properties
 	Faction Property PlayerAllyFation Auto Const
 
 	Potion Property GlowingOneBlood Auto Const
+
+	ActorValue Property ParalysisAV Auto Const
 	;TODO kan weg
 	Spell Property Paralyze Auto Const	
-	;TODO kan weg
-	ActorValue Property ParalysisAV Auto Const
 	;TODO kan weg
 	Idle Property RagdollIdle Auto Const
 EndGroup
@@ -662,8 +662,8 @@ Function TimerMorphTick()
 				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
 				Elseif (1 == 1)
 					int random = Utility.RandomInt(1, 10)
-					int popChance = 3 ;TODO tweak this
-					bool shouldPop = random >= popChance
+					int popChance = 7 ;TODO tweak this
+					bool shouldPop = random <= popChance
 
 					if (shouldPop)
 						if (PopWarnings == 0)
@@ -679,16 +679,19 @@ Function TimerMorphTick()
 							PopWarnings += 1
 							LenARM_FullSound.Play(PlayerRef)
 						Else
-							;TODO lijkt nog steeds soms niet af te gaan, of dat die ragdoll je in 1st person houdt
-							;wellicht dat de wait die er nu tussen zit dit probleem fixt?
-							Game.ForceThirdPerson()
+							; force third person camera
+							Game.ForceThirdPerson()							
 							Utility.Wait(0.5)
+
+							; play sound, paralyse player and then knock them out
+							; the order of first paralysing and then knocking out is important, lest you get odd glitches
 							LenARM_FullSound.Play(PlayerRef)
-							RagdollAndWait()
-							RagdollAndWait()
+							PlayerRef.SetValue(ParalysisAV, 1)
+							PlayerRef.PushActorAway(PlayerRef, 0.5)						
+							Utility.Wait(0.5)
 
 							int popState = 1
-							; gradually increase the morphs and unequip the clothes, while continue to ragdoll the player
+							; gradually increase the morphs and unequip the clothes
 							While (popState <= 5)								
 								; for step 3 we don't want to play the expand sound, but unequip the clothes instead
 								If (popState != 3)
@@ -698,19 +701,20 @@ Function TimerMorphTick()
 								endif
 
 								ExtendMorphs(popState)
-								RagdollAndWait()
+								Utility.Wait(0.5)
 
 								popState += 1
 							EndWhile
 
 							; the eventual 'pop', resetting all the morphs back to 0
 							; for this situation we want to wait for the sound effect to play
+							Utility.Wait(0.5)
 							LenARM_PopSound.PlayAndWait(PlayerRef)
 							ResetMorphs()
-							
-							; some more ragdolling afterwards
-							RagdollAndWait()
-							RagdollAndWait()
+										
+							; wait a bit before we can actually stand up again
+							Utility.Wait(1.5)
+							PlayerRef.SetValue(ParalysisAV, 0)
 						endif
 					endif
 				endif
@@ -722,6 +726,7 @@ Function TimerMorphTick()
 	StartTimer(UpdateDelay, ETimerMorphTick)
 EndFunction
 
+;TODO obsolete?
 Function RagdollAndWait()
 	PlayerRef.PushActorAway(PlayerRef, 0.5)
 	Utility.Wait(0.5)
@@ -751,8 +756,10 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
 	int idxSlider = sliderNameOffset
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
-		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph)
-		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + (OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph) + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
+		float newMorph = (OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph)
+
+		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
+		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
 		If (sliderSet.ApplyCompanion != EApplyCompanionNone)
 			SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
 		EndIf
@@ -808,19 +815,25 @@ EndFunction
 
 ; ------------------------
 ; Increase all sliders by a percentage multiplied with the input
-; Does not store the updated sliders' CurrentMorphs
+; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
 Function ExtendMorphs(float step)
 	Log("extending morphs with: " + step)
 	int idxSet = 0
+
+	float multiplier = (1.1 * (1 + step/10))
 
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]
 		
 		If (sliderSet.NumberOfSliderNames > 0)
 			;TODO additive in berekening opnemen
-			;TODO lijkt nog steeds verkeerd te gaan => loop logs na
-			float newMorph = ((sliderSet.TargetMorph * 100.0) * (1.09 * (1 + step/10))) / 100.0
+			;TODO negatieve sliders worden nu positief
+			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
+			int idxSlider = sliderNameOffset
+			float currentMorph = (OriginalMorphs[idxSlider] + 1 * sliderSet.TargetMorph)
+
+			float newMorph = currentMorph * multiplier
 
 			SetMorphs(idxSet, sliderSet, newMorph)
 		EndIf
