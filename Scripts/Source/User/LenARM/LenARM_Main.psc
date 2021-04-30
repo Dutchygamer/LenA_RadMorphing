@@ -100,10 +100,7 @@ Group Properties
 	Potion Property GlowingOneBlood Auto Const
 
 	ActorValue Property ParalysisAV Auto Const
-	;TODO kan weg
-	Spell Property Paralyze Auto Const	
-	;TODO kan weg
-	Idle Property RagdollIdle Auto Const
+	Spell Property PoppedDebuff Auto Const	
 EndGroup
 
 ; ------------------------
@@ -711,6 +708,9 @@ Function TimerMorphTick()
 							Utility.Wait(0.5)
 							LenARM_PopSound.PlayAndWait(PlayerRef)
 							ResetMorphs()
+
+							; cast the debuffs on the player
+							PoppedDebuff.Cast(PlayerRef, PlayerRef)
 										
 							; wait a bit before we can actually stand up again
 							Utility.Wait(1.5)
