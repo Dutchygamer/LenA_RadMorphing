@@ -92,6 +92,7 @@ Group Properties
 	Sound Property LenARM_MorphSound_Med Auto Const
 	Sound Property LenARM_MorphSound_High Auto Const
 	Sound Property LenARM_FullSound Auto Const
+	Sound Property LenARM_PrePopSound Auto Const
 	Sound Property LenARM_PopSound Auto Const
 
 	Faction Property CurrentCompanionFaction Auto Const
@@ -657,7 +658,7 @@ Function TimerMorphTick()
 				; when popping is enabled, randomly on taking rads increase the PopWarnings
 				; when PopWarnings eventually has reached three, 'pop' the player
 				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
-				Elseif (1 == 1)
+				Elseif (1 == 1 && !IsStartingUp)
 					int random = Utility.RandomInt(1, 10)
 					int popChance = 7 ;TODO tweak this
 					bool shouldPop = random <= popChance
@@ -704,9 +705,10 @@ Function TimerMorphTick()
 							EndWhile
 
 							; the eventual 'pop', resetting all the morphs back to 0
-							; for this situation we want to wait for the sound effect to play
+							; for this situation we want to wait for the first sound effect to finish playing
 							Utility.Wait(0.5)
-							LenARM_PopSound.PlayAndWait(PlayerRef)
+							LenARM_PrePopSound.PlayAndWait(PlayerRef)
+							LenARM_PopSound.Play(PlayerRef)
 							ResetMorphs()
 
 							; cast the debuffs on the player
@@ -1090,7 +1092,7 @@ Function UnequipAll()
 	;TODO this combined with the ResetMorphs at the end seems to cause random crashes for me
 	;most likely because I've been toying around with that other skeleton mod...
 	;as long as the player doesn't get fully stripped it seems to work fine
-	;allSlots.Add(3)
+	allSlots.Add(3)
 	allSlots.Add(11)
 	allSlots.Add(12)
 	allSlots.Add(13)
