@@ -707,7 +707,7 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 	int idxSlider = sliderNameOffset
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
-		float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph) ;(OriginalMorphs[idxSlider] + morphPercentage * sliderSet.TargetMorph)
+		float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
 
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
@@ -850,7 +850,7 @@ Function ExtendMorphs(float step)
 	int idxSet = 0
 
 	; calculate the new morphs multiplier
-	float multiplier = 1 + (step/8) ;10) ;(1.1 * (1 + step/10))
+	float multiplier = 1 + (step/8)
 
 	; apply it to all morphs
 	While (idxSet < SliderSets.Length)
