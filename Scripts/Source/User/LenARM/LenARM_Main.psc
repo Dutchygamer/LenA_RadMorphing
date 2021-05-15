@@ -9,18 +9,19 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-see if the whole update process can be made faster / more efficient
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
-;-unequip sometimes doesn't actually unequip the clothing / armor
 ;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 ;-don't play MorphSounds when none of the sliders should effect companions
 
-;-add reset drugs
-;  -reduces rads to 0 and resets morphs
-;  -basicly check with Actor.OnItemEquipped (afaik) if the drugs are taken
-;  -if so, block further morphs (set bool), and reset morphs immediately (which unsets bool when done)
-;  -if possible, add a second drugs which is experimental (easier to make, prerequisite for final drugs)
-;  -50/50 chance to pop player, else reset morphs
+;-update MCM config
+;  -add Pop option in Main
+;  -recheck words for sound sliders
+;  -add give 1 experimental reset morphs chem under Debug
+;  -add give 1 reset morphs chem under Debug
+
+;-add recipies for reset morphs chems
+;  -make two for the non-experimental chem; one which requires the experimental chem and some other requirements, and one which requires all the requirements of the experimental chem + its own requirements
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -108,7 +109,9 @@ Group Properties
 	Potion Property GlowingOneBlood Auto Const
 
 	ActorValue Property ParalysisAV Auto Const
-	Spell Property PoppedDebuff Auto Const	
+	Potion Property PoppedPotion Auto Const	
+	Potion Property ResetMorphsExperimentalPotion Auto Const	
+	Potion Property ResetMorphsPotion Auto Const
 EndGroup
 
 ; ------------------------
@@ -156,15 +159,41 @@ string Function GetVersion()
 EndFunction
 
 ; ------------------------
-; On equipping of an item, check if it should get unequipped
+; On equipping / ingestion of an item, check if we must do something with it
 ; ------------------------
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
-	; this will break the hacky "unequip weapon slots" logic some people use tho...
-	If (!PlayerRef.IsInPowerArmor() && akBaseObject as Armor)
-		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
-		Utility.Wait(1.0)
-		TriggerUnequipSlots()
+	If (!PlayerRef.IsInPowerArmor())
+		; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
+		; this will break the hacky "unequip weapon slots" logic some people use tho...
+		If (akBaseObject as Armor)
+			Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
+			Utility.Wait(1.0)
+			TriggerUnequipSlots()
+		endif
+		; if we ingest potions, check if it is one of the mod-specific drugs
+		If (akBaseObject as Potion)	
+			; ingested reset morphs potion => reset the morphs
+			if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
+				Note("My body goes back to normal")
+				ResetMorphs()
+			; ingested experimental reset morphs potion => chance to reset the morphs, else pop
+			elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
+				int random = Utility.RandomInt(1, 10)
+				int popChance = 5 ;TODO tweak this
+				bool shouldPop = random <= popChance
+			
+				;TODO alleen doen indien popping enabled is in config, anders altijd resetten
+				if (shouldPop)
+					Note("This doesn't feel good")
+					LenARM_MorphSound.Play(PlayerRef)
+					Utility.Wait(1.0)
+					Pop()
+				Else
+					Note("My body goes back to normal")
+					ResetMorphs()					
+				endIf
+			endif
+		endif
 	endif
 EndEvent
 
@@ -833,8 +862,8 @@ Function Pop()
 	LenARM_PopSound.Play(PlayerRef)
 	ResetMorphs()
 
-	; cast the debuffs on the player
-	PoppedDebuff.Cast(PlayerRef, PlayerRef)
+	; apply the debuffs on the player by ingesting the debuffs potion
+	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
 				
 	; wait a bit before we can actually stand up again
 	Utility.Wait(1.5)
@@ -1263,6 +1292,14 @@ EndFunction
 
 Function GiveIrradiatedBlood()
 	PlayerRef.AddItem(GlowingOneBlood, 50)
+EndFunction
+
+Function GiveExperimentalMorphDrugs()
+	PlayerRef.AddItem(ResetMorphsExperimentalPotion, 1)
+EndFunction
+
+Function GiveMorphDrugs()
+	PlayerRef.AddItem(ResetMorphsPotion, 1)
 EndFunction
 
 ; ------------------------
