@@ -503,7 +503,7 @@ Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 			If (sliderSet.IsUsed)
 				Log("  SliderSet " + idxSet)
 				; calculate morph from CurrentRads
-				float newMorph = GetNewMorph(CurrentRads, sliderSet)
+				float newMorph = CalculateMorphPercentage(CurrentRads, sliderSet)
 				Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " + " + newMorph)
 				; add morph to existing morph
 				float fullMorph = Math.Min(1.0, sliderSet.CurrentMorph + newMorph)
@@ -557,40 +557,40 @@ Function TimerMorphTick()
 				endif
 
 				If (sliderSet.NumberOfSliderNames > 0)
-					float newMorph = GetNewMorph(newRads, sliderSet)
+					float calculatedMorphPercentage = CalculateMorphPercentage(newRads, sliderSet)
 
 					; only try to apply the morphs if either
 					; -the new morph is larger then the slider's current morph
 					; -the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
-					If (newMorph > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && newMorph != sliderSet.CurrentMorph))
+					If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && calculatedMorphPercentage != sliderSet.CurrentMorph))
 						; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 						; both will get modified if we have additive morphs enabled for this sliderSet
-						float fullMorph = newMorph
-						float maxMorphs = 1.0
+						float morphPercentage = calculatedMorphPercentage
+						float maxMorphPercentage = 1.0
 
 						; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
 						; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
 						If (sliderSet.IsAdditive)
-							fullMorph += sliderSet.BaseMorph
+							morphPercentage += sliderSet.BaseMorph
 							If (sliderSet.HasAdditiveLimit)
-								maxMorphs = 1.0 + sliderSet.AdditiveLimit
-								fullMorph = Math.Min(fullMorph, maxMorphs)
+								maxMorphPercentage = 1.0 + sliderSet.AdditiveLimit
+								morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
 							EndIf
 						EndIf
 						
-						;Log("    test " + idxSet + " fullMorph: " + fullMorph + "; maxMorphs: " + maxMorphs+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
+						;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
 
 						; when we have an additive slider with no limit, apply the morphs without further checks
 						if (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit)
-							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
+							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 						; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
-						ElseIf (fullMorph <= maxMorphs)
+						ElseIf (morphPercentage <= maxMorphPercentage)
 							; -sliderSet is doctor-only reset and the sliderset isn't maxed out
 							if (sliderSet.OnlyDoctorCanReset && !sliderSet.IsMaxedOut)
-								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
+								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 								
 								; when the morphs are maxed out, set this on the sliderSet
-								if (fullMorph == maxMorphs)
+								if (morphPercentage == maxMorphPercentage)
 									sliderSet.IsMaxedOut = true
 								; when the morphs are not maxed out, set this on the sliderSet and set maxedOutMorphs to false
 								else
@@ -600,10 +600,10 @@ Function TimerMorphTick()
 							; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
 							; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
 							elseif (!sliderSet.OnlyDoctorCanReset && (!sliderSet.IsMaxedOut || radsDifference < 0))
-								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, fullMorph)
+								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 								
 								; when the morphs are maxed out, set this on the sliderSet
-								if (fullMorph == maxMorphs)
+								if (morphPercentage == maxMorphPercentage)
 									sliderSet.IsMaxedOut = true
 								; when the morphs are not maxed out, set this on the sliderSet, set maxedOutMorphs to false and set the global HasReachedMaxMorphs to false
 								else
@@ -616,13 +616,13 @@ Function TimerMorphTick()
 
 						; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
 						; eventually we have taken enough total rads we won't enter the containing if-statement						
-						sliderSet.CurrentMorph = newMorph
+						sliderSet.CurrentMorph = calculatedMorphPercentage
 
 					; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
 					; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
 					ElseIf (sliderSet.IsAdditive)
-						sliderSet.BaseMorph += sliderSet.CurrentMorph - newMorph
-						sliderSet.CurrentMorph = newMorph
+						sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
+						sliderSet.CurrentMorph = calculatedMorphPercentage
 					EndIf
 				EndIf
 				idxSet += 1
@@ -736,46 +736,54 @@ EndFunction
 
 
 ; ------------------------
-; Calculate the new morph for the given sliderSet based on the given rads and the slider's min / max thresholds
+; Calculate the morph percentage for the given sliderSet based on the given rads and the slider's min / max thresholds
 ; ------------------------
-float Function GetNewMorph(float newRads, SliderSet sliderSet)
-	float newMorph
+float Function CalculateMorphPercentage(float newRads, SliderSet sliderSet)
+	float morphPercentage
 	If (newRads < sliderSet.ThresholdMin)
-		newMorph = 0.0
+		morphPercentage = 0.0
 	ElseIf (newRads > sliderSet.ThresholdMax)
-		newMorph = 1.0
+		morphPercentage = 1.0
 	Else
-		newMorph = (newRads - sliderSet.ThresholdMin) / (sliderSet.ThresholdMax - sliderSet.ThresholdMin)
+		morphPercentage = (newRads - sliderSet.ThresholdMin) / (sliderSet.ThresholdMax - sliderSet.ThresholdMin)
 	EndIf
-	return newMorph
+	return morphPercentage
+EndFunction
+
+; ------------------------
+; Calculate the morph for the given sliderSet based on the given morph percentage and target morph
+; ------------------------
+float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
+	return (OriginalMorphs[idxSlider] + (morphPercentage * targetMorph))
 EndFunction
 
 ; ------------------------
 ; Apply the given sliderSet's morphs to the matching BodyGen sliders
 ; ------------------------
-Function SetMorphs(int idxSet, SliderSet sliderSet, float fullMorph)
+Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 	int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
 	int idxSlider = sliderNameOffset
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
-		float newMorph = (OriginalMorphs[idxSlider] + fullMorph * sliderSet.TargetMorph)
+		float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph) ;(OriginalMorphs[idxSlider] + morphPercentage * sliderSet.TargetMorph)
 
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
 		If (sliderSet.ApplyCompanion != EApplyCompanionNone)
-			SetCompanionMorphs(idxSlider, fullMorph * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
+			SetCompanionMorphs(idxSlider, morphPercentage * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
 		EndIf
 		idxSlider += 1
 	EndWhile
 EndFunction
 
-bool Function SetMorphsAndReturnTrue(int idxSet, SliderSet sliderSet, float fullMorph)
-	SetMorphs(idxSet, sliderSet, fullMorph)
+bool Function SetMorphsAndReturnTrue(int idxSet, SliderSet sliderSet, float morphPercentage)
+	SetMorphs(idxSet, sliderSet, morphPercentage)
 	return true
 EndFunction
 
 ; ------------------------
-; Restore the original BodyGen values for each slider, and set all morphs to 0
+; Restore the original BodyGen values for each slider, and set all sliderset's morphs to 0
+; Will also reset various global bools used on various places
 ; ------------------------
 Function ResetMorphs()
 	Log("ResetMorphs")
@@ -831,19 +839,44 @@ Function ExtendMorphs(float step)
 		If (sliderSet.NumberOfSliderNames > 0)
 			;TODO additive in berekening opnemen
 			;TODO negatieve sliders worden nu positief
+
+			;last update before pop
+			;[05/14/2021 - 07:07:04PM] [LenARM]     setting slider 'NippleSize' to -0.250000 (base value is 0.000000) (base morph is 0.887156) (target is -0.250000)
+			;pop state 1
+			;[05/14/2021 - 07:07:17PM] [LenARM]     setting slider 'NippleSize' to 0.075625 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
+			;pop state 2
+			;[05/14/2021 - 07:07:19PM] [LenARM]     setting slider 'NippleSize' to 0.082500 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
+			;pop state 3
+			;[05/14/2021 - 07:07:21PM] [LenARM]     setting slider 'NippleSize' to 0.089375 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
+			;pop state 4
+			;[05/14/2021 - 07:07:22PM] [LenARM]     setting slider 'NippleSize' to 0.096250 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
+			;pop state 5
+			;[05/14/2021 - 07:07:23PM] [LenARM]     setting slider 'NippleSize' to 0.103125 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
+
+			;TODO add reset drugs
+			;reduces rads to 0 and resets morphs
+			;basicly check with Actor.OnItemEquipped (afaik) if the drugs are taken
+			;if so, block further morphs (set bool), and reset morphs immediately (which unsets bool when done)
+			;if possible, add a second drugs which is experimental (easier to make, prerequisite for final drugs)
+			;50/50 chance to pop player, else reset morphs
+
+			; as we don't store the actual current slider's value, recalculate it on the fly by taking each slider's original morphs and adding the target morphs
 			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
 			int idxSlider = sliderNameOffset
-			float currentMorph = (OriginalMorphs[idxSlider] + 1 * sliderSet.TargetMorph)
+			float currentMorph = CalculateMorphs(idxSlider, 1, sliderSet.TargetMorph) ;(OriginalMorphs[idxSlider] + 1 * sliderSet.TargetMorph)
 
+			; then multiply the current morphs with the multiplier, and set these morphs
 			float newMorph = currentMorph * multiplier
-
 			SetMorphs(idxSet, sliderSet, newMorph)
 		EndIf
 		idxSet += 1
 	EndWhile
 	
+	; apply all new morphs to the body
 	BodyGen.UpdateMorphs(PlayerRef)
 EndFunction
+
+
 
 ; ------------------------
 ; All companion related logic, still WiP / broken
