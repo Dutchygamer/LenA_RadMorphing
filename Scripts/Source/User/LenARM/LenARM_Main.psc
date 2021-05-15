@@ -15,6 +15,13 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 ;-don't play MorphSounds when none of the sliders should effect companions
 
+;-add reset drugs
+;  -reduces rads to 0 and resets morphs
+;  -basicly check with Actor.OnItemEquipped (afaik) if the drugs are taken
+;  -if so, block further morphs (set bool), and reset morphs immediately (which unsets bool when done)
+;  -if possible, add a second drugs which is experimental (easier to make, prerequisite for final drugs)
+;  -50/50 chance to pop player, else reset morphs
+
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -659,66 +666,7 @@ Function TimerMorphTick()
 				; when PopWarnings eventually has reached three, 'pop' the player
 				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
 				Elseif (1 == 1 && !IsStartingUp)
-					int random = Utility.RandomInt(1, 10)
-					int popChance = 7 ;TODO tweak this
-					bool shouldPop = random <= popChance
-
-					if (shouldPop)
-						if (PopWarnings == 0)
-							Note("My body still reacts to rads")
-							PopWarnings += 1
-							LenARM_MorphSound_Med.Play(PlayerRef)
-						ElseIf (PopWarnings == 1)
-							Note("My body feels so tight")
-							PopWarnings += 1
-							LenARM_MorphSound_High.Play(PlayerRef)
-						ElseIf (PopWarnings == 2)
-							Note("I'm going to pop if I take more rads")
-							PopWarnings += 1
-							LenARM_FullSound.Play(PlayerRef)
-						Else
-							; force third person camera
-							Game.ForceThirdPerson()							
-							Utility.Wait(0.5)
-
-							; play sound, paralyse player and then knock them out
-							; the order of first paralysing and then knocking out is important, lest you get odd glitches
-							LenARM_FullSound.Play(PlayerRef)
-							PlayerRef.SetValue(ParalysisAV, 1)
-							PlayerRef.PushActorAway(PlayerRef, 0.5)						
-							Utility.Wait(0.5)
-
-							int popState = 1
-							; gradually increase the morphs and unequip the clothes
-							While (popState <= 5)								
-								; for step 3 we don't want to play the expand sound, but unequip the clothes instead
-								If (popState != 3)
-									LenARM_FullSound.Play(PlayerRef)
-								Else
-									UnequipAll()
-								endif
-
-								ExtendMorphs(popState)
-								Utility.Wait(0.5)
-
-								popState += 1
-							EndWhile
-
-							; the eventual 'pop', resetting all the morphs back to 0
-							; for this situation we want to wait for the first sound effect to finish playing
-							Utility.Wait(0.5)
-							LenARM_PrePopSound.PlayAndWait(PlayerRef)
-							LenARM_PopSound.Play(PlayerRef)
-							ResetMorphs()
-
-							; cast the debuffs on the player
-							PoppedDebuff.Cast(PlayerRef, PlayerRef)
-										
-							; wait a bit before we can actually stand up again
-							Utility.Wait(1.5)
-							PlayerRef.SetValue(ParalysisAV, 0)
-						endif
-					endif
+					CheckPopWarnings()
 				endif
 			EndIf
 		;Else
@@ -726,12 +674,6 @@ Function TimerMorphTick()
 		EndIf
 	EndIf
 	StartTimer(UpdateDelay, ETimerMorphTick)
-EndFunction
-
-;TODO obsolete?
-Function RagdollAndWait()
-	PlayerRef.PushActorAway(PlayerRef, 0.5)
-	Utility.Wait(0.5)
 EndFunction
 
 
@@ -824,6 +766,82 @@ Function RestoreOriginalMorphs()
 EndFunction
 
 ; ------------------------
+; Roll a dice whether to increase the PopWarnings by 1, with various effects on a success
+; ------------------------
+Function CheckPopWarnings()
+	int random = Utility.RandomInt(1, 10)
+	int popChance = 7 ;TODO tweak this
+	bool shouldPop = random <= popChance
+
+	if (shouldPop)
+		if (PopWarnings == 0)
+			Note("My body still reacts to rads")
+			PopWarnings += 1
+			LenARM_MorphSound_Med.Play(PlayerRef)
+		ElseIf (PopWarnings == 1)
+			Note("My body feels so tight")
+			PopWarnings += 1
+			LenARM_MorphSound_High.Play(PlayerRef)
+		ElseIf (PopWarnings == 2)
+			Note("I'm going to pop if I take more rads")
+			PopWarnings += 1
+			LenARM_FullSound.Play(PlayerRef)
+		Else
+			Pop()
+		endif
+	endif
+EndFunction
+
+; ------------------------
+; Paralyze the player, expand current morphs several times, reset the morphs, apply debuff, and unparalyze the player
+; ------------------------
+Function Pop()
+	int currentPopState = 1
+	int popStates = 5
+	int unqeuipState = 3
+
+	; force third person camera
+	Game.ForceThirdPerson()							
+	Utility.Wait(0.5)
+
+	; play sound, paralyse player and then knock them out
+	; the order of first paralysing and then knocking out is important, lest you get odd glitches
+	LenARM_FullSound.Play(PlayerRef)
+	PlayerRef.SetValue(ParalysisAV, 1)
+	PlayerRef.PushActorAway(PlayerRef, 0.5)						
+	Utility.Wait(0.5)
+
+	; gradually increase the morphs and unequip the clothes
+	While (currentPopState <= popStates)								
+		; for the unequip state we don't want to play the full sound, but unequip the clothes instead
+		If (currentPopState != unqeuipState)
+			LenARM_FullSound.Play(PlayerRef)
+		Else
+			UnequipAll()
+		endif
+
+		ExtendMorphs(currentPopState)
+		Utility.Wait(0.5)
+
+		currentPopState += 1
+	EndWhile
+
+	; the eventual 'pop', resetting all the morphs back to 0
+	; for this situation we want to wait for the first sound effect to finish playing
+	Utility.Wait(0.5)
+	LenARM_PrePopSound.PlayAndWait(PlayerRef)
+	LenARM_PopSound.Play(PlayerRef)
+	ResetMorphs()
+
+	; cast the debuffs on the player
+	PoppedDebuff.Cast(PlayerRef, PlayerRef)
+				
+	; wait a bit before we can actually stand up again
+	Utility.Wait(1.5)
+	PlayerRef.SetValue(ParalysisAV, 0)
+EndFunction
+
+; ------------------------
 ; Increase all sliders by a percentage multiplied with the input
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
@@ -831,43 +849,15 @@ Function ExtendMorphs(float step)
 	Log("extending morphs with: " + step)
 	int idxSet = 0
 
-	float multiplier = (1.1 * (1 + step/10))
+	; calculate the new morphs multiplier
+	float multiplier = 1 + (step/8) ;10) ;(1.1 * (1 + step/10))
 
+	; apply it to all morphs
 	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]
-		
+		SliderSet sliderSet = SliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0)
 			;TODO additive in berekening opnemen
-			;TODO negatieve sliders worden nu positief
-
-			;last update before pop
-			;[05/14/2021 - 07:07:04PM] [LenARM]     setting slider 'NippleSize' to -0.250000 (base value is 0.000000) (base morph is 0.887156) (target is -0.250000)
-			;pop state 1
-			;[05/14/2021 - 07:07:17PM] [LenARM]     setting slider 'NippleSize' to 0.075625 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
-			;pop state 2
-			;[05/14/2021 - 07:07:19PM] [LenARM]     setting slider 'NippleSize' to 0.082500 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
-			;pop state 3
-			;[05/14/2021 - 07:07:21PM] [LenARM]     setting slider 'NippleSize' to 0.089375 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
-			;pop state 4
-			;[05/14/2021 - 07:07:22PM] [LenARM]     setting slider 'NippleSize' to 0.096250 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
-			;pop state 5
-			;[05/14/2021 - 07:07:23PM] [LenARM]     setting slider 'NippleSize' to 0.103125 (base value is 0.000000) (base morph is 1.017052) (target is -0.250000)
-
-			;TODO add reset drugs
-			;reduces rads to 0 and resets morphs
-			;basicly check with Actor.OnItemEquipped (afaik) if the drugs are taken
-			;if so, block further morphs (set bool), and reset morphs immediately (which unsets bool when done)
-			;if possible, add a second drugs which is experimental (easier to make, prerequisite for final drugs)
-			;50/50 chance to pop player, else reset morphs
-
-			; as we don't store the actual current slider's value, recalculate it on the fly by taking each slider's original morphs and adding the target morphs
-			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
-			int idxSlider = sliderNameOffset
-			float currentMorph = CalculateMorphs(idxSlider, 1, sliderSet.TargetMorph) ;(OriginalMorphs[idxSlider] + 1 * sliderSet.TargetMorph)
-
-			; then multiply the current morphs with the multiplier, and set these morphs
-			float newMorph = currentMorph * multiplier
-			SetMorphs(idxSet, sliderSet, newMorph)
+			SetMorphs(idxSet, sliderSet, multiplier)
 		EndIf
 		idxSet += 1
 	EndWhile
@@ -875,8 +865,6 @@ Function ExtendMorphs(float step)
 	; apply all new morphs to the body
 	BodyGen.UpdateMorphs(PlayerRef)
 EndFunction
-
-
 
 ; ------------------------
 ; All companion related logic, still WiP / broken
