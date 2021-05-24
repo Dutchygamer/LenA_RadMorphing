@@ -126,6 +126,19 @@
 			"text": "<br>",
 			"html": true
 		},
+		{
+			"text": "Enable popping",
+			"help": "Enable or disable non-lethal popping of the player upon taking rads beyond their max morphs",
+			"type": "switcher",
+			"id": "bEnablePopping:General",
+			"valueOptions": {
+                "sourceType": "ModSettingBool"
+			}
+		},
+		{
+			"text": "<br>",
+			"html": true
+		},
 
 		{
 			"text": "Radiation detection",
@@ -201,6 +214,32 @@
 						"params": []
 					}
 				},
+                {
+                    "text": "Add experimental RadPurge",
+                    "type": "button",
+                    "help": "Add 1 experimental RadPurge to player inventory.",
+                    "action": {
+                        "type": "CallFunction",
+                        "form": "LenA_RadMorphing.esp|1000F99",
+                        "function": "GiveExperimentalMorphDrugs",
+                        "params": [
+                            
+                        ]
+                    }
+                },
+                {
+                    "text": "Add RadPurge",
+                    "type": "button",
+                    "help": "Add 1 RadPurge to player inventory.",
+                    "action": {
+                        "type": "CallFunction",
+                        "form": "LenA_RadMorphing.esp|1000F99",
+                        "function": "GiveMorphDrugs",
+                        "params": [
+                            
+                        ]
+                    }
+                },
 				{
 					"text": "<br>",
 					"html": true

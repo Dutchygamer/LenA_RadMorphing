@@ -15,13 +15,8 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-don't play MorphSounds when none of the sliders should effect companions
 
 ;-update MCM config
-;  -add Pop option in Main
+;  -clean it up in general (breakspaces, dividers, descriptions, etc etc)
 ;  -recheck words for sound sliders
-;  -add give 1 experimental reset morphs chem under Debug
-;  -add give 1 reset morphs chem under Debug
-
-;-add recipies for reset morphs chems
-;  -make two for the non-experimental chem; one which requires the experimental chem and some other requirements, and one which requires all the requirements of the experimental chem + its own requirements
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -60,6 +55,7 @@ bool TakeFakeRads
 ; has the player reached the max on all sliderSets? this includes additive morphing if these are limited
 bool HasReachedMaxMorphs
 
+bool EnablePopping
 ; how many pop warnings have we displayed
 int PopWarnings
 
@@ -182,12 +178,17 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 				int popChance = 5 ;TODO tweak this
 				bool shouldPop = random <= popChance
 			
-				;TODO alleen doen indien popping enabled is in config, anders altijd resetten
 				if (shouldPop)
-					Note("This doesn't feel good")
-					LenARM_MorphSound.Play(PlayerRef)
-					Utility.Wait(1.0)
-					Pop()
+					if (EnablePopping)
+						Note("This doesn't feel good")
+						LenARM_MorphSound.Play(PlayerRef)
+						Utility.Wait(1.0)
+						Pop()
+					else
+						Note("It worked, but I feel weak")
+						; apply the debuffs on the player by ingesting the debuffs potion
+						PlayerRef.EquipItem(PoppedPotion, abSilent = true)
+					endif
 				Else
 					Note("My body goes back to normal")
 					ResetMorphs()					
@@ -274,6 +275,8 @@ Function Startup()
 		LowRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fLowRadsThreshold:General") / 1000.0
 		MediumRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fMediumRadsThreshold:General") / 1000.0
 		HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
+
+		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -693,8 +696,7 @@ Function TimerMorphTick()
 				
 				; when popping is enabled, randomly on taking rads increase the PopWarnings
 				; when PopWarnings eventually has reached three, 'pop' the player
-				; //TODO bouw die config in, voor nu ff disabled zolang het nog WiP is
-				Elseif (1 == 1 && !IsStartingUp)
+				Elseif (EnablePopping && !IsStartingUp)
 					CheckPopWarnings()
 				endif
 			EndIf
@@ -799,7 +801,7 @@ EndFunction
 ; ------------------------
 Function CheckPopWarnings()
 	int random = Utility.RandomInt(1, 10)
-	int popChance = 7 ;TODO tweak this
+	int popChance = 3 ;TODO tweak this
 	bool shouldPop = random <= popChance
 
 	if (shouldPop)
@@ -827,7 +829,8 @@ EndFunction
 Function Pop()
 	int currentPopState = 1
 	int popStates = 5
-	int unqeuipState = 3
+	int unequipState = 3
+	bool shouldParalyze = true
 
 	; force third person camera
 	Game.ForceThirdPerson()							
@@ -836,14 +839,16 @@ Function Pop()
 	; play sound, paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
 	LenARM_FullSound.Play(PlayerRef)
-	PlayerRef.SetValue(ParalysisAV, 1)
-	PlayerRef.PushActorAway(PlayerRef, 0.5)						
+	if (shouldParalyze)
+		PlayerRef.SetValue(ParalysisAV, 1)
+		PlayerRef.PushActorAway(PlayerRef, 0.5)						
+	endif
 	Utility.Wait(0.5)
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState <= popStates)								
 		; for the unequip state we don't want to play the full sound, but unequip the clothes instead
-		If (currentPopState != unqeuipState)
+		If (currentPopState != unequipState)
 			LenARM_FullSound.Play(PlayerRef)
 		Else
 			UnequipAll()
@@ -866,8 +871,10 @@ Function Pop()
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
 				
 	; wait a bit before we can actually stand up again
-	Utility.Wait(1.5)
-	PlayerRef.SetValue(ParalysisAV, 0)
+	if (shouldParalyze)
+		Utility.Wait(1.5)
+		PlayerRef.SetValue(ParalysisAV, 0)
+	endif
 EndFunction
 
 ; ------------------------
