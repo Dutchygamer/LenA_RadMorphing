@@ -12,11 +12,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
-;-don't play MorphSounds when none of the sliders should effect companions
-
-;-update MCM config
-;  -clean it up in general (breakspaces, dividers, descriptions, etc etc)
-;  -recheck words for sound sliders
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -828,9 +823,9 @@ EndFunction
 ; ------------------------
 Function Pop()
 	int currentPopState = 1
-	int popStates = 5
+	int popStates = 5 ;TODO make config in MCM?
 	int unequipState = 3
-	bool shouldParalyze = true
+	bool shouldParalyze = true ;TODO make config in MCM?
 
 	; force third person camera
 	Game.ForceThirdPerson()							
@@ -846,7 +841,7 @@ Function Pop()
 	Utility.Wait(0.5)
 
 	; gradually increase the morphs and unequip the clothes
-	While (currentPopState <= popStates)								
+	While (currentPopState < popStates)								
 		; for the unequip state we don't want to play the full sound, but unequip the clothes instead
 		If (currentPopState != unequipState)
 			LenARM_FullSound.Play(PlayerRef)
@@ -860,9 +855,9 @@ Function Pop()
 		currentPopState += 1
 	EndWhile
 
-	; the eventual 'pop', resetting all the morphs back to 0
+	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 	; for this situation we want to wait for the first sound effect to finish playing
-	Utility.Wait(0.5)
+	ExtendMorphs(currentPopState)
 	LenARM_PrePopSound.PlayAndWait(PlayerRef)
 	LenARM_PopSound.Play(PlayerRef)
 	ResetMorphs()

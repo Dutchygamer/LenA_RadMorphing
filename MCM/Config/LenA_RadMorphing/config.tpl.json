@@ -8,8 +8,6 @@
 			"type": "text",
 			"html": true
 		},
-
-
 		{
 			"text": "General Settings",
 			"type": "section"
@@ -68,78 +66,10 @@
 				"step": 0.5
 			}
 		},
-        {
-            "text": "<br>",
-            "html": true
-        },
-        {
-            "text": "Radiation taken thresholds",
-            "type": "section"
-        },
-        {
-            "text": "The following settings are currently only used for deciding if / what morph sound to play. If you don't use these morph sounds, you can ignore these settings. Only applies to periodic updates.<br><b>Do note that the larger the update delay, the larger the rads taken can be.</b>",
-			"type": "text",
-            "html": true
-        },
-        {
-            "text": "<br>-Any amount of rads taken below Low (incl. rad decreases) will not play any sound.<br>-Any amount of rads taken between Low and Medium will play the low sound.<br>-Any amount of rads taken between Medium and High will play the medium sound.<br>-Any amount of rads taken above High will play the high sound.",
-			"type": "text",
-            "html": true
-        },
-		{
-			"text": "Low radiation taken threshold",
-			"help": "The amount of rads taken which is considered low",
-			"type": "slider",
-			"id": "fLowRadsThreshold:General",
-			"valueOptions": {
-				"sourceType": "ModSettingFloat",
-				"min": 0.0,
-				"max": 100.0,
-				"step": 5.0
-			}
-		},
-		{
-			"text": "Medium radiation taken threshold",
-			"help": "The amount of rads taken which is considered medium",
-			"type": "slider",
-			"id": "fMediumRadsThreshold:General",
-			"valueOptions": {
-				"sourceType": "ModSettingFloat",
-				"min": 0.0,
-				"max": 100.0,
-				"step": 5.0
-			}
-		},
-		{
-			"text": "High radiation taken threshold",
-			"help": "The amount of rads taken which is considered high",
-			"type": "slider",
-			"id": "fHighRadsThreshold:General",
-			"valueOptions": {
-				"sourceType": "ModSettingFloat",
-				"min": 0.0,
-				"max": 100.0,
-				"step": 5.0
-			}
-		},
 		{
 			"text": "<br>",
 			"html": true
 		},
-		{
-			"text": "Enable popping",
-			"help": "Enable or disable non-lethal popping of the player upon taking rads beyond their max morphs",
-			"type": "switcher",
-			"id": "bEnablePopping:General",
-			"valueOptions": {
-                "sourceType": "ModSettingBool"
-			}
-		},
-		{
-			"text": "<br>",
-			"html": true
-		},
-
 		{
 			"text": "Radiation detection",
 			"type": "section"
@@ -180,6 +110,69 @@
 		}
 	],
 	"pages": [
+		{
+            "pageDisplayName": "Additional Settings",
+            "content": [
+                {
+                    "text": "Settings",
+                    "type": "section"
+                },
+				{
+					"text": "Enable popping",
+					"help": "Enable or disable non-lethal 'popping' of the player upon taking rads beyond their max morphs",
+					"type": "switcher",
+					"id": "bEnablePopping:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				},
+				{
+					"text": "Radiation taken thresholds",
+					"type": "section"
+				},
+				{
+					"text": "The following settings are currently only used for deciding if / what morph sound to play. If you don't use these morph sounds, you can ignore these settings. Only applies to periodic updates.<br><b>Do note that the larger the update delay, the larger the rads taken can be.</b>-Any amount of rads taken below Low (incl. rad decreases) will not play any sound.<br>-Any amount of rads taken between Low and Medium will play the low sound.<br>-Any amount of rads taken between Medium and High will play the medium sound.<br>-Any amount of rads taken above High will play the high sound.",
+					"type": "text",
+					"html": true
+				},
+				{
+					"text": "Low radiation taken threshold",
+					"help": "The amount of rads taken which is considered low",
+					"type": "slider",
+					"id": "fLowRadsThreshold:General",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"min": 0.0,
+						"max": 200.0,
+						"step": 5.0
+					}
+				},
+				{
+					"text": "Medium radiation taken threshold",
+					"help": "The amount of rads taken which is considered medium",
+					"type": "slider",
+					"id": "fMediumRadsThreshold:General",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"min": 0.0,
+						"max": 200.0,
+						"step": 5.0
+					}
+				},
+				{
+					"text": "High radiation taken threshold",
+					"help": "The amount of rads taken which is considered high",
+					"type": "slider",
+					"id": "fHighRadsThreshold:General",
+					"valueOptions": {
+						"sourceType": "ModSettingFloat",
+						"min": 0.0,
+						"max": 200.0,
+						"step": 5.0
+					}
+				}
+            ]
+        },
 		{
 			"pageDisplayName": "Debug Tools",
 			"content": [
