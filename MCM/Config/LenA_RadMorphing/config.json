@@ -132,6 +132,27 @@
 					}
 				},
 				{
+					"text": "Pop states",
+					"help": "",
+					"type": "slider",
+					"id": "iPopStates:General",
+					"valueOptions": {
+						"sourceType": "ModSettingInt",
+						"min": 5,
+						"max": 20,
+						"step": 1
+					}
+				},
+				{
+					"text": "Pop paralyzes",
+					"help": "",
+					"type": "switcher",
+					"id": "bPopShouldParalyze:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				},
+				{
 					"text": "Radiation taken thresholds",
 					"type": "section"
 				},

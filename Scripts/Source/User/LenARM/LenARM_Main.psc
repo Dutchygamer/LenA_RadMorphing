@@ -51,6 +51,8 @@ bool TakeFakeRads
 bool HasReachedMaxMorphs
 
 bool EnablePopping
+int PopStates
+bool PopShouldParalyze
 ; how many pop warnings have we displayed
 int PopWarnings
 
@@ -272,6 +274,8 @@ Function Startup()
 		HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
 
 		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
+		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
+		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -823,9 +827,7 @@ EndFunction
 ; ------------------------
 Function Pop()
 	int currentPopState = 1
-	int popStates = 5 ;TODO make config in MCM?
-	int unequipState = 3
-	bool shouldParalyze = true ;TODO make config in MCM?
+	int unequipState = 3 ;TODO make config in MCM?
 
 	; force third person camera
 	Game.ForceThirdPerson()							
@@ -834,14 +836,14 @@ Function Pop()
 	; play sound, paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
 	LenARM_FullSound.Play(PlayerRef)
-	if (shouldParalyze)
+	if (PopShouldParalyze)
 		PlayerRef.SetValue(ParalysisAV, 1)
 		PlayerRef.PushActorAway(PlayerRef, 0.5)						
 	endif
 	Utility.Wait(0.5)
 
 	; gradually increase the morphs and unequip the clothes
-	While (currentPopState < popStates)								
+	While (currentPopState < PopStates)								
 		; for the unequip state we don't want to play the full sound, but unequip the clothes instead
 		If (currentPopState != unequipState)
 			LenARM_FullSound.Play(PlayerRef)
@@ -866,7 +868,7 @@ Function Pop()
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
 				
 	; wait a bit before we can actually stand up again
-	if (shouldParalyze)
+	if (PopShouldParalyze)
 		Utility.Wait(1.5)
 		PlayerRef.SetValue(ParalysisAV, 0)
 	endif
