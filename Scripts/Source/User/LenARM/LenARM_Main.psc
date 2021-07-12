@@ -102,6 +102,7 @@ Group Properties
 	Potion Property GlowingOneBlood Auto Const
 
 	ActorValue Property ParalysisAV Auto Const
+	ActorValue Property LuckAV Auto Const
 	Potion Property PoppedPotion Auto Const	
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
@@ -171,9 +172,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 				ResetMorphs()
 			; ingested experimental reset morphs potion => chance to reset the morphs, else pop
 			elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
-				int random = Utility.RandomInt(1, 10)
-				int popChance = 5 ;TODO tweak this
-				bool shouldPop = random <= popChance
+				bool shouldPop = ShouldPop(5)
 			
 				if (shouldPop)
 					if (EnablePopping)
@@ -796,12 +795,31 @@ Function RestoreOriginalMorphs()
 EndFunction
 
 ; ------------------------
+; Roll a dice, subtract player's Luck into account, and return the result
+; ------------------------
+bool Function ShouldPop(int popChance)
+	int random = Utility.RandomInt(1, 10)
+	int playerLuck = PlayerRef.GetValue(LuckAV) as int
+
+	; divide the player luck by 10, rounding down
+	; ie luck of 3 becomes 1, luck of 10 becomes 3
+	int roundedLuck = playerLuck / 3
+
+	; base pop chance is X/10, but X can be reduced by the player's Luck stat
+	; depending on X it technically can become 0 or less, especially with stat boosters
+	int modifiedPopChance = popChance - roundedLuck
+
+	; when the dice value is lower then (modified) pop chance, return true
+	; else return false
+	bool shouldPop = random <= modifiedPopChance
+	return shouldPop
+EndFunction
+
+; ------------------------
 ; Roll a dice whether to increase the PopWarnings by 1, with various effects on a success
 ; ------------------------
 Function CheckPopWarnings()
-	int random = Utility.RandomInt(1, 10)
-	int popChance = 3 ;TODO tweak this
-	bool shouldPop = random <= popChance
+	bool shouldPop = ShouldPop(3)
 
 	if (shouldPop)
 		if (PopWarnings == 0)
