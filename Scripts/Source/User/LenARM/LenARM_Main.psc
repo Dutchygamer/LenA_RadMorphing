@@ -58,7 +58,7 @@ int PopWarnings
 bool IsPopping
 
 ;TODO kijk of we dit gaan gebruiken of dat dit niks toevoegt; voor Unequip wordt dit nu niet gebruikt zover ik zie
-float MaxRads = 3.0
+float MaxRads = 1.0 ;3.0
 
 int RestartStackSize
 int UnequipStackSize
