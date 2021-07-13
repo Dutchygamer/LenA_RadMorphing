@@ -57,6 +57,9 @@ bool PopShouldParalyze
 int PopWarnings
 bool IsPopping
 
+;TODO kijk of we dit gaan gebruiken of dat dit niks toevoegt; voor Unequip wordt dit nu niet gebruikt zover ik zie
+float MaxRads = 3.0
+
 int RestartStackSize
 int UnequipStackSize
 
@@ -589,8 +592,8 @@ Function TimerMorphTick()
 	; calculate the amount of rads taken
 	; the longer the timer interval, the larger this will be
 	;TODO dit moet naar FakeRads kijken als je FakeRads gebruikt
-	float radsDifference = newRads - CurrentRads;
-	Log("rads taken: " + (radsDifference * 1000));
+	float radsDifference = newRads - CurrentRads
+	Log("rads taken: " + (radsDifference * 1000))
 				
 	CurrentRads = newRads
 	; companions
@@ -625,14 +628,14 @@ Function TimerMorphTick()
 				; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 				; both will get modified if we have additive morphs enabled for this sliderSet
 				float morphPercentage = calculatedMorphPercentage
-				float maxMorphPercentage = 1.0
+				float maxMorphPercentage = MaxRads
 
 				; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
 				; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
 				If (sliderSet.IsAdditive)
 					morphPercentage += sliderSet.BaseMorph
 					If (sliderSet.HasAdditiveLimit)
-						maxMorphPercentage = 1.0 + sliderSet.AdditiveLimit
+						maxMorphPercentage = (1.0 + sliderSet.AdditiveLimit) * MaxRads
 						morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
 					EndIf
 				EndIf
@@ -729,12 +732,17 @@ EndFunction
 ; ------------------------
 float Function CalculateMorphPercentage(float newRads, SliderSet sliderSet)
 	float morphPercentage
-	If (newRads < sliderSet.ThresholdMin)
+	float minThreshold = sliderSet.ThresholdMin
+	float maxThreshold = sliderSet.ThresholdMax * MaxRads
+
+	;TechnicalNote(newRads + " - " + morphPercentage + " - " + minThreshold + " - " + maxThreshold)
+
+	If (newRads < minThreshold)
 		morphPercentage = 0.0
-	ElseIf (newRads > sliderSet.ThresholdMax)
-		morphPercentage = 1.0
+	ElseIf (newRads > maxThreshold)
+		morphPercentage = MaxRads ;1.0
 	Else
-		morphPercentage = (newRads - sliderSet.ThresholdMin) / (sliderSet.ThresholdMax - sliderSet.ThresholdMin)
+		morphPercentage = (newRads - minThreshold) / (maxThreshold - minThreshold)
 	EndIf
 	return morphPercentage
 EndFunction
@@ -924,7 +932,7 @@ Function ExtendMorphs(float step)
 	int idxSet = 0
 
 	; calculate the new morphs multiplier
-	float multiplier = 1 + (step/8)
+	float multiplier = MaxRads + (step/8)
 
 	; apply it to all morphs
 	While (idxSet < SliderSets.Length)
