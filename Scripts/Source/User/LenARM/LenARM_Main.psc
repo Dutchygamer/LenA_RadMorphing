@@ -176,14 +176,15 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 				bool shouldPop = ShouldPop(5)
 			
 				if (shouldPop)
-					if (EnablePopping)
+					; perform the actual popping if enabled in config and not currently in Power Armor
+					if (EnablePopping && !PlayerRef.IsInPowerArmor())
 						Note("This doesn't feel good")
 						LenARM_MorphSound.Play(PlayerRef)
 						Utility.Wait(1.0)
 						Pop()
+					; else only apply the popped debuffs on the player
 					else
 						Note("It worked, but I feel weak")
-						; apply the debuffs on the player by ingesting the debuffs potion
 						PlayerRef.EquipItem(PoppedPotion, abSilent = true)
 					endif
 				Else
@@ -562,148 +563,162 @@ EndEvent
 ; Timer-based morphs
 ; ------------------------
 Function TimerMorphTick()
+	; if player is currently popping, restart timer and do nothing
+	if (IsPopping)		
+		StartTimer(UpdateDelay, ETimerMorphTick)
+		return
+	endif
+
+	; if rads is in Power Armor, restart timer and do nothing
+	If (PlayerRef.IsInPowerArmor())
+		; Log("skipping due to player in power armor")
+		StartTimer(UpdateDelay, ETimerMorphTick)
+		return
+	endif
+
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
 
-	;TODO kijk of we veel van deze Ifs niet domweg kunnen inverten ipv zo'n clusterfuck van geneste ifs te maken
-	If (newRads != CurrentRads && !IsPopping)
-		;Log("new rads: " + newRads + " (" + CurrentRads + ")")
-		If (!PlayerRef.IsInPowerArmor())
-			; calculate the amount of rads taken
-			; the longer the timer interval, the larger this will be
-			;TODO dit moet naar FakeRads kijken als je FakeRads gebruikt
-			float radsDifference = newRads - CurrentRads;
-			Log("rads taken: " + (radsDifference * 1000));
-						
-			CurrentRads = newRads
-			; companions
-			UpdateCompanions()
+	; if rads haven't changed, restart timer and do nothing
+	If (newRads == CurrentRads)
+		StartTimer(UpdateDelay, ETimerMorphTick)
+		return
+	endif
 
-			int idxSet = 0
-			; by default, assume we have no changed morphs for all sliderSets
-			bool changedMorphs = false
-			; by default, assume we are at our max morphs for all sliderSets
-			bool maxedOutMorphs = true
-			; by default, assume none of the sliders affect our companions
-			bool affectCompanions = false
-
-			; check each sliderset whether we need to update the morphs
-			While (idxSet < SliderSets.Length)
-				SliderSet sliderSet = SliderSets[idxSet]
+	; calculate the amount of rads taken
+	; the longer the timer interval, the larger this will be
+	;TODO dit moet naar FakeRads kijken als je FakeRads gebruikt
+	float radsDifference = newRads - CurrentRads;
+	Log("rads taken: " + (radsDifference * 1000));
 				
-				if (sliderSet.ApplyCompanion != EApplyCompanionNone && !affectCompanions)
-					affectCompanions = true
-				endif
+	CurrentRads = newRads
+	; companions
+	UpdateCompanions()
 
-				If (sliderSet.NumberOfSliderNames > 0)
-					float calculatedMorphPercentage = CalculateMorphPercentage(newRads, sliderSet)
+	int idxSet = 0
+	; by default, assume we have no changed morphs for all sliderSets
+	bool changedMorphs = false
+	; by default, assume we are at our max morphs for all sliderSets
+	bool maxedOutMorphs = true
+	; by default, assume none of the sliders affect our companions
+	bool affectCompanions = false
 
-					; only try to apply the morphs if either
-					; -the new morph is larger then the slider's current morph
-					; -the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
-					If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && calculatedMorphPercentage != sliderSet.CurrentMorph))
-						; by default the morph we will apply is the calculated morph, with the max morph being 1.0
-						; both will get modified if we have additive morphs enabled for this sliderSet
-						float morphPercentage = calculatedMorphPercentage
-						float maxMorphPercentage = 1.0
+	; check each sliderset whether we need to update the morphs
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]
+		
+		if (sliderSet.ApplyCompanion != EApplyCompanionNone && !affectCompanions)
+			affectCompanions = true
+		endif
 
-						; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
-						; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
-						If (sliderSet.IsAdditive)
-							morphPercentage += sliderSet.BaseMorph
-							If (sliderSet.HasAdditiveLimit)
-								maxMorphPercentage = 1.0 + sliderSet.AdditiveLimit
-								morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
-							EndIf
-						EndIf
-						
-						;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
+		;TODO kijken of Papyrus iets ondersteund ala continue on een loop
+		;hij herkent continue niet als een valid iets, dus ik betwijfel het
 
-						; when we have an additive slider with no limit, apply the morphs without further checks
-						if (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit)
-							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
-						; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
-						ElseIf (morphPercentage <= maxMorphPercentage)
-							; -sliderSet is doctor-only reset and the sliderset isn't maxed out
-							if (sliderSet.OnlyDoctorCanReset && !sliderSet.IsMaxedOut)
-								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
-								
-								; when the morphs are maxed out, set this on the sliderSet
-								if (morphPercentage == maxMorphPercentage)
-									sliderSet.IsMaxedOut = true
-								; when the morphs are not maxed out, set this on the sliderSet and set maxedOutMorphs to false
-								else
-									sliderSet.IsMaxedOut = false
-									maxedOutMorphs = false
-								endif								
-							; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
-							; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
-							elseif (!sliderSet.OnlyDoctorCanReset && (!sliderSet.IsMaxedOut || radsDifference < 0))
-								changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
-								
-								; when the morphs are maxed out, set this on the sliderSet
-								if (morphPercentage == maxMorphPercentage)
-									sliderSet.IsMaxedOut = true
-								; when the morphs are not maxed out, set this on the sliderSet, set maxedOutMorphs to false and set the global HasReachedMaxMorphs to false
-								else
-									sliderSet.IsMaxedOut = false
-									maxedOutMorphs = false
-									HasReachedMaxMorphs = false
-								endif
-							endif
-						endif
+		If (sliderSet.NumberOfSliderNames > 0)
+			float calculatedMorphPercentage = CalculateMorphPercentage(newRads, sliderSet)
 
-						; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
-						; eventually we have taken enough total rads we won't enter the containing if-statement						
-						sliderSet.CurrentMorph = calculatedMorphPercentage
+			; only try to apply the morphs if either
+			; -the new morph is larger then the slider's current morph
+			; -the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
+			If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && calculatedMorphPercentage != sliderSet.CurrentMorph))
+				; by default the morph we will apply is the calculated morph, with the max morph being 1.0
+				; both will get modified if we have additive morphs enabled for this sliderSet
+				float morphPercentage = calculatedMorphPercentage
+				float maxMorphPercentage = 1.0
 
-					; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
-					; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
-					ElseIf (sliderSet.IsAdditive)
-						sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
-						sliderSet.CurrentMorph = calculatedMorphPercentage
+				; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
+				; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
+				If (sliderSet.IsAdditive)
+					morphPercentage += sliderSet.BaseMorph
+					If (sliderSet.HasAdditiveLimit)
+						maxMorphPercentage = 1.0 + sliderSet.AdditiveLimit
+						morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
 					EndIf
 				EndIf
-				idxSet += 1
-			EndWhile
-
-			Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
-
-			; when at least one of the sliderSets has applied morphs, perform the actual actions
-			If (changedMorphs)
-				BodyGen.UpdateMorphs(PlayerRef)
-				; play morph sound when we haven't reached max morphs yet
-				if (!maxedOutMorphs)
-					PlayMorphSound(PlayerRef, radsDifference)
-				endif
-				; when at least one of the sliderSets affects companion, play the morph sound for them as well
-				if (affectCompanions)
-					ApplyAllCompanionMorphsWithSound(radsDifference)
-				endif
-				TriggerUnequipSlots()
-			endif
-
-			; when we have reached max morphs and have taken positive rads, perform additional actions
-			If (maxedOutMorphs && radsDifference > 0)
-				; when not yet displayed the max morphs, display the message and set the global variable that we have displayed the max morphs message
-				; also play a sound effect if we have it
-				if (!HasReachedMaxMorphs)
-					if (!IsStartingUp)
-						Note("I won't get any bigger")
-						LenARM_FullSound.Play(PlayerRef)
-					endif
-					HasReachedMaxMorphs = true
 				
-				; when popping is enabled, randomly on taking rads increase the PopWarnings
-				; when PopWarnings eventually has reached three, 'pop' the player
-				Elseif (EnablePopping && !IsStartingUp)
-					CheckPopWarnings()
+				;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
+
+				; when we have an additive slider with no limit, apply the morphs without further checks
+				if (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit)
+					changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
+				; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
+				ElseIf (morphPercentage <= maxMorphPercentage)
+					; -sliderSet is doctor-only reset and the sliderset isn't maxed out
+					if (sliderSet.OnlyDoctorCanReset && !sliderSet.IsMaxedOut)
+						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
+						
+						; when the morphs are maxed out, set this on the sliderSet
+						if (morphPercentage == maxMorphPercentage)
+							sliderSet.IsMaxedOut = true
+						; when the morphs are not maxed out, set this on the sliderSet and set maxedOutMorphs to false
+						else
+							sliderSet.IsMaxedOut = false
+							maxedOutMorphs = false
+						endif								
+					; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
+					; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
+					elseif (!sliderSet.OnlyDoctorCanReset && (!sliderSet.IsMaxedOut || radsDifference < 0))
+						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
+						
+						; when the morphs are maxed out, set this on the sliderSet
+						if (morphPercentage == maxMorphPercentage)
+							sliderSet.IsMaxedOut = true
+						; when the morphs are not maxed out, set this on the sliderSet, set maxedOutMorphs to false and set the global HasReachedMaxMorphs to false
+						else
+							sliderSet.IsMaxedOut = false
+							maxedOutMorphs = false
+							HasReachedMaxMorphs = false
+						endif
+					endif
 				endif
+
+				; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
+				; eventually we have taken enough total rads we won't enter the containing if-statement						
+				sliderSet.CurrentMorph = calculatedMorphPercentage
+
+			; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
+			; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
+			ElseIf (sliderSet.IsAdditive)
+				sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
+				sliderSet.CurrentMorph = calculatedMorphPercentage
 			EndIf
-		;Else
-		;	Log("skipping due to player in power armor")
 		EndIf
+		idxSet += 1
+	EndWhile
+
+	Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
+
+	; when at least one of the sliderSets has applied morphs, perform the actual actions
+	If (changedMorphs)
+		BodyGen.UpdateMorphs(PlayerRef)
+		; play morph sound when we haven't reached max morphs yet
+		if (!maxedOutMorphs)
+			PlayMorphSound(PlayerRef, radsDifference)
+		endif
+		; when at least one of the sliderSets affects companion, play the morph sound for them as well
+		if (affectCompanions)
+			ApplyAllCompanionMorphsWithSound(radsDifference)
+		endif
+		TriggerUnequipSlots()
+	endif
+
+	; when we have reached max morphs and have taken positive rads, perform additional actions
+	If (maxedOutMorphs && radsDifference > 0)
+		; when not yet displayed the max morphs, display the message and set the global variable that we have displayed the max morphs message
+		; also play a sound effect if we have it
+		if (!HasReachedMaxMorphs)
+			if (!IsStartingUp)
+				Note("I won't get any bigger")
+				LenARM_FullSound.Play(PlayerRef)
+			endif
+			HasReachedMaxMorphs = true
+		
+		; when popping is enabled, randomly on taking rads increase the PopWarnings
+		; when PopWarnings eventually has reached three, 'pop' the player
+		Elseif (EnablePopping && !IsStartingUp)
+			CheckPopWarnings()
+		endif
 	EndIf
 	StartTimer(UpdateDelay, ETimerMorphTick)
 EndFunction
@@ -824,22 +839,24 @@ EndFunction
 Function CheckPopWarnings()
 	bool shouldPop = ShouldPop(3)
 
-	if (shouldPop)
-		if (PopWarnings == 0)
-			Note("My body still reacts to rads")
-			PopWarnings += 1
-			LenARM_MorphSound_Med.Play(PlayerRef)
-		ElseIf (PopWarnings == 1)
-			Note("My body feels so tight")
-			PopWarnings += 1
-			LenARM_MorphSound_High.Play(PlayerRef)
-		ElseIf (PopWarnings == 2)
-			Note("I'm going to pop if I take more rads")
-			PopWarnings += 1
-			LenARM_FullSound.Play(PlayerRef)
-		Else
-			Pop()
-		endif
+	if (!shouldPop)
+		return
+	endif
+
+	if (PopWarnings == 0)
+		Note("My body still reacts to rads")
+		PopWarnings += 1
+		LenARM_MorphSound_Med.Play(PlayerRef)
+	ElseIf (PopWarnings == 1)
+		Note("My body feels so tight")
+		PopWarnings += 1
+		LenARM_MorphSound_High.Play(PlayerRef)
+	ElseIf (PopWarnings == 2)
+		Note("I'm going to pop if I take more rads")
+		PopWarnings += 1
+		LenARM_FullSound.Play(PlayerRef)
+	Else
+		Pop()
 	endif
 EndFunction
 
@@ -849,7 +866,7 @@ EndFunction
 Function Pop()
 	int currentPopState = 1
 	int unequipState = 3 ;TODO make config in MCM?
-	IsPopping = true;
+	IsPopping = true
 
 	; force third person camera
 	Game.ForceThirdPerson()							
@@ -1249,23 +1266,25 @@ EndFunction
 ; ------------------------
 Function PlayMorphSound(Actor akSender, float radsDifference)
 	; don't try to play sounds on startup
-	if (!IsStartingUp)
-		; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
-		if (radsDifference <= LowRadsThreshold)
-			Log("  minimum rads taken")
-		; everything between LowRadsThreshold and MediumRadsThreshold rads taken
-		elseif (radsDifference <= MediumRadsThreshold)
-			Log("  medium rads taken")
-			LenARM_MorphSound.Play(akSender)
-		; everything between MediumRadsThreshold and HighRadsThreshold rads taken
-		elseif (radsDifference <= HighRadsThreshold)
-			Log("  high rads taken")
-			LenARM_MorphSound_Med.Play(akSender)
-		; everything above HighRadsThreshold rads taken
-		elseif (radsDifference > HighRadsThreshold)
-			Log("  very high rads taken")
-			LenARM_MorphSound_High.Play(akSender)
-		endif
+	if (IsStartingUp)
+		return
+	endif
+
+	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
+	if (radsDifference <= LowRadsThreshold)
+		Log("  minimum rads taken")
+	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
+	elseif (radsDifference <= MediumRadsThreshold)
+		Log("  medium rads taken")
+		LenARM_MorphSound.Play(akSender)
+	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
+	elseif (radsDifference <= HighRadsThreshold)
+		Log("  high rads taken")
+		LenARM_MorphSound_Med.Play(akSender)
+	; everything above HighRadsThreshold rads taken
+	elseif (radsDifference > HighRadsThreshold)
+		Log("  very high rads taken")
+		LenARM_MorphSound_High.Play(akSender)
 	endif
 EndFunction
 
