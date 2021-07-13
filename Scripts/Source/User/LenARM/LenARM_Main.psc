@@ -55,6 +55,7 @@ int PopStates
 bool PopShouldParalyze
 ; how many pop warnings have we displayed
 int PopWarnings
+bool IsPopping
 
 int RestartStackSize
 int UnequipStackSize
@@ -564,7 +565,9 @@ Function TimerMorphTick()
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
-	If (newRads != CurrentRads)
+
+	;TODO kijk of we veel van deze Ifs niet domweg kunnen inverten ipv zo'n clusterfuck van geneste ifs te maken
+	If (newRads != CurrentRads && !IsPopping)
 		;Log("new rads: " + newRads + " (" + CurrentRads + ")")
 		If (!PlayerRef.IsInPowerArmor())
 			; calculate the amount of rads taken
@@ -846,6 +849,7 @@ EndFunction
 Function Pop()
 	int currentPopState = 1
 	int unequipState = 3 ;TODO make config in MCM?
+	IsPopping = true;
 
 	; force third person camera
 	Game.ForceThirdPerson()							
@@ -890,6 +894,8 @@ Function Pop()
 		Utility.Wait(1.5)
 		PlayerRef.SetValue(ParalysisAV, 0)
 	endif
+
+	IsPopping = false
 EndFunction
 
 ; ------------------------
