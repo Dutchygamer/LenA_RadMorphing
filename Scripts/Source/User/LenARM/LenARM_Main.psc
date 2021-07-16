@@ -112,6 +112,7 @@ Group Properties
 	Potion Property PoppedPotion Auto Const	
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
+	Potion Property ResetRadsPotion Auto Const	
 EndGroup
 
 ; ------------------------
@@ -878,6 +879,8 @@ Function Pop()
 	int unequipState = 3 ;TODO make config in MCM?
 	IsPopping = true
 
+	Log("pop!")
+
 	; force third person camera
 	Game.ForceThirdPerson()							
 	Utility.Wait(0.5)
@@ -911,18 +914,20 @@ Function Pop()
 	ExtendMorphs(currentPopState)
 	LenARM_PrePopSound.PlayAndWait(PlayerRef)
 	LenARM_PopSound.Play(PlayerRef)
-	ResetMorphs()
+	ResetMorphs()	
 
-	; apply the debuffs on the player by ingesting the debuffs potion
+	; apply the debuffs on the player and reset the player's rads by ingesting the respective potions
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
+	PlayerRef.EquipItem(ResetRadsPotion, abSilent = true)
+
+	; unset the IsPopping flag before we undo the paralysing
+	IsPopping = false
 				
 	; wait a bit before we can actually stand up again
 	if (PopShouldParalyze)
 		Utility.Wait(1.5)
 		PlayerRef.SetValue(ParalysisAV, 0)
 	endif
-
-	IsPopping = false
 EndFunction
 
 ; ------------------------
@@ -1336,11 +1341,16 @@ Function ShowLowestSliderPercentage()
 		
 		; only check the slidersets that have actual sliders
 		If (sliderSet.NumberOfSliderNames > 0)
-			; use sliderSet's currentMorph, unless we are additive, then use baseMorph
+			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
 			float sliderPercentage = sliderSet.CurrentMorph
 			If (sliderSet.IsAdditive)
-				sliderPercentage = sliderSet.BaseMorph
+				sliderPercentage += sliderSet.BaseMorph
 			EndIf
+
+			; limit the percentage to 100% if we get irradiated when already at max
+			if (sliderPercentage > 1)
+				sliderPercentage = 1
+			endIf
 
 			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
 			if (lowestPercentage == 0)
