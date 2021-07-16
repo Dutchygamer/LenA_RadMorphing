@@ -1336,12 +1336,17 @@ Function ShowLowestSliderPercentage()
 		
 		; only check the slidersets that have actual sliders
 		If (sliderSet.NumberOfSliderNames > 0)
+			; use sliderSet's currentMorph, unless we are additive, then use baseMorph
+			float sliderPercentage = sliderSet.CurrentMorph
+			If (sliderSet.IsAdditive)
+				sliderPercentage = sliderSet.BaseMorph
+			EndIf
 
 			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
 			if (lowestPercentage == 0)
-				lowestPercentage = sliderSet.CurrentMorph
+				lowestPercentage = sliderPercentage
 			else
-				lowestPercentage = Math.Min(sliderSet.CurrentMorph, lowestPercentage)
+				lowestPercentage = Math.Min(sliderPercentage, lowestPercentage)
 			endif
 		endif
 
