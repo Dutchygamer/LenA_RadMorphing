@@ -58,6 +58,8 @@ int PopWarnings
 bool IsPopping
 
 ;TODO kijk of we dit gaan gebruiken of dat dit niks toevoegt; voor Unequip wordt dit nu niet gebruikt zover ik zie
+;idee was dat dit als een multiplier zou dienen wat als '100%' gezien wordt
+;ie ipv dat 1000 rads 100% is, zou MaxRads 3.0 betekenen dat 3000 rads 100% is
 float MaxRads = 1.0 ;3.0
 
 int RestartStackSize
@@ -139,14 +141,14 @@ Function PerformUpdateIfNecessary()
 	Log("PerformUpdateIfNecessary: " + Version + " != " + GetVersion() + " -> " + (Version != GetVersion()))
 	If (Version != GetVersion())
 		Log("  update")
-		Debug.MessageBox("Updating Rad Morphing Redux from version " + Version + " to " + GetVersion())
+		MessageBox("Updating Rad Morphing Redux from version " + Version + " to " + GetVersion())
 		Shutdown()
 		While (IsShuttingDown)
 			Utility.Wait(1.0)
 		EndWhile
 		ForgetState()
 		Version = GetVersion()
-		Debug.MessageBox("Rad Morphing Redux has been updated to version " + Version + ".")
+		MessageBox("Rad Morphing Redux has been updated to version " + Version + ".")
 	Else
 		Log("  no update")
 	EndIf
@@ -241,7 +243,7 @@ Function OnMCMSettingChange(string modName, string id)
 		string value = MCM.GetModSettingString(modName, id)
 		If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
 			string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-			Debug.MessageBox(msg)
+			MessageBox(msg)
 		EndIf
 	EndIf
 	Restart()
@@ -333,7 +335,7 @@ Function Startup()
 		Log("Startup complete")
 	ElseIf (MCM.GetModSettingBool("LenA_RadMorphing", "bWarnDisabled:General"))
 		Log("  is disabled, with warning")
-		Debug.MessageBox("Rad Morphing is currently disabled. You can enable it in MCM > Rad Morphing > Enable Rad Morphing")
+		MessageBox("Rad Morphing is currently disabled. You can enable it in MCM > Rad Morphing > Enable Rad Morphing")
 	Else
 		Log("  is disabled, no warning")
 	EndIf
@@ -1249,27 +1251,6 @@ Function UnequipAll()
 EndFunction
 
 ; ------------------------
-; Debug function to check which slots the current equipped clothes / armor occupies
-; ------------------------
-Function ShowEquippedClothes()
-	TechnicalNote("ShowEquippedClothes")
-	string[] items = new string[0]
-	int slot = 0
-	While (slot < 62)
-		Actor:WornItem item = PlayerRef.GetWornItem(slot)
-		If (item != None && item.item != None)
-			items.Add(slot + ": " + item.item.GetName())
-			Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
-		Else
-			Log("  Slot " + slot + " is empty")
-		EndIf
-		slot += 1
-	EndWhile
-
-	Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
-EndFunction
-
-; ------------------------
 ; Play a sound depending on the rads difference and the MCM settings
 ; ------------------------
 Function PlayMorphSound(Actor akSender, float radsDifference)
@@ -1304,11 +1285,11 @@ Function ForgetState(bool isCalledByUser=false)
 
 	If (isCalledByUser && IsForgetStateBusy)
 		Log("  show busy warning")
-		Debug.MessageBox("This function is already running. Wait until it has completed.")
+		MessageBox("This function is already running. Wait until it has completed.")
 	ElseIf (isCalledByUser && ForgetStateCalledByUserCount < 1)
 		Log("  show warning")
 		CancelTimer(ETimerForgetStateCalledByUserTick)
-		Debug.MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body or your companion's body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
+		MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body or your companion's body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
 		ForgetStateCalledByUserCount = 1
 		StartTimer(0.1, ETimerForgetStateCalledByUserTick)
 	Else
@@ -1318,7 +1299,7 @@ Function ForgetState(bool isCalledByUser=false)
 			CancelTimer(ETimerForgetStateCalledByUserTick)
 			ForgetStateCalledByUserCount = 0
 			Log("  show reset start message")
-			Debug.MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
+			MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
 		EndIf
 		Shutdown(false)
 		SliderSets = none
@@ -1335,7 +1316,7 @@ Function ForgetState(bool isCalledByUser=false)
 		TechnicalNote("Mod state has been reset")
 		If (isCalledByUser)
 			Log("  show reset complete message")
-			Debug.MessageBox("Rad Morphing Redux has been reset.")
+			MessageBox("Rad Morphing Redux has been reset.")
 		EndIf
 	EndIf
 EndFunction
@@ -1343,6 +1324,52 @@ EndFunction
 Function ForgetStateCounterReset()
 	Log("ForgetStateCounterReset; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount)
 	ForgetStateCalledByUserCount = 0
+EndFunction
+
+Function ShowLowestSliderPercentage()
+	int idxSet = 0
+	float lowestPercentage = 0
+
+	; loop through the slidersets
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]
+		
+		; only check the slidersets that have actual sliders
+		If (sliderSet.NumberOfSliderNames > 0)
+
+			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
+			if (lowestPercentage == 0)
+				lowestPercentage = sliderSet.CurrentMorph
+			else
+				lowestPercentage = Math.Min(sliderSet.CurrentMorph, lowestPercentage)
+			endif
+		endif
+
+		idxSet += 1
+	EndWhile	
+
+	MessageBox((lowestPercentage * 100) + "%")
+EndFunction
+
+; ------------------------
+; Debug function to check which slots the current equipped clothes / armor occupies
+; ------------------------
+Function ShowEquippedClothes()
+	TechnicalNote("ShowEquippedClothes")
+	string[] items = new string[0]
+	int slot = 0
+	While (slot < 62)
+		Actor:WornItem item = PlayerRef.GetWornItem(slot)
+		If (item != None && item.item != None)
+			items.Add(slot + ": " + item.item.GetName())
+			Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+		Else
+			Log("  Slot " + slot + " is empty")
+		EndIf
+		slot += 1
+	EndWhile
+
+	MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
 Function GiveIrradiatedBlood()
@@ -1386,7 +1413,7 @@ float Function Clamp(float value, float limit1, float limit2)
 EndFunction
 
 ; ------------------------
-; Debug helpers for writing to Papyrus logs and displaying info messages ingame (top-left)
+; Debug helpers for writing to Papyrus logs and displaying info messages ingame
 ; ------------------------
 Function Note(string msg)
 	;TODO je zou dat als zo'n Vaultboy ding linksbovenin moeten kunnen doen; Player Comments doet dat wel bijvoorbeeld
@@ -1402,6 +1429,10 @@ EndFunction
 
 Function Log(string msg)
 	Debug.Trace("[LenARM] " + msg)
+EndFunction
+
+Function MessageBox(string msg)
+	Debug.MessageBox(msg)
 EndFunction
 
 ; ------------------------

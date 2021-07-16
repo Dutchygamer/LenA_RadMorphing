@@ -212,7 +212,19 @@
 						"params": [true]
 					}
 				},
-
+                {
+                    "text": "Show status",
+                    "type": "button",
+                    "help": "Shows the lowest slider percentage.",
+                    "action": {
+                        "type": "CallFunction",
+                        "form": "LenA_RadMorphing.esp|1000F99",
+                        "function": "ShowLowestSliderPercentage",
+                        "params": [
+                            
+                        ]
+                    }
+                },
 				{
 					"text": "Tools",
 					"type": "section"
