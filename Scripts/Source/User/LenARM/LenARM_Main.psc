@@ -3,6 +3,9 @@
 ; You have the LenA_RadMorphing.esp enabled in your mod loader.
 ; The .esp triggers the quest on game load, which in return runs this script file as it were an actual quest.
 ; With the generic OnQuestInit() and OnQuestShutdown() entry points we do the remaining setup and start the actual logic.
+
+; Note that while the mod supports morphing companions, the Timer-based performance will drop the more companions and sliders you have.
+; With one companion this is already slightly noticable, but with two or more you will see multiple-second delays between morphs.
 Scriptname LenARM:LenARM_Main extends Quest
 
 ;GENERIC TO FIX LIST
@@ -530,7 +533,7 @@ Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, Ob
 	;Log("  followers on sleep start: " + allCompanions)
 	;TODO companions
 	; update companions (companions cannot be found on sleep stop)
-	UpdateCompanions()/;
+	UpdateCompanionList()/;
 EndEvent
 
 Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
@@ -600,7 +603,7 @@ Function TimerMorphTick()
 				
 	CurrentRads = newRads
 	; companions
-	UpdateCompanions()
+	UpdateCompanionList()
 
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
@@ -820,7 +823,7 @@ Function RestoreOriginalMorphs()
 	EndWhile
 	BodyGen.UpdateMorphs(PlayerRef)
 
-	;RestoreAllOriginalCompanionMorphs()
+	RestoreAllOriginalCompanionMorphs()
 EndFunction
 
 ; ------------------------
@@ -880,6 +883,8 @@ Function Pop()
 	IsPopping = true
 
 	Log("pop!")
+
+	;TODO make it effect companions?
 
 	; force third person camera
 	Game.ForceThirdPerson()							
@@ -1001,7 +1006,7 @@ Function RetrieveOriginalCompanionMorphs(Actor companion)
 EndFunction
 
 Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
-	Log("SetCompanionMorphs: " + idxSlider + "; " + morph + "; " + applyCompanion)
+	;Log("SetCompanionMorphs: " + idxSlider + "; " + morph + "; " + applyCompanion)
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		Actor companion = CurrentCompanions[idxComp]
@@ -1009,8 +1014,10 @@ Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 		If (!companion.IsInPowerArmor())
 			If (applyCompanion == EApplyCompanionAll || (sex == ESexFemale && applyCompanion == EApplyCompanionFemale) || (sex == ESexMale && applyCompanion == EApplyCompanionMale))
 				int offsetIdx = SliderNames.Length * idxComp
-				Log("    setting companion(" + companion + ") slider '" + SliderNames[idxSlider] + "' to " + (OriginalCompanionMorphs[offsetIdx + idxSlider] + morph) + " (base value is " + OriginalCompanionMorphs[offsetIdx + idxSlider] + ")")
-				BodyGen.SetMorph(companion, sex==ESexFemale, SliderNames[idxSlider], kwMorph, OriginalCompanionMorphs[offsetIdx + idxSlider] + morph)
+				float companionMorphs = OriginalCompanionMorphs[offsetIdx + idxSlider]
+				float newMorphs = companionMorphs + morph
+				;Log("    setting companion(" + companion + ") slider '" + SliderNames[idxSlider] + "' to " + (OriginalCompanionMorphs[offsetIdx + idxSlider] + morph) + " (base value is " + OriginalCompanionMorphs[offsetIdx + idxSlider] + ")")
+				BodyGen.SetMorph(companion, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorphs)
 			Else
 				Log("    skipping companion slider:  sex=" + sex)
 			EndIf
@@ -1029,6 +1036,9 @@ Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
+		float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
+
+		Utility.Wait(randomFloat)
 		BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
 		PlayMorphSound(CurrentCompanions[idxComp], radsDifference)
 		idxComp += 1
@@ -1090,8 +1100,8 @@ Actor[] Function GetCompanions()
 	return filteredCompanions
 EndFunction
 
-Function UpdateCompanions()
-	Log("UpdateCompanions")
+Function UpdateCompanionList()
+	Log("UpdateCompanionList")
 	Actor[] newComps = GetCompanions()
 	RemoveDismissedCompanions(newComps)
 	AddNewCompanions(newComps)
@@ -1332,6 +1342,10 @@ Function ForgetStateCounterReset()
 EndFunction
 
 Function ShowLowestSliderPercentage()
+	;TODO temp, trap naar losse tool
+	;basicly heb ik nu de OriginalCompanionMorphs array geflood met allemaal 0 waarden, en ik moet die ff flushen
+	RetrieveAllOriginalCompanionMorphs()
+
 	int idxSet = 0
 	float lowestPercentage = 0
 
