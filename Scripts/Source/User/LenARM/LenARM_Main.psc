@@ -16,6 +16,8 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 
+;TODO fix config, seems broken since we added the iMaxRadiationMultiplier slider for some reason...
+
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -60,10 +62,7 @@ bool PopShouldParalyze
 int PopWarnings
 bool IsPopping
 
-;TODO kijk of we dit gaan gebruiken of dat dit niks toevoegt; voor Unequip wordt dit nu niet gebruikt zover ik zie
-;idee was dat dit als een multiplier zou dienen wat als '100%' gezien wordt
-;ie ipv dat 1000 rads 100% is, zou MaxRads 3.0 betekenen dat 3000 rads 100% is
-float MaxRads = 1.0 ;3.0
+int MaxRadiationMultiplier
 
 int RestartStackSize
 int UnequipStackSize
@@ -166,41 +165,43 @@ EndFunction
 ; On equipping / ingestion of an item, check if we must do something with it
 ; ------------------------
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-	If (!PlayerRef.IsInPowerArmor())
-		; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
-		; this will break the hacky "unequip weapon slots" logic some people use tho...
-		If (akBaseObject as Armor)
-			Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
-			Utility.Wait(1.0)
-			TriggerUnequipSlots()
-		endif
-		; if we ingest potions, check if it is one of the mod-specific drugs
-		If (akBaseObject as Potion)	
-			; ingested reset morphs potion => reset the morphs
-			if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
+	If (PlayerRef.IsInPowerArmor())
+		return
+	EndIf
+
+	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
+	; this will break the hacky "unequip weapon slots" logic some people use tho...
+	If (akBaseObject as Armor)
+		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
+		Utility.Wait(1.0)
+		TriggerUnequipSlots()
+	endif
+	; if we ingest potions, check if it is one of the mod-specific drugs
+	If (akBaseObject as Potion)	
+		; ingested reset morphs potion => reset the morphs
+		if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
+			Note("My body goes back to normal")
+			ResetMorphs()
+		; ingested experimental reset morphs potion => chance to reset the morphs, else pop
+		elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
+			bool shouldPop = ShouldPop(5)
+		
+			if (shouldPop)
+				; perform the actual popping if enabled in config and not currently in Power Armor
+				if (EnablePopping && !PlayerRef.IsInPowerArmor())
+					Note("This doesn't feel good")
+					LenARM_MorphSound.Play(PlayerRef)
+					Utility.Wait(1.0)
+					Pop()
+				; else only apply the popped debuffs on the player
+				else
+					Note("It worked, but I feel weak")
+					PlayerRef.EquipItem(PoppedPotion, abSilent = true)
+				endif
+			Else
 				Note("My body goes back to normal")
-				ResetMorphs()
-			; ingested experimental reset morphs potion => chance to reset the morphs, else pop
-			elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
-				bool shouldPop = ShouldPop(5)
-			
-				if (shouldPop)
-					; perform the actual popping if enabled in config and not currently in Power Armor
-					if (EnablePopping && !PlayerRef.IsInPowerArmor())
-						Note("This doesn't feel good")
-						LenARM_MorphSound.Play(PlayerRef)
-						Utility.Wait(1.0)
-						Pop()
-					; else only apply the popped debuffs on the player
-					else
-						Note("It worked, but I feel weak")
-						PlayerRef.EquipItem(PoppedPotion, abSilent = true)
-					endif
-				Else
-					Note("My body goes back to normal")
-					ResetMorphs()					
-				endIf
-			endif
+				ResetMorphs()					
+			endIf
 		endif
 	endif
 EndEvent
@@ -286,6 +287,7 @@ Function Startup()
 		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
 		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
 		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
+		MaxRadiationMultiplier = MCM.GetModSettingInt("LenA_RadMorphing", "iMaxRadiationMultiplier:General")
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -527,18 +529,15 @@ EndFunction
 ; Sleep-based morphs
 ; ------------------------
 Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, ObjectReference akBed)
-	;TODO disabled
-	;/Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
-	;Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
-	;Log("  followers on sleep start: " + allCompanions)
-	;TODO companions
+	Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
+	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
+	Log("  followers on sleep start: " + allCompanions)
 	; update companions (companions cannot be found on sleep stop)
-	UpdateCompanionList()/;
+	UpdateCompanionList()
 EndEvent
 
 Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
-	;TODO disabled
-	;/Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
+	Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
 	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
 	Log("  followers on sleep stop: " + allCompanions)
 	; get rads
@@ -562,10 +561,9 @@ Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 			idxSet += 1
 		EndWhile
 		BodyGen.UpdateMorphs(PlayerRef)
-		;TODO companions
-		;ApplyAllCompanionMorphs()
+		ApplyAllCompanionMorphs()
 		TriggerUnequipSlots()
-	EndIf/;
+	EndIf
 EndEvent
 
 ; ------------------------
@@ -621,7 +619,7 @@ Function TimerMorphTick()
 			affectCompanions = true
 		endif
 
-		;TODO kijken of Papyrus iets ondersteund ala continue on een loop
+		;TODO kijken of Papyrus iets ondersteund ala continue in een loop
 		;hij herkent continue niet als een valid iets, dus ik betwijfel het
 
 		If (sliderSet.NumberOfSliderNames > 0)
@@ -634,14 +632,14 @@ Function TimerMorphTick()
 				; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 				; both will get modified if we have additive morphs enabled for this sliderSet
 				float morphPercentage = calculatedMorphPercentage
-				float maxMorphPercentage = MaxRads
+				float maxMorphPercentage = 1.0
 
 				; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
 				; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
 				If (sliderSet.IsAdditive)
 					morphPercentage += sliderSet.BaseMorph
 					If (sliderSet.HasAdditiveLimit)
-						maxMorphPercentage = (1.0 + sliderSet.AdditiveLimit) * MaxRads
+						maxMorphPercentage = (1.0 + sliderSet.AdditiveLimit)
 						morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
 					EndIf
 				EndIf
@@ -738,18 +736,24 @@ EndFunction
 ; ------------------------
 float Function CalculateMorphPercentage(float newRads, SliderSet sliderSet)
 	float morphPercentage
-	float minThreshold = sliderSet.ThresholdMin
-	float maxThreshold = sliderSet.ThresholdMax * MaxRads
 
-	;TechnicalNote(newRads + " - " + morphPercentage + " - " + minThreshold + " - " + maxThreshold)
+	; calculate the amount of rads we see as the max (by default 1000, modified by a multiplier)
+	float maxRads = 1.0 * MaxRadiationMultiplier
+
+	; do the same for our min / max threshold
+	float minThreshold = sliderSet.ThresholdMin * maxRads
+	float maxThreshold = sliderSet.ThresholdMax * maxRads
 
 	If (newRads < minThreshold)
 		morphPercentage = 0.0
 	ElseIf (newRads > maxThreshold)
-		morphPercentage = MaxRads ;1.0
+		morphPercentage = 1.0
 	Else
 		morphPercentage = (newRads - minThreshold) / (maxThreshold - minThreshold)
 	EndIf
+	
+	;TechnicalNote("rads: " + newRads + "; morph: " + morphPercentage + "; minT: " + minThreshold + "; maxT: " + maxThreshold + "; %: " + MaxRadiationMultiplier)
+
 	return morphPercentage
 EndFunction
 
@@ -944,13 +948,12 @@ Function ExtendMorphs(float step)
 	int idxSet = 0
 
 	; calculate the new morphs multiplier
-	float multiplier = MaxRads + (step/8)
+	float multiplier = 1.0 + (step/8)
 
 	; apply it to all morphs
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0)
-			;TODO additive in berekening opnemen
 			SetMorphs(idxSet, sliderSet, multiplier)
 		EndIf
 		idxSet += 1
@@ -1165,6 +1168,10 @@ Function UnequipSlots()
 						EndIf
 					EndIf
 					;TODO companions
+					; deze fixen is niet zo simpel, als je het netjes wilt doen
+					; wat ie nu gaat doen is de oude 'check slot' logica uitvoeren en dan proberen te unequippen
+					; gezien dit voor bepaalde armors issues oplevert, zou je in principe het hele isArmor / canUnequip stuk per companion nog eens moeten doen
+					; gaat qua performance een bitch worden tho...
 					;/int idxComp = 0
 					While (idxComp < CurrentCompanions.Length)
 						Actor companion = CurrentCompanions[idxComp]
@@ -1209,9 +1216,6 @@ Function UnequipAll()
 	; these are all the slots we want to unequip
 	int[] allSlots = new int[0]
 	
-	;TODO this combined with the ResetMorphs at the end seems to cause random crashes for me
-	;most likely because I've been toying around with that other skeleton mod...
-	;as long as the player doesn't get fully stripped it seems to work fine
 	allSlots.Add(3)
 	allSlots.Add(11)
 	allSlots.Add(12)
@@ -1242,6 +1246,7 @@ Function UnequipAll()
 			EndIf
 		EndIf
 		;TODO companions
+		; zelfde issue speelt hier als met UnequipSlots voor Companions
 		;/int idxComp = 0
 		While (idxComp < CurrentCompanions.Length)
 			Actor companion = CurrentCompanions[idxComp]

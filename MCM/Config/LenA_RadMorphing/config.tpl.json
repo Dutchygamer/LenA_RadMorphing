@@ -128,7 +128,7 @@
 				},
 				{
 					"text": "Pop states",
-					"help": "",
+					"help": "When popping, the morphs get increased with each state. The more states, the more extreme the morphs, and the longer the popping takes. Default: 5",
 					"type": "stepper",
 					"id": "iPopStates:General",
 					"valueOptions": {
@@ -140,11 +140,23 @@
 				},
 				{
 					"text": "Pop paralyzes",
-					"help": "",
+					"help": "Should popping paralyze the player. Default: true",
 					"type": "switcher",
 					"id": "bPopShouldParalyze:General",
 					"valueOptions": {
 						"sourceType": "ModSettingBool"
+					}
+				},
+				{
+					"text": "Max Radiation multiplier",
+					"help": "Multiply the total rads that is considered 100 percent. Higher multipliers means morphs gets applied slower. Default: 1",
+					"type": "stepper",
+					"id": "iMaxRadiationMultiplier:General",
+					"valueOptions": {
+						"sourceType": "ModSettingInt",
+						"min": 1,
+						"max": 5,
+						"step": 1
 					}
 				},
 				{
