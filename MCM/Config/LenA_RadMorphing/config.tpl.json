@@ -129,7 +129,7 @@
 				{
 					"text": "Pop states",
 					"help": "When popping, the morphs get increased with each state. The more states, the more extreme the morphs, and the longer the popping takes. Default: 5",
-					"type": "stepper",
+					"type": "slider",
 					"id": "iPopStates:General",
 					"valueOptions": {
 						"sourceType": "ModSettingInt",
@@ -150,7 +150,7 @@
 				{
 					"text": "Max Radiation multiplier",
 					"help": "Multiply the total rads that is considered 100 percent. Higher multipliers means morphs gets applied slower. Default: 1",
-					"type": "stepper",
+					"type": "slider",
 					"id": "iMaxRadiationMultiplier:General",
 					"valueOptions": {
 						"sourceType": "ModSettingInt",
@@ -164,7 +164,12 @@
 					"type": "section"
 				},
 				{
-					"text": "The following settings are currently only used for deciding if / what morph sound to play. If you don't use these morph sounds, you can ignore these settings. Only applies to periodic updates.<br><b>Do note that the larger the update delay, the larger the rads taken can be.</b>-Any amount of rads taken below Low (incl. rad decreases) will not play any sound.<br>-Any amount of rads taken between Low and Medium will play the low sound.<br>-Any amount of rads taken between Medium and High will play the medium sound.<br>-Any amount of rads taken above High will play the high sound.",
+					"text": "The following settings are currently only used for deciding if / what morph sound to play. If you don't use these morph sounds, you can ignore these settings.<br/>Only applies to periodic updates.",
+					"type": "text",
+					"html": true
+				},
+				{
+					"text": "<b>Do note that the larger the update delay, the larger the rads taken can be.</b>-Any amount of rads taken below Low (incl. rad decreases) will not play any sound.<br>-Any amount of rads taken between Low and Medium will play the low sound.<br>-Any amount of rads taken between Medium and High will play the medium sound.<br>-Any amount of rads taken above High will play the high sound.",
 					"type": "text",
 					"html": true
 				},
