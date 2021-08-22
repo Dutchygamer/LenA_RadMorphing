@@ -17,6 +17,7 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 
 ;TODO fix config, seems broken since we added the iMaxRadiationMultiplier slider for some reason...
+;TODO Ada gets seen as a female companion. Doesn't do morphs, but does play sounds
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -704,6 +705,11 @@ Function TimerMorphTick()
 			PlayMorphSound(PlayerRef, radsDifference)
 		endif
 		; when at least one of the sliderSets affects companion, play the morph sound for them as well
+
+		;TODO dis wat er mis gaat: we kijken alleen of een van de sliders companions moet affecten (ie een of meerdere sliders affecten female companions)
+		;wat we vervolgens niet nalopen is of de companion ook van die sex is, en dus ook morphs moet updaten en morph sound moet spelen
+		;voor morphs maakt dit niet uit want we hebben geen morphs om te applyen (skippen we bij de individuele slider check)
+		;eerste gedachte was 2 bools meegeven en dan hierin kijken of je morph sound moet spelen, maar dunno of dat zo handig is...
 		if (affectCompanions)
 			ApplyAllCompanionMorphsWithSound(radsDifference)
 		endif
@@ -966,6 +972,16 @@ EndFunction
 ; ------------------------
 ; All companion related logic, still WiP / broken
 ; ------------------------
+
+; Function LogCompanionMorphs()
+; 	int idx = 0
+; 	While (idx < OriginalCompanionMorphs.Length)
+; 		float companionMorphs = OriginalCompanionMorphs[idx]
+; 		Log(companionMorphs)
+; 		idx += 1
+; 	EndWhile
+; EndFunction
+
 Function RestoreAllOriginalCompanionMorphs()
 	Log("RestoreAllOriginalCompanionMorphs")
 	int idxComp = 0
@@ -993,6 +1009,7 @@ Function RetrieveAllOriginalCompanionMorphs()
 	OriginalCompanionMorphs = new float[0]
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
+		Log("companion " + idxComp)
 		Actor companion = CurrentCompanions[idxComp]
 		RetrieveOriginalCompanionMorphs(companion)
 		idxComp += 1
@@ -1003,6 +1020,7 @@ Function RetrieveOriginalCompanionMorphs(Actor companion)
 	Log("RetrieveOriginalCompanionMorphs: " + companion)
 	int idxSlider = 0
 	While (idxSlider < SliderNames.Length)
+		Log("sliderset " + idxSlider)
 		OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))
 		idxSlider += 1
 	EndWhile
@@ -1039,6 +1057,11 @@ Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
+		; Actor companion = CurrentCompanions[idxComp]
+
+		; If (applyCompanion == EApplyCompanionAll || (sex == ESexFemale && applyCompanion == EApplyCompanionFemale) || (sex == ESexMale && applyCompanion == EApplyCompanionMale))
+
+		; do a random delay before appying the morphs (and morph sounds) on the companion
 		float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
 
 		Utility.Wait(randomFloat)
@@ -1303,34 +1326,49 @@ EndFunction
 Function ForgetState(bool isCalledByUser=false)
 	Log("ForgetState: isCalledByUser=" + isCalledByUser + "; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount + "; IsForgetStateBusy=" + IsForgetStateBusy)
 
+	; display notice to player that proces is still running
 	If (isCalledByUser && IsForgetStateBusy)
 		Log("  show busy warning")
 		MessageBox("This function is already running. Wait until it has completed.")
+	; on first button click, show warning instead of starting proces
 	ElseIf (isCalledByUser && ForgetStateCalledByUserCount < 1)
 		Log("  show warning")
 		CancelTimer(ETimerForgetStateCalledByUserTick)
 		MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body or your companion's body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
 		ForgetStateCalledByUserCount = 1
 		StartTimer(0.1, ETimerForgetStateCalledByUserTick)
+	; on second button click (or called from system), start the proces
 	Else
 		Log("  reset state")
 		IsForgetStateBusy = true
+
 		If (isCalledByUser)
 			CancelTimer(ETimerForgetStateCalledByUserTick)
 			ForgetStateCalledByUserCount = 0
 			Log("  show reset start message")
 			MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
 		EndIf
+		
+		; stop timers and unregister events
 		Shutdown(false)
+		
+		; reset the mod's state
 		SliderSets = none
 		SliderNames = none
 		UnequipSlots = none
+
 		OriginalMorphs = none
 		OriginalCompanionMorphs = none
+		
 		CurrentCompanions = none
+		
 		CurrentRads = 0.0
 		FakeRads = 0
 		TakeFakeRads = false
+		HasReachedMaxMorphs = false
+		PopWarnings = 0
+
+		; start the mod up again
 		Startup()
 		IsForgetStateBusy = false
 		TechnicalNote("Mod state has been reset")
@@ -1346,11 +1384,7 @@ Function ForgetStateCounterReset()
 	ForgetStateCalledByUserCount = 0
 EndFunction
 
-Function ShowLowestSliderPercentage()
-	;TODO temp, trap naar losse tool
-	;basicly heb ik nu de OriginalCompanionMorphs array geflood met allemaal 0 waarden, en ik moet die ff flushen
-	RetrieveAllOriginalCompanionMorphs()
-
+Function Debug_ShowLowestSliderPercentage()
 	int idxSet = 0
 	float lowestPercentage = 0
 
@@ -1383,6 +1417,14 @@ Function ShowLowestSliderPercentage()
 	EndWhile	
 
 	MessageBox((lowestPercentage * 100) + "%")
+EndFunction
+
+Function Debug_ResetCompanionMorphsArray()
+	; in case you have somehow filled the OriginalCompanionMorphs array with 0 values (don't ask how I did it)
+	RetrieveAllOriginalCompanionMorphs()
+	; LogCompanionMorphs()
+	
+	MessageBox("Flushed and repopulated companion morphs array")
 EndFunction
 
 ; ------------------------
@@ -1449,6 +1491,14 @@ EndFunction
 ; ------------------------
 ; Debug helpers for writing to Papyrus logs and displaying info messages ingame
 ; ------------------------
+
+; show a big fat message box in the center of the page, which the player has to click away
+Function MessageBox(string msg)
+	Debug.MessageBox(msg)
+	Log(msg)
+EndFunction
+
+; show a message in the top-left
 Function Note(string msg)
 	;TODO je zou dat als zo'n Vaultboy ding linksbovenin moeten kunnen doen; Player Comments doet dat wel bijvoorbeeld
 	Debug.Notification(msg)
@@ -1461,12 +1511,9 @@ Function TechnicalNote(string msg)
 	Log(msg)
 EndFunction
 
+; write a line to the log
 Function Log(string msg)
 	Debug.Trace("[LenARM] " + msg)
-EndFunction
-
-Function MessageBox(string msg)
-	Debug.MessageBox(msg)
 EndFunction
 
 ; ------------------------

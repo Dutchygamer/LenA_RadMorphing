@@ -230,13 +230,26 @@
 					}
 				},
                 {
-                    "text": "Show status",
+                    "text": "Show player morph status",
                     "type": "button",
                     "help": "Shows the lowest slider percentage.",
                     "action": {
                         "type": "CallFunction",
                         "form": "LenA_RadMorphing.esp|1000F99",
-                        "function": "ShowLowestSliderPercentage",
+                        "function": "Debug_ShowLowestSliderPercentage",
+                        "params": [
+                            
+                        ]
+                    }
+                },
+                {
+                    "text": "Reset companions tracking",
+                    "type": "button",
+                    "help": "Use in case no companion morphs are applied when they should.",
+                    "action": {
+                        "type": "CallFunction",
+                        "form": "LenA_RadMorphing.esp|1000F99",
+                        "function": "Debug_ResetCompanionMorphsArray",
                         "params": [
                             
                         ]
