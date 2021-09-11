@@ -16,7 +16,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
 ;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 
-;TODO fix config, seems broken since we added the iMaxRadiationMultiplier slider for some reason...
 ;TODO Ada gets seen as a female companion. Doesn't do morphs, but does play sounds
 
 ; ------------------------
@@ -88,20 +87,24 @@ Group Properties
 
 	; Base Game
 	Scene Property DoctorMedicineScene03_AllDone Auto Const
+	GenericDoctorsScript Property DialogueGenericDoctors Auto Const
 	; Far Harbor
 	Scene Property DLC03DialogueFarHarbor_TeddyFinished Auto Const
 	Scene Property DialogueNucleusArchemist_GreetScene03_AllDone Auto Const
 	Scene Property DLC03AcadiaDialogueAsterPostExamScene Auto Const
+	GenericDoctorsScript Property DLC03CoA_DialogueNucleusArchemist Auto Const
+	GenericDoctorsScript Property DLC03DialogueFarHarbor Auto Const
+	GenericDoctorsScript Property DLC03AcadiaDialogue Auto Const
 	; Nuka World
 	Scene Property DLC04SettlementDoctor_EndScene Auto Const
-
-	GenericDoctorsScript Property DialogueGenericDoctors Auto Const
+	GenericDoctorsScript Property DLC04SettlementDoctor Auto Const
 
 	Sound Property LenARM_DropClothesSound Auto Const
 	Sound Property LenARM_MorphSound Auto Const
 	Sound Property LenARM_MorphSound_Med Auto Const
 	Sound Property LenARM_MorphSound_High Auto Const
 	Sound Property LenARM_FullSound Auto Const
+	Sound Property LenARM_SwellSound Auto Const
 	Sound Property LenARM_PrePopSound Auto Const
 	Sound Property LenARM_PopSound Auto Const
 
@@ -218,7 +221,9 @@ EndEvent
 Event Scene.OnEnd(Scene akSender)
 	float radsNow = PlayerRef.GetValue(Rads)
 	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
-	If (DialogueGenericDoctors.DoctorJustCuredRads == 1)
+
+	; as the base game uses different quests for Doctors then for the Doctors from the DLC, we must check each seperate quest sadly
+	If (DialogueGenericDoctors.DoctorJustCuredRads == 1 || DLC03CoA_DialogueNucleusArchemist.DoctorJustCuredRads == 1 || DLC03DialogueFarHarbor.DoctorJustCuredRads == 1 || DLC03AcadiaDialogue.DoctorJustCuredRads == 1 || DLC04SettlementDoctor.DoctorJustCuredRads == 1)
 		ResetMorphs()
 	EndIf
 EndEvent
@@ -911,9 +916,9 @@ Function Pop()
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < PopStates)								
-		; for the unequip state we don't want to play the full sound, but unequip the clothes instead
+		; for the unequip state we don't want to play the swell sound, but unequip the clothes instead
 		If (currentPopState != unequipState)
-			LenARM_FullSound.Play(PlayerRef)
+			LenARM_SwellSound.Play(PlayerRef)
 		Else
 			UnequipAll()
 		endif
