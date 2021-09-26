@@ -68,6 +68,18 @@
                 "step": 0.5
             }
         },
+		{
+			"text": "Max Radiation multiplier",
+			"help": "Multiply the total rads that is considered 100 percent. Higher multipliers means morphs gets applied slower. Default: 1",
+			"type": "slider",
+			"id": "iMaxRadiationMultiplier:General",
+			"valueOptions": {
+				"sourceType": "ModSettingInt",
+				"min": 1,
+				"max": 5,
+				"step": 1
+			}
+		},
         {
             "text": "<br>",
             "html": true
@@ -116,54 +128,8 @@
     ],
     "pages": [
 		{
-            "pageDisplayName": "Additional Settings",
+            "pageDisplayName": "Sounds",
             "content": [
-                {
-                    "text": "Settings",
-                    "type": "section"
-                },
-				{
-					"text": "Enable popping",
-					"help": "Enable or disable non-lethal 'popping' of the player upon taking rads beyond their max morphs",
-					"type": "switcher",
-					"id": "bEnablePopping:General",
-					"valueOptions": {
-						"sourceType": "ModSettingBool"
-					}
-				},
-				{
-					"text": "Pop states",
-					"help": "When popping, the morphs get increased with each state. The more states, the more extreme the morphs, and the longer the popping takes. Default: 5",
-					"type": "slider",
-					"id": "iPopStates:General",
-					"valueOptions": {
-						"sourceType": "ModSettingInt",
-						"min": 5,
-						"max": 20,
-						"step": 1
-					}
-				},
-				{
-					"text": "Pop paralyzes",
-					"help": "Should popping paralyze the player. Default: true",
-					"type": "switcher",
-					"id": "bPopShouldParalyze:General",
-					"valueOptions": {
-						"sourceType": "ModSettingBool"
-					}
-				},
-				{
-					"text": "Max Radiation multiplier",
-					"help": "Multiply the total rads that is considered 100 percent. Higher multipliers means morphs gets applied slower. Default: 1",
-					"type": "slider",
-					"id": "iMaxRadiationMultiplier:General",
-					"valueOptions": {
-						"sourceType": "ModSettingInt",
-						"min": 1,
-						"max": 5,
-						"step": 1
-					}
-				},
 				{
 					"text": "Radiation taken thresholds",
 					"type": "section"
@@ -174,7 +140,7 @@
 					"html": true
 				},
 				{
-					"text": "<b>Do note that the larger the update delay, the larger the rads taken can be.</b>-Any amount of rads taken below Low (incl. rad decreases) will not play any sound.<br>-Any amount of rads taken between Low and Medium will play the low sound.<br>-Any amount of rads taken between Medium and High will play the medium sound.<br>-Any amount of rads taken above High will play the high sound.",
+					"text": "<b>Do note that the larger the update delay, the larger the rads taken can be.</b><br>-Any amount of rads taken below Low (incl. rad decreases) will not play any sound.<br>-Any amount of rads taken between Low and Medium will play the low sound.<br>-Any amount of rads taken between Medium and High will play the medium sound.<br>-Any amount of rads taken above High will play the high sound.",
 					"type": "text",
 					"html": true
 				},
@@ -216,8 +182,67 @@
 				}
             ]
         },
+		{
+            "pageDisplayName": "Perks",
+            "content": [
+				{
+					"text": "A set of optional perks that are used to apply in-game (de)buffs in addition to the possible stripping of clothes/armour. These are dependant on the player's rads, which depending on the chosen <b>Morph updates</b> match the current rad levels or the total accumulated rads since last doctor visit.",
+					"type": "text",
+					"html": true
+				},
+				{
+					"text": "Enable perks",
+					"help": "Enable or disable additional perks as your accumulated rads increases",
+					"type": "switcher",
+					"id": "bEnableRadsPerks:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
+            ]
+        },
+		{
+            "pageDisplayName": "Popping",
+            "content": [
+				{
+					"text": "An optional risk when using doctor-only reset sliders. Upon reaching maxed-out morphs on all sliders, further radiation accumulation will eventually lead into the non-lethal 'popping' of the player. After 'popping', all morphs are reset and a major debuff will be applied.<br/>This will also replace the negative result of the Experimental RadPurge chem with the player 'popping'.",
+					"type": "text",
+					"html": true
+				},
+				{
+					"text": "Enable popping",
+					"help": "Enable or disable non-lethal 'popping' of the player upon taking rads beyond their max morphs",
+					"type": "switcher",
+					"id": "bEnablePopping:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				},
+				{
+					"text": "Pop states",
+					"help": "When popping, the morphs get increased with each state. The more states, the more extreme the morphs, and the longer the popping takes. Default: 5",
+					"type": "slider",
+					"id": "iPopStates:General",
+					"valueOptions": {
+						"sourceType": "ModSettingInt",
+						"min": 5,
+						"max": 20,
+						"step": 1
+					}
+				},
+				{
+					"text": "Pop paralyzes",
+					"help": "Should popping paralyze the player. This will leave the player open to damage during the duration! Default: true",
+					"type": "switcher",
+					"id": "bPopShouldParalyze:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
+            ]
+        },
         {
-            "pageDisplayName": "Debug Tools",
+            "pageDisplayName": "Debug Tools and Cheats",
             "content": [
                 {
                     "text": "Debugging",
@@ -263,7 +288,7 @@
                     }
                 },
                 {
-                    "text": "Tools",
+                    "text": "Tools and Cheats",
                     "type": "section"
                 },
                 {
