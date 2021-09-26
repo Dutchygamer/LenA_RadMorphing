@@ -52,6 +52,9 @@ float CurrentRads
 float FakeRads
 bool TakeFakeRads
 
+bool HasDoctorOnlySliders
+float TotalRads
+
 ; has the player reached the max on all sliderSets? this includes additive morphing if these are limited
 bool HasReachedMaxMorphs
 
@@ -63,6 +66,8 @@ int PopWarnings
 bool IsPopping
 
 int MaxRadiationMultiplier
+
+int CurrentRadsPerk
 
 int RestartStackSize
 int UnequipStackSize
@@ -112,6 +117,8 @@ Group Properties
 	Faction Property PlayerAllyFation Auto Const
 
 	Potion Property GlowingOneBlood Auto Const
+
+	Perk[] Property RadsPerkArray Auto
 
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
@@ -327,6 +334,7 @@ Function Startup()
 		While (idxSet < SliderSets.Length)
 			SliderSet set = SliderSets[idxSet]
 			If (set.OnlyDoctorCanReset && set.IsAdditive)
+				HasDoctorOnlySliders = true
 				if (set.BaseMorph > 0)
 					SetMorphs(idxSet, set, set.BaseMorph)
 					SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
@@ -335,8 +343,17 @@ Function Startup()
 			idxSet += 1
 		EndWhile
 
+		Note(HasDoctorOnlySliders)
+		; when we don't use sliders that are doctor-only reset, reset the totalRads
+		if (!HasDoctorOnlySliders)			
+			TotalRads = 0
+			CurrentRadsPerk = 0
+		endif
+
 		ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
+
+		ApplyRadsPerk()
 
 		If (UpdateType == EUpdateTypeImmediately)
 			; start timer
@@ -611,6 +628,17 @@ Function TimerMorphTick()
 	; companions
 	UpdateCompanionList()
 
+	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
+	if (!HasDoctorOnlySliders)
+		TotalRads = newRads
+	; if we do have doctor-only reset sliders, only update TotalRads if it is an increase in rads
+	elseif (radsDifference > 0)
+		TotalRads += radsDifference
+	endif
+	
+	; recalculate which radsPerk to apply
+	ApplyRadsPerk()
+
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
 	bool changedMorphs = false
@@ -816,6 +844,10 @@ Function ResetMorphs()
 	; reset the fake rads
 	FakeRads = 0
 	TakeFakeRads = false
+	TotalRads = 0
+
+	; reset the rad perks
+	ApplyRadsPerk()
 
 	; reset saved morphs in SliderSets
 	int idxSet = 0
@@ -982,6 +1014,69 @@ Function ExtendMorphs(float step)
 	; apply all new morphs to the body
 	BodyGen.UpdateMorphs(PlayerRef)
 EndFunction
+
+
+
+; WIP radsperk shizzle
+
+Function ApplyRadsPerk()
+	;TODO fix eerst die perks maar, die -Endurance mag er van mij af (ook voor popped)
+	; je health gaat ervan omlaag, das niet echt handig
+	; sowieso ook nalopen of ze nou blijven hangen / stacken, kreeg wel dat vermoeden (maar kon ook de popped debuffs zijn die nog liep)
+	;TODO wellicht anders perks vervangen door potions
+	return
+
+	; ;TODO make configurable
+
+
+	; ;TODO bepaal wat min / max zijn, en vanaf wanneer we dus moeten gaan werken tot wanneer
+	; ;zie ook CalculateMorphPercentage
+	; ; voor nu gebruiken we 0 als min en 1000 als max
+
+	; ; when we have 0 rads, clear all existing perks and don't apply a new one
+	; ; for this we use -1
+	; if (TotalRads == 0)
+	; 	ChangePerkLevel(-1)
+	; 	return
+	; endif
+
+	; ; calculate the perkl level
+	; int perkLevel = ((TotalRads * 1000) / 200) as int
+
+	; ;Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
+
+	; ; limit to 4 just in case
+    ; If (perkLevel > 4)
+    ;     perkLevel = 4
+    ; EndIf
+
+	; ; when we have enough rads that we should have a difference in perk level, change perks
+	; if (CurrentRadsPerk != perkLevel)
+	; 	CurrentRadsPerk = perkLevel
+	; 	ChangePerkLevel(perkLevel)
+	; 	PlayerRef.AddPerk(RadsPerkArray[perkLevel])
+	; endif
+EndFunction
+
+Function ChangePerkLevel(int newPerkLevel)
+    ; remove old perk levels when changing levels or when fully healed
+    int i = 0
+    While (i < 5)
+        If (i != newPerkLevel)
+            If (PlayerRef.HasPerk(RadsPerkArray[i]))
+                Log("Removing radsperk of level " + i)
+                PlayerRef.RemovePerk(RadsPerkArray[i])
+            EndIf
+        EndIf
+        i += 1
+    EndWhile
+
+    Log("RadsPerk Level " + newPerkLevel + " Applied")    
+EndFunction
+
+
+
+
 
 ; ------------------------
 ; All companion related logic, still WiP / broken
