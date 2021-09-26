@@ -67,6 +67,7 @@ bool IsPopping
 
 int MaxRadiationMultiplier
 
+bool EnableRadsPerks
 int CurrentRadsPerk
 
 int RestartStackSize
@@ -187,14 +188,23 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
 	endif
+
+	;TODO kijken of we dit niet via aparte scripts die specifiek voor de potions zijn kunnen laten lopen
+	;moet je wel uitzoeken of / hoe je scripts vanuit een andere script aan kan roepen...
 	; if we ingest potions, check if it is one of the mod-specific drugs
 	If (akBaseObject as Potion)	
+
+		;TODO eigenlijk moeten beide van te voren kijken of je niet in Power Armor it
+		; nu doet ie alleen de check indien je gaat poppen, maar gaat anders wel de morphs resetten
+		; vermoed dat dat issues oplevert
+
 		; ingested reset morphs potion => reset the morphs
 		if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
 			Note("My body goes back to normal")
 			ResetMorphs()
 		; ingested experimental reset morphs potion => chance to reset the morphs, else pop
 		elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
+			; base 50% chance to trigger
 			bool shouldPop = ShouldPop(5)
 		
 			if (shouldPop)
@@ -300,7 +310,10 @@ Function Startup()
 		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
 		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
 		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
+
 		MaxRadiationMultiplier = MCM.GetModSettingInt("LenA_RadMorphing", "iMaxRadiationMultiplier:General")
+		
+		EnableRadsPerks = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableRadsPerks:General")
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -336,15 +349,15 @@ Function Startup()
 			If (set.OnlyDoctorCanReset && set.IsAdditive)
 				HasDoctorOnlySliders = true
 				if (set.BaseMorph > 0)
+					Log("reload sliderset " + idxSet)
 					SetMorphs(idxSet, set, set.BaseMorph)
 					SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
 				endif
-			EndIf
+			endif
 			idxSet += 1
 		EndWhile
 
-		Note(HasDoctorOnlySliders)
-		; when we don't use sliders that are doctor-only reset, reset the totalRads
+		; when we don't use sliders that are doctor-only reset, reset the totalRads and possible radperks
 		if (!HasDoctorOnlySliders)			
 			TotalRads = 0
 			CurrentRadsPerk = 0
@@ -353,7 +366,13 @@ Function Startup()
 		ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
 
-		ApplyRadsPerk()
+		; recalculate the rad perks when enabed
+		if (EnableRadsPerks)			
+			ApplyRadsPerk()
+		; else clear any existing perks
+		Else
+			ClearOldRadsPerks(-1)
+		endif
 
 		If (UpdateType == EUpdateTypeImmediately)
 			; start timer
@@ -404,6 +423,7 @@ Function ShutdownRestoreMorphs()
 	Log("ShutdownRestoreMorphs")
 	; restore base values
 	RestoreOriginalMorphs()
+
 	FinishShutdown()
 EndFunction
 
@@ -417,6 +437,31 @@ Function Restart()
 	Utility.Wait(1.0)
 	If (RestartStackSize <= 1)
 		Log("Restart")
+
+		;TODO dis niet goed, want in de timerbased morphs doen we wat funkies met bepalen hoe / wat CurrentMorph is
+		;nu schiet ie iedere keer een stuk vooruit als ie dit gedaan heeft, omdat BaseMorph nu te groot wordt opgeslagen
+		
+		;als we in die timer de BaseMorph updaten indien een rad decrease is, dan is dat niet BaseMorph = CurrentMorph, maar BaseMorph += CurrentMorph - berekende morph percentage
+		;die laatste wordt bepaald afhankelijk van flink wat dingen, incl min / max morphs, die MaximumMorphMultiplier, en nog meer
+		;...then again, wat we vervolgens opslaan in CurrentMorph is dat berekende percentage...
+		;alleen weet je hier vervolgens alleen CurrentMorph, en niet wat verschil was. Dus hier een += van maken maakt probleem groter
+
+		;je zou eigenlijk moeten bijhouden wat percentage verschil was, dan kan je hier die van currentMorph aftrekken en dat op dezelfde manier berekenen
+		;dus ala CurrentMorph een veld op die sliderset erbij waarbij je verschil met BaseMorph bijhoudt, en iedere keer update
+		;gaat alleen hiervoor nuttig zijn tho...
+
+		
+		; ; store the baseMorph of slidersets which are doctor-only reset and are additive
+		; ; if we don't do this, then on startup it will load the previous value, which is either 0 if we haven't had a rad decrease, or the value it was on last rad decrease
+		; int idxSet = 0
+		; While (idxSet < SliderSets.Length)
+		; 	SliderSet set = SliderSets[idxSet]
+		; 	If (set.OnlyDoctorCanReset && set.IsAdditive)
+		; 		set.BaseMorph = set.CurrentMorph
+		; 	endif
+		; 	idxSet += 1
+		; EndWhile
+
 		Shutdown()
 		While (IsShuttingDown)
 			Utility.Wait(1.0)
@@ -521,7 +566,7 @@ EndFunction
 ; ------------------------
 ; Radiation detection and what not
 ; ------------------------
-;TODO doesn't seem to trigger with god mode (TGM) on
+;TODO doesn't seem to trigger with god mode (TGM) on. Works fine with invulnerability mode (TIM) tho
 Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
 	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
 	TakeFakeRads = true
@@ -636,8 +681,10 @@ Function TimerMorphTick()
 		TotalRads += radsDifference
 	endif
 	
-	; recalculate which radsPerk to apply
-	ApplyRadsPerk()
+	; recalculate which radsPerk to apply when enabled
+	if (EnableRadsPerks)
+		ApplyRadsPerk()
+	endif
 
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
@@ -847,7 +894,7 @@ Function ResetMorphs()
 	TotalRads = 0
 
 	; reset the rad perks
-	ApplyRadsPerk()
+	ClearOldRadsPerks(-1)
 
 	; reset saved morphs in SliderSets
 	int idxSet = 0
@@ -875,7 +922,7 @@ Function RestoreOriginalMorphs()
 EndFunction
 
 ; ------------------------
-; Roll a dice, subtract player's Luck into account, and return the result
+; Take given chance, subtract player's Luck, roll a dice, and return whether the dice is lower then the chance
 ; ------------------------
 bool Function ShouldPop(int popChance)
 	int random = Utility.RandomInt(1, 10)
@@ -899,6 +946,7 @@ EndFunction
 ; Roll a dice whether to increase the PopWarnings by 1, with various effects on a success
 ; ------------------------
 Function CheckPopWarnings()
+	; 30% base chance to trigger
 	bool shouldPop = ShouldPop(3)
 
 	if (!shouldPop)
@@ -954,8 +1002,7 @@ Function Pop()
 	Utility.Wait(0.7)
 
 	; gradually increase the morphs and unequip the clothes
-	While (currentPopState < PopStates)
-		
+	While (currentPopState < PopStates)		
 		LenARM_SwellSound.Play(PlayerRef)								
 		; for the unequip state we don't want to play the swell sound, but unequip the clothes instead
 		If (currentPopState != unequipState)
@@ -1015,67 +1062,62 @@ Function ExtendMorphs(float step)
 	BodyGen.UpdateMorphs(PlayerRef)
 EndFunction
 
-
-
-; WIP radsperk shizzle
-
+; ------------------------
+; Check the total accumulated rads, and apply the matching radsPerk to the player
+; ------------------------
 Function ApplyRadsPerk()
-	;TODO fix eerst die perks maar, die -Endurance mag er van mij af (ook voor popped)
-	; je health gaat ervan omlaag, das niet echt handig
-	; sowieso ook nalopen of ze nou blijven hangen / stacken, kreeg wel dat vermoeden (maar kon ook de popped debuffs zijn die nog liep)
 	;TODO wellicht anders perks vervangen door potions
-	return
+	; return
 
-	; ;TODO make configurable
+	; when we have 0 rads, clear all existing perks and don't apply a new one
+	if (TotalRads == 0)
+		ClearOldRadsPerks(-1)
+		return
+	endif
 
+	;TODO bepaal wat min / max zijn, en vanaf wanneer we dus moeten gaan werken tot wanneer
+	;zie ook CalculateMorphPercentage
+	; voor nu gebruiken we 0 als min en 1000 als max
+	;TODO moet dus ook rekening gaan houden met MaxRadiationMultiplier
 
-	; ;TODO bepaal wat min / max zijn, en vanaf wanneer we dus moeten gaan werken tot wanneer
-	; ;zie ook CalculateMorphPercentage
-	; ; voor nu gebruiken we 0 als min en 1000 als max
+	; calculate the perk level
+	int perkLevel = ((TotalRads * 1000) / 200) as int
 
-	; ; when we have 0 rads, clear all existing perks and don't apply a new one
-	; ; for this we use -1
-	; if (TotalRads == 0)
-	; 	ChangePerkLevel(-1)
-	; 	return
-	; endif
+	;Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
 
-	; ; calculate the perkl level
-	; int perkLevel = ((TotalRads * 1000) / 200) as int
+	; limit to 4 just in case (we have 5 perks, starting from 0)
+    If (perkLevel > 4)
+        perkLevel = 4
+    EndIf
 
-	; ;Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
-
-	; ; limit to 4 just in case
-    ; If (perkLevel > 4)
-    ;     perkLevel = 4
-    ; EndIf
-
-	; ; when we have enough rads that we should have a difference in perk level, change perks
-	; if (CurrentRadsPerk != perkLevel)
-	; 	CurrentRadsPerk = perkLevel
-	; 	ChangePerkLevel(perkLevel)
-	; 	PlayerRef.AddPerk(RadsPerkArray[perkLevel])
-	; endif
+	; when we have enough rads that we should have a difference in perk level, change perks
+	if (CurrentRadsPerk != perkLevel)
+		ClearOldRadsPerks(perkLevel)
+		PlayerRef.AddPerk(RadsPerkArray[perkLevel])
+		
+		CurrentRadsPerk = perkLevel
+	endif
 EndFunction
 
-Function ChangePerkLevel(int newPerkLevel)
-    ; remove old perk levels when changing levels or when fully healed
+; ------------------------
+; Loops through all possible radsPerks, removing those that are active if they don't match the newPerkLevel
+; Does not apply the matching radsPerk, you must do that manually
+; Use -1 to clear all perks
+; ------------------------
+Function ClearOldRadsPerks(int newPerkLevel)
     int i = 0
     While (i < 5)
-        If (i != newPerkLevel)
-            If (PlayerRef.HasPerk(RadsPerkArray[i]))
+        If (i != newPerkLevel && PlayerRef.HasPerk(RadsPerkArray[i]))
+            ; If (PlayerRef.HasPerk(RadsPerkArray[i]))
                 Log("Removing radsperk of level " + i)
                 PlayerRef.RemovePerk(RadsPerkArray[i])
-            EndIf
+            ; EndIf
         EndIf
         i += 1
     EndWhile
 
-    Log("RadsPerk Level " + newPerkLevel + " Applied")    
+    ; Log("RadsPerk Level " + newPerkLevel + " Applied")    
 EndFunction
-
-
-
 
 
 ; ------------------------
