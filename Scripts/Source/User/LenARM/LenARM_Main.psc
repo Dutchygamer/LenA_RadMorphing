@@ -322,16 +322,19 @@ Function Startup()
 		; reset unequip stack
 		UnequipStackSize = 0
 
-		; reapply base morphs
+		; reapply base morphs for the doctor-only reset morphs
 		int idxSet = 0
 		While (idxSet < SliderSets.Length)
 			SliderSet set = SliderSets[idxSet]
-			If (set.OnlyDoctorCanReset && set.IsAdditive && set.BaseMorph > 0)
-				SetMorphs(idxSet, set, set.BaseMorph)
-				SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
+			If (set.OnlyDoctorCanReset && set.IsAdditive)
+				if (set.BaseMorph > 0)
+					SetMorphs(idxSet, set, set.BaseMorph)
+					SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
+				endif
 			EndIf
 			idxSet += 1
 		EndWhile
+
 		ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
 
@@ -368,6 +371,7 @@ Function Shutdown(bool withRestore=true)
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
 	
 		; stop listening for doctor scene
+		;TODO moeten de andere scenes hier ook niet bij staan?
 		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnBegin")
 		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnEnd")
 		
@@ -500,8 +504,7 @@ EndFunction
 ; ------------------------
 ; Radiation detection and what not
 ; ------------------------
-;TODO deze is obsolete? wordt nergens gebruikt zover ik zie? de andere worden wel gebruikt
-;kijk in de .esp voor je hem nuked!
+;TODO doesn't seem to trigger with god mode (TGM) on
 Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
 	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
 	TakeFakeRads = true
@@ -601,10 +604,9 @@ Function TimerMorphTick()
 
 	; calculate the amount of rads taken
 	; the longer the timer interval, the larger this will be
-	;TODO dit moet naar FakeRads kijken als je FakeRads gebruikt
 	float radsDifference = newRads - CurrentRads
 	Log("rads taken: " + (radsDifference * 1000))
-				
+	
 	CurrentRads = newRads
 	; companions
 	UpdateCompanionList()
@@ -740,7 +742,6 @@ Function TimerMorphTick()
 	EndIf
 	StartTimer(UpdateDelay, ETimerMorphTick)
 EndFunction
-
 
 ; ------------------------
 ; Calculate the morph percentage for the given sliderSet based on the given rads and the slider's min / max thresholds
@@ -902,8 +903,14 @@ Function Pop()
 	;TODO make it effect companions?
 
 	; force third person camera
-	Game.ForceThirdPerson()							
+	;TODO eigen config
+	if (PopShouldParalyze)
+		Game.ForceThirdPerson()							
+	endif
 	Utility.Wait(0.5)
+
+	; reset rads in case player is in a high-rads zone
+	PlayerRef.EquipItem(ResetRadsPotion, abSilent = true)
 
 	; play sound, paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
@@ -912,25 +919,27 @@ Function Pop()
 		PlayerRef.SetValue(ParalysisAV, 1)
 		PlayerRef.PushActorAway(PlayerRef, 0.5)						
 	endif
-	Utility.Wait(0.5)
+	Utility.Wait(0.7)
 
 	; gradually increase the morphs and unequip the clothes
-	While (currentPopState < PopStates)								
+	While (currentPopState < PopStates)
+		
+		LenARM_SwellSound.Play(PlayerRef)								
 		; for the unequip state we don't want to play the swell sound, but unequip the clothes instead
 		If (currentPopState != unequipState)
-			LenARM_SwellSound.Play(PlayerRef)
+			;LenARM_SwellSound.Play(PlayerRef)
 		Else
 			UnequipAll()
 		endif
 
 		ExtendMorphs(currentPopState)
-		Utility.Wait(0.5)
+		Utility.Wait(0.7)
 
 		currentPopState += 1
 	EndWhile
 
 	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
-	; for this situation we want to wait for the first sound effect to finish playing
+	; for this situation we do want to wait for the sound effect to finish playing
 	ExtendMorphs(currentPopState)
 	LenARM_PrePopSound.PlayAndWait(PlayerRef)
 	LenARM_PopSound.Play(PlayerRef)
@@ -961,10 +970,10 @@ Function ExtendMorphs(float step)
 	; calculate the new morphs multiplier
 	float multiplier = 1.0 + (step/8)
 
-	; apply it to all morphs
+	; apply it to all morphs from slidersets which aren't excluded
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]		
-		If (sliderSet.NumberOfSliderNames > 0)
+		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
 			SetMorphs(idxSet, sliderSet, multiplier)
 		EndIf
 		idxSet += 1
@@ -1577,6 +1586,7 @@ SliderSet Function SliderSet_Constructor(int idxSet)
 		set.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
 		set.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
 		set.ApplyCompanion = MCM.GetModSettingInt("LenA_RadMorphing", "iApplyCompanion:Slider" + idxSet)
+		set.ExcludeFromPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bExcludeFromPopping:Slider" + idxSet)
 
 		string[] names = StringSplit(set.SliderName, "|")
 		set.NumberOfSliderNames = names.Length
@@ -1630,6 +1640,7 @@ Struct SliderSet
 	bool HasAdditiveLimit
 	float AdditiveLimit
 	int ApplyCompanion
+	bool ExcludeFromPopping
 	; END: MCM values
 
 	int NumberOfSliderNames

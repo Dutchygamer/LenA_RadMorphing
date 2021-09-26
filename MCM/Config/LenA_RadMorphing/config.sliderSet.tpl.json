@@ -122,5 +122,14 @@
 			"sourceType": "ModSettingInt",
 			"options": ["None", "Female", "Male", "All"]
 		}
+	},
+	{
+		"text": "Exclude from popping",
+		"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+		"type": "switcher",
+		"id": "bExcludeFromPopping:Slider{{idx}}",
+		"valueOptions": {
+			"sourceType": "ModSettingBool"
+		}
 	}
 ]

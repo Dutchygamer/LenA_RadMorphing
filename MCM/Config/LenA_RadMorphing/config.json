@@ -460,7 +460,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider0",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -612,7 +621,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider1",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -764,7 +782,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider2",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -916,7 +943,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider3",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1068,7 +1104,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider4",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1220,7 +1265,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider5",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1372,7 +1426,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider6",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1524,7 +1587,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider7",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1676,7 +1748,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider8",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1828,7 +1909,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider9",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -1980,7 +2070,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider10",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -2132,7 +2231,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider11",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -2284,7 +2392,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider12",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -2436,7 +2553,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider13",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -2588,7 +2714,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider14",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -2740,7 +2875,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider15",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -2892,7 +3036,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider16",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -3044,7 +3197,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider17",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -3196,7 +3358,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider18",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         },
         {
@@ -3348,7 +3519,16 @@
                             "All"
                         ]
                     }
-                }
+                },
+				{
+					"text": "Exclude from popping",
+					"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
+					"type": "switcher",
+					"id": "bExcludeFromPopping:Slider19",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
             ]
         }
     ]
