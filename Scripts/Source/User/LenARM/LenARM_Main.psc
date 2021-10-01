@@ -346,6 +346,9 @@ Function Startup()
 		int idxSet = 0
 		While (idxSet < SliderSets.Length)
 			SliderSet set = SliderSets[idxSet]
+			;TODO hier ook bepalen wat de laagste min slider is
+			;TODO hier ook bepalen wat de hoogste max slider is
+
 			If (set.OnlyDoctorCanReset && set.IsAdditive)
 				HasDoctorOnlySliders = true
 				if (set.BaseMorph > 0)
@@ -371,7 +374,7 @@ Function Startup()
 			ApplyRadsPerk()
 		; else clear any existing perks
 		Else
-			ClearOldRadsPerks(-1)
+			ClearAllRadsPerks()
 		endif
 
 		If (UpdateType == EUpdateTypeImmediately)
@@ -894,7 +897,7 @@ Function ResetMorphs()
 	TotalRads = 0
 
 	; reset the rad perks
-	ClearOldRadsPerks(-1)
+	ClearAllRadsPerks()
 
 	; reset saved morphs in SliderSets
 	int idxSet = 0
@@ -1067,11 +1070,14 @@ EndFunction
 ; ------------------------
 Function ApplyRadsPerk()
 	;TODO wellicht anders perks vervangen door potions
-	; return
+
+	;TODO doe maar goed nadenken over hoe / wanneer we dit aanroepen als je de config aan / uit zet
+	;vermoed nu namelijk dat de perks blijven hangen
+	;visa versa als je ze aanzet en je hebt al rads; hij gaat dan pas bij eerstvolgende rads increase updaten
 
 	; when we have 0 rads, clear all existing perks and don't apply a new one
 	if (TotalRads == 0)
-		ClearOldRadsPerks(-1)
+		ClearAllRadsPerks()
 		return
 	endif
 
@@ -1116,9 +1122,12 @@ Function ClearOldRadsPerks(int newPerkLevel)
         i += 1
     EndWhile
 
-    ; Log("RadsPerk Level " + newPerkLevel + " Applied")    
+    Log("RadsPerk Level " + newPerkLevel + " applied")    
 EndFunction
 
+Function ClearAllRadsPerks()
+    ClearOldRadsPerks(-1)
+EndFunction
 
 ; ------------------------
 ; All companion related logic, still WiP / broken
@@ -1567,7 +1576,8 @@ Function Debug_ShowLowestSliderPercentage()
 		idxSet += 1
 	EndWhile	
 
-	MessageBox((lowestPercentage * 100) + "%")
+	;TODO ik dump TotalRads hier ff als test in
+	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
 Function Debug_ResetCompanionMorphsArray()
