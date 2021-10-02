@@ -70,6 +70,9 @@ int MaxRadiationMultiplier
 bool EnableRadsPerks
 int CurrentRadsPerk
 
+bool SlidersEffectFemaleCompanions
+bool SlidersEffectMaleCompanions
+
 int RestartStackSize
 int UnequipStackSize
 
@@ -357,6 +360,15 @@ Function Startup()
 					SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
 				endif
 			endif
+
+			; store whether we have sliders which should effect companions of a specific sex
+			If (!SlidersEffectFemaleCompanions && (set.ApplyCompanion == EApplyCompanionFemale || set.ApplyCompanion == EApplyCompanionAll))
+				SlidersEffectFemaleCompanions = true
+			endif
+			If (!SlidersEffectFemaleCompanions && (set.ApplyCompanion == EApplyCompanionMale || set.ApplyCompanion == EApplyCompanionAll))
+				SlidersEffectMaleCompanions = true
+			endif
+
 			idxSet += 1
 		EndWhile
 
@@ -687,8 +699,6 @@ Function TimerMorphTick()
 	bool changedMorphs = false
 	; by default, assume we are not at our max morphs for all sliderSets
 	bool maxedOutMorphs = false
-	; by default, assume none of the sliders affect our companions
-	bool affectCompanions = false
 
 	int morphableSliders = 0
 	int maxedOutSliders = 0
@@ -696,10 +706,6 @@ Function TimerMorphTick()
 	; check each sliderset whether we need to update the morphs
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]
-		
-		if (sliderSet.ApplyCompanion != EApplyCompanionNone && !affectCompanions)
-			affectCompanions = true
-		endif
 
 		;TODO kijken of Papyrus iets ondersteund ala continue in een loop
 		;hij herkent continue niet als een valid iets, dus ik betwijfel het
@@ -794,13 +800,8 @@ Function TimerMorphTick()
 		if (!maxedOutMorphs)
 			PlayMorphSound(PlayerRef, radsDifference)
 		endif
-		; when at least one of the sliderSets affects companion, play the morph sound for them as well
-
-		;TODO dis wat er mis gaat: we kijken alleen of een van de sliders companions moet affecten (ie een of meerdere sliders affecten female companions)
-		;wat we vervolgens niet nalopen is of de companion ook van die sex is, en dus ook morphs moet updaten en morph sound moet spelen
-		;voor morphs maakt dit niet uit want we hebben geen morphs om te applyen (skippen we bij de individuele slider check)
-		;eerste gedachte was 2 bools meegeven en dan hierin kijken of je morph sound moet spelen, maar dunno of dat zo handig is...
-		if (affectCompanions)
+		; when at least one of the sliderSets effects companions, play the morph sound for them as well
+		if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 			ApplyAllCompanionMorphsWithSound(radsDifference)
 		endif
 		TriggerUnequipSlots()
@@ -814,6 +815,9 @@ Function TimerMorphTick()
 			if (!IsStartingUp)
 				Note("I won't get any bigger")
 				LenARM_FullSound.Play(PlayerRef)
+				if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
+					PlayCompanionSoundFull()
+				endif
 			endif
 			HasReachedMaxMorphs = true
 		
@@ -965,14 +969,38 @@ Function CheckPopWarnings()
 		Note("My body still reacts to rads")
 		PopWarnings += 1
 		LenARM_MorphSound_Med.Play(PlayerRef)
+		if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
+			PlayCompanionSoundMedium()
+		endif
+		; While (idxComp < CurrentCompanions.Length)
+		; 	Actor companion = CurrentCompanions[idxComp]
+		; 	int sex = companion.GetLeveledActorBase().GetSex()
+	
+		; 	; only play sounds if there are sliders which effect the companion's sex
+		; 	If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+		; 		; do a random delay before playing morph sounds on the companion
+		; 		float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
+	
+		; 		Utility.Wait(randomFloat)
+		; 		BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+		; 		LenARM_MorphSound_Med.Play(companion)
+		; 	endif
+		; 	idxComp += 1
+		; EndWhile
 	ElseIf (PopWarnings == 1)
 		Note("My body feels so tight")
 		PopWarnings += 1
 		LenARM_MorphSound_High.Play(PlayerRef)
+		if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
+			PlayCompanionSoundHigh()
+		endif	
 	ElseIf (PopWarnings == 2)
 		Note("I'm going to pop if I take more rads")
 		PopWarnings += 1
 		LenARM_FullSound.Play(PlayerRef)
+		if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
+			PlayCompanionSoundFull()
+		endif	
 	Else
 		Pop()
 	endif
@@ -1199,8 +1227,8 @@ Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-		If (!companion.IsInPowerArmor())
+		If (!companion.IsInPowerArmor())			
+			int sex = companion.GetLeveledActorBase().GetSex()
 			If (applyCompanion == EApplyCompanionAll || (sex == ESexFemale && applyCompanion == EApplyCompanionFemale) || (sex == ESexMale && applyCompanion == EApplyCompanionMale))
 				int offsetIdx = SliderNames.Length * idxComp
 				float companionMorphs = OriginalCompanionMorphs[offsetIdx + idxSlider]
@@ -1225,16 +1253,75 @@ Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
-		; Actor companion = CurrentCompanions[idxComp]
+		Actor companion = CurrentCompanions[idxComp]
+		int sex = companion.GetLeveledActorBase().GetSex()
 
-		; If (applyCompanion == EApplyCompanionAll || (sex == ESexFemale && applyCompanion == EApplyCompanionFemale) || (sex == ESexMale && applyCompanion == EApplyCompanionMale))
+		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
+		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+			; do a random delay before appying the morphs (and morph sounds) on the companion
+			float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
 
-		; do a random delay before appying the morphs (and morph sounds) on the companion
-		float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
+			Utility.Wait(randomFloat)
+			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+			PlayMorphSound(CurrentCompanions[idxComp], radsDifference)
+		endif
+		idxComp += 1
+	EndWhile
+EndFunction
 
-		Utility.Wait(randomFloat)
-		BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-		PlayMorphSound(CurrentCompanions[idxComp], radsDifference)
+;TODO dis lelijk, maar zover ik ff kon testen kan je geen Sound meegeven als param (je kan Sound.Play vervolgens niet aanroepen)
+;kijken of dit toch niet op een of andere manier mogelijk is; dingen zoals Actors kan je wel meegeven als params en dan aanroepen
+Function PlayCompanionSoundMedium()
+	int idxComp = 0
+	While (idxComp < CurrentCompanions.Length)
+		Actor companion = CurrentCompanions[idxComp]
+		int sex = companion.GetLeveledActorBase().GetSex()
+
+		; only play sounds if there are sliders which effect the companion's sex
+		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+			; do a random delay before playing morph sounds on the companion
+			float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
+
+			Utility.Wait(randomFloat)
+			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+			LenARM_MorphSound_Med.Play(companion)
+		endif
+		idxComp += 1
+	EndWhile
+EndFunction
+Function PlayCompanionSoundHigh()
+	int idxComp = 0
+	While (idxComp < CurrentCompanions.Length)
+		Actor companion = CurrentCompanions[idxComp]
+		int sex = companion.GetLeveledActorBase().GetSex()
+
+		; only play sounds if there are sliders which effect the companion's sex
+		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+			; do a random delay before playing morph sounds on the companion
+			float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
+
+			Utility.Wait(randomFloat)
+			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+			LenARM_MorphSound_High.Play(companion)
+		endif
+		idxComp += 1
+	EndWhile
+EndFunction
+Function PlayCompanionSoundFull()
+	int idxComp = 0
+	While (idxComp < CurrentCompanions.Length)
+		Actor companion = CurrentCompanions[idxComp]
+		int sex = companion.GetLeveledActorBase().GetSex()
+
+		; only play sounds if there are sliders which effect the companion's sex
+		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+			; do a random delay before playing morph sounds on the companion
+			float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
+
+			Utility.Wait(randomFloat)
+			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+			LenARM_FullSound.Play(companion)
+		endif
 		idxComp += 1
 	EndWhile
 EndFunction
