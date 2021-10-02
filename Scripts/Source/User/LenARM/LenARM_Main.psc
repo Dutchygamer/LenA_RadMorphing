@@ -644,18 +644,18 @@ EndEvent
 ; Timer-based morphs
 ; ------------------------
 Function TimerMorphTick()
-	; if player is currently popping, restart timer and do nothing
-	if (IsPopping)		
+	; if player is currently popping, we are starting up, or player is in Power Armor, restart timer and do nothing
+	if (IsPopping || IsStartingUp || PlayerRef.IsInPowerArmor())		
 		StartTimer(UpdateDelay, ETimerMorphTick)
 		return
 	endif
 
-	; if rads is in Power Armor, restart timer and do nothing
-	If (PlayerRef.IsInPowerArmor())
-		; Log("skipping due to player in power armor")
-		StartTimer(UpdateDelay, ETimerMorphTick)
-		return
-	endif
+	; ; if rads is in Power Armor, restart timer and do nothing
+	; If (PlayerRef.IsInPowerArmor())
+	; 	; Log("skipping due to player in power armor")
+	; 	StartTimer(UpdateDelay, ETimerMorphTick)
+	; 	return
+	; endif
 
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
@@ -1121,8 +1121,11 @@ Function ClearOldRadsPerks(int newPerkLevel)
         EndIf
         i += 1
     EndWhile
-
-    Log("RadsPerk Level " + newPerkLevel + " applied")    
+	
+	;TODO debug thingy
+	if (newPerkLevel > -1)
+    	Note("RadsPerk Level " + newPerkLevel + " applied")    
+	endif
 EndFunction
 
 Function ClearAllRadsPerks()
@@ -1180,7 +1183,7 @@ Function RetrieveOriginalCompanionMorphs(Actor companion)
 	Log("RetrieveOriginalCompanionMorphs: " + companion)
 	int idxSlider = 0
 	While (idxSlider < SliderNames.Length)
-		Log("sliderset " + idxSlider)
+		;Log("sliderset " + idxSlider)
 		OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))
 		idxSlider += 1
 	EndWhile
