@@ -650,13 +650,6 @@ Function TimerMorphTick()
 		return
 	endif
 
-	; ; if rads is in Power Armor, restart timer and do nothing
-	; If (PlayerRef.IsInPowerArmor())
-	; 	; Log("skipping due to player in power armor")
-	; 	StartTimer(UpdateDelay, ETimerMorphTick)
-	; 	return
-	; endif
-
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
@@ -692,10 +685,13 @@ Function TimerMorphTick()
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
 	bool changedMorphs = false
-	; by default, assume we are at our max morphs for all sliderSets
-	bool maxedOutMorphs = true
+	; by default, assume we are not at our max morphs for all sliderSets
+	bool maxedOutMorphs = false
 	; by default, assume none of the sliders affect our companions
 	bool affectCompanions = false
+
+	int morphableSliders = 0
+	int maxedOutSliders = 0
 
 	; check each sliderset whether we need to update the morphs
 	While (idxSet < SliderSets.Length)
@@ -744,10 +740,9 @@ Function TimerMorphTick()
 						; when the morphs are maxed out, set this on the sliderSet
 						if (morphPercentage == maxMorphPercentage)
 							sliderSet.IsMaxedOut = true
-						; when the morphs are not maxed out, set this on the sliderSet and set maxedOutMorphs to false
+						; when the morphs are not maxed out, set this on the sliderSet
 						else
 							sliderSet.IsMaxedOut = false
-							maxedOutMorphs = false
 						endif								
 					; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
 					; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
@@ -757,10 +752,9 @@ Function TimerMorphTick()
 						; when the morphs are maxed out, set this on the sliderSet
 						if (morphPercentage == maxMorphPercentage)
 							sliderSet.IsMaxedOut = true
-						; when the morphs are not maxed out, set this on the sliderSet, set maxedOutMorphs to false and set the global HasReachedMaxMorphs to false
+						; when the morphs are not maxed out, set this on the sliderSet, set the global HasReachedMaxMorphs to false
 						else
 							sliderSet.IsMaxedOut = false
-							maxedOutMorphs = false
 							HasReachedMaxMorphs = false
 						endif
 					endif
@@ -776,9 +770,20 @@ Function TimerMorphTick()
 				sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
 				sliderSet.CurrentMorph = calculatedMorphPercentage
 			EndIf
+
+			; increase morphableSliders with one, and maxedOutSliders with one if the sliderSet is maxed out
+			morphableSliders += 1
+			if (sliderSet.IsMaxedOut)
+				maxedOutSliders += 1
+			endif
 		EndIf
 		idxSet += 1
 	EndWhile
+
+	; when all morphable sliderSets are maxed out, set maxedOutMorphs to true
+	if (morphableSliders == maxedOutSliders)
+		maxedOutMorphs = true
+	endif
 
 	Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
 
