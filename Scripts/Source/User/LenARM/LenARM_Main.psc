@@ -59,6 +59,7 @@ float TotalRads
 bool HasReachedMaxMorphs
 
 bool EnablePopping
+bool EnableCompanionPopping
 int PopStates
 bool PopShouldParalyze
 ; how many pop warnings have we displayed
@@ -311,6 +312,7 @@ Function Startup()
 		HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
 
 		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
+		EnableCompanionPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableCompanionPopping:General")
 		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
 		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
 
@@ -961,7 +963,7 @@ Function CheckPopWarnings()
 	; 30% base chance to trigger
 	bool shouldPop = ShouldPop(3)
 
-	bool effectsCompanions = SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions
+	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
 	if (!shouldPop)
 		return
@@ -999,11 +1001,9 @@ EndFunction
 Function Pop()
 	int currentPopState = 1
 	int unequipState = 3 ;TODO make config in MCM?
-	IsPopping = true
+	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
-	;TODO maak companions effecten configurable; het werkt redelijk vertragend
-	; voor nu ff disabled voor companions omdat er nog wat issues mee zijn
-	bool effectsCompanions = 1 == 0 && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
+	IsPopping = true
 
 	Log("pop!")
 
@@ -1016,14 +1016,14 @@ Function Pop()
 	; reset rads in case player is in a high-rads zone
 	PlayerRef.EquipItem(ResetRadsPotion, abSilent = true)
 
-	; play the full sound for the player and companions
+	; play the full sound for the player
 	LenARM_FullSound.Play(PlayerRef)
 	if (effectsCompanions)
 		PlayCompanionSoundFull()
 	endif	
 	; then paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
-	if (PopShouldParalyze)
+	if (PopShouldParalyze)		
 		if (effectsCompanions)
 			ParalyzeCompanions()
 		endif	
@@ -1038,28 +1038,26 @@ Function Pop()
 		if (effectsCompanions)
 			PlayCompanionSoundSwell()
 		endif								
-		; for the unequip state we don't want to play the swell sound, but unequip the clothes instead
-		If (currentPopState != unequipState)
-			;LenARM_SwellSound.Play(PlayerRef)
-		Else
+		; for the unequip state we also want to strip all clothes and armor
+		If (currentPopState == unequipState)
 			;TODO zelfde voor companions doen; zie echter de TODO daarvoor
 			UnequipAll()
 		endif
 
-		ExtendMorphs(currentPopState)
+		ExtendMorphs(currentPopState, effectsCompanions)
 		Utility.Wait(0.7)
 
 		currentPopState += 1
 	EndWhile
 
 	; first 'pop' the companions one by one
-	if(effectsCompanions)
+	if (effectsCompanions)
 		PopCompanions(currentPopState)
 	endif
 
 	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 	; for this situation we do want to wait for the sound effect to finish playing
-	ExtendMorphs(currentPopState)
+	ExtendMorphs(currentPopState, false)
 	LenARM_PrePopSound.PlayAndWait(PlayerRef)
 	LenARM_PopSound.Play(PlayerRef)
 	ResetMorphs()	
@@ -1107,20 +1105,19 @@ Function PopCompanions(int currentPopState)
 		Actor companion = CurrentCompanions[idxComp]
 		int sex = companion.GetLeveledActorBase().GetSex()
 
-		; only play sounds if there are sliders which effect the companion's sex
+		; only pop if there are sliders which effect the companion's sex
 		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before playing morph sounds on the companion
+			; do a random delay
 			float randomFloat = (Utility.RandomInt(2,6) * 0.1) as float
 
 			Utility.Wait(randomFloat)
 
 			; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 			; for this situation we do want to wait for the sound effect to finish playing
-			ExtendMorphs(currentPopState)
+			ExtendCompanionMorphs(currentPopState)
 			LenARM_PrePopSound.PlayAndWait(companion)
 			LenARM_PopSound.Play(companion)
 
-			;TODO dis niet goed, zodra player popped krijgt companion weer dezelfde morphs
 			RestoreOriginalCompanionMorphs(companion, idxComp)
 		endif
 		idxComp += 1
@@ -1150,18 +1147,44 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
-Function ExtendMorphs(float step)
+;TODO je zou deze nog kunnen samenmergen door met 2 bools te werken; eentje voor player en eentje voor companions...
+Function ExtendMorphs(float step, bool effectsCompanions)
 	Log("extending morphs with: " + step)
-	int idxSet = 0
 
 	; calculate the new morphs multiplier
-	float multiplier = 1.0 + (step/8)
+	float multiplier = CalculateExtendMorphs(step)
 
+	int idxSet = 0
 	; apply it to all morphs from slidersets which aren't excluded
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
 			SetMorphs(idxSet, sliderSet, multiplier)
+			if (effectsCompanions)
+				SetCompanionMorphs(idxSet, multiplier, sliderSet.ApplyCompanion)
+			endif
+		EndIf
+		idxSet += 1
+	EndWhile
+	
+	; apply all new morphs to the body
+	if (effectsCompanions)
+		ApplyAllCompanionMorphs()
+	endif
+	BodyGen.UpdateMorphs(PlayerRef)
+EndFunction
+
+Function ExtendCompanionMorphs(float step)
+	Log("extending companion morphs with: " + step)
+
+	; calculate the new morphs multiplier
+	float multiplier = CalculateExtendMorphs(step)
+
+	int idxSet = 0
+	; apply it to all morphs from slidersets which aren't excluded
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]		
+		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
 			SetCompanionMorphs(idxSet, multiplier, sliderSet.ApplyCompanion)
 		EndIf
 		idxSet += 1
@@ -1169,7 +1192,13 @@ Function ExtendMorphs(float step)
 	
 	; apply all new morphs to the body
 	ApplyAllCompanionMorphs()
-	BodyGen.UpdateMorphs(PlayerRef)
+EndFunction
+
+float Function CalculateExtendMorphs(float step)	
+	; calculate the new morphs multiplier
+	float multiplier = 1.0 + (step/8)
+
+	return multiplier
 EndFunction
 
 ; ------------------------

@@ -206,7 +206,7 @@
 				},
 				{
 					"text": "Enable popping",
-					"help": "Enable or disable non-lethal 'popping' of the player upon taking rads beyond their max morphs",
+					"help": "Enable or disable non-lethal 'popping' of the player upon taking rads beyond their max morphs. Default: false",
 					"type": "switcher",
 					"id": "bEnablePopping:General",
 					"valueOptions": {
@@ -230,6 +230,20 @@
 					"help": "Should popping paralyze the player. This will leave the player open to damage during the duration! Default: true",
 					"type": "switcher",
 					"id": "bPopShouldParalyze:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				},
+				{
+					"text": "Companions can also be 'popped' in the same way the player can. This only works if player popping is enabled, and there is at least 1 slider set which effects companions. <b>Do note that this will slow down the entire 'popping' process by at least a factor of 3, so if you intend to use this, it is adviced to at least disable ' Pop paralyzes'</b>.",
+					"type": "text",
+					"html": true
+				},
+				{
+					"text": "Enable companion popping",
+					"help": "Enable or disable 'popping' of companions. Default: false",
+					"type": "switcher",
+					"id": "bEnableCompanionPopping:General",
 					"valueOptions": {
 						"sourceType": "ModSettingBool"
 					}
