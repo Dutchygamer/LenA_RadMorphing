@@ -188,7 +188,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
 	; this will break the hacky "unequip weapon slots" logic some people use tho...
 	If (akBaseObject as Armor)
-		Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
+		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
 	endif
@@ -577,7 +577,7 @@ Function LoadSliderSets()
 		EndIf
 		idxSet += 1
 	EndWhile	
-	RetrieveAllOriginalCompanionMorphs()
+	StoreAllOriginalCompanionMorphs()
 EndFunction
 
 ; ------------------------
@@ -1250,17 +1250,14 @@ Function ClearOldRadsPerks(int newPerkLevel)
     int i = 0
     While (i < 5)
         If (i != newPerkLevel && PlayerRef.HasPerk(RadsPerkArray[i]))
-            ; If (PlayerRef.HasPerk(RadsPerkArray[i]))
-                Log("Removing radsperk of level " + i)
-                PlayerRef.RemovePerk(RadsPerkArray[i])
-            ; EndIf
+			Log("Removing radsperk of level " + i)
+			PlayerRef.RemovePerk(RadsPerkArray[i])
         EndIf
         i += 1
     EndWhile
 	
-	;TODO debug thingy
 	if (newPerkLevel > -1)
-    	Note("RadsPerk Level " + newPerkLevel + " applied")    
+    	Log("RadsPerk Level " + newPerkLevel + " applied")    
 	endif
 EndFunction
 
@@ -1281,6 +1278,22 @@ EndFunction
 ; 	EndWhile
 ; EndFunction
 
+
+;TODO okay, nieuwe bug ontdekt met companions:
+;game besluit randomly dat Cait geen companion meer is, en dus worden haar morphs gereset
+;dis brak, maar das niet meest vervelende. Meer vervelend is dat op geen enkele plaats OriginalCompanionMorphs gecleared wordt indien dit gebeurd; 
+; op gegeven moment is die array vol en dan ben je fucked
+;jezus, dit gebeurt nog vaak ook. No wonder dat die array vol gegooid wordt
+;vreemde is: ik zie geen reden waarom Cait niet meer als companion moet worden gezien. Tis steeds zelfde id. 
+;Wat me wel opvalt is dat Cait veranderd van CompanionCrimeFactionHostilityScript naar een workshopnpcscript. Maar dat kan wellicht zijn dat ik dr gerecruit heb.
+;Zou die workshop extended shizzle nu in de weg zitten?
+
+;Tis wel iets wat ik moet nalopen: dit gebeurt vaker dan ik dacht. Zou ook de eerdere issue met Shannon dismissen waarbij morphs niet gereset werden verklaren
+
+
+; ------------------------
+; Loops through all current companions, and restores the original morphs
+; ------------------------
 Function RestoreAllOriginalCompanionMorphs()
 	Log("RestoreAllOriginalCompanionMorphs")
 	int idxComp = 0
@@ -1291,6 +1304,9 @@ Function RestoreAllOriginalCompanionMorphs()
 	EndWhile
 EndFunction
 
+; ------------------------
+; Loop through all sliderSets, and restore the companion's original morphs for that sliderSet if they effected the companion
+; ------------------------
 Function RestoreOriginalCompanionMorphs(Actor companion, int idxCompanion)
 	Log("RestoreOriginalCompanionMorphs: " + companion + "; " + idxCompanion)
 	int offsetIdx = SliderNames.Length * idxCompanion
@@ -1303,24 +1319,33 @@ Function RestoreOriginalCompanionMorphs(Actor companion, int idxCompanion)
 	BodyGen.UpdateMorphs(companion)
 EndFunction
 
-Function RetrieveAllOriginalCompanionMorphs()
-	Log("RetrieveAllOriginalCompanionMorphs")
+; ------------------------
+; Loops through all current companions, and store the original morphs
+; ------------------------
+Function StoreAllOriginalCompanionMorphs()
+	Log("StoreAllOriginalCompanionMorphs")
 	OriginalCompanionMorphs = new float[0]
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		Log("companion " + idxComp)
 		Actor companion = CurrentCompanions[idxComp]
-		RetrieveOriginalCompanionMorphs(companion)
+		StoreOriginalCompanionMorphs(companion)
 		idxComp += 1
 	EndWhile
 EndFunction
 
-Function RetrieveOriginalCompanionMorphs(Actor companion)
-	Log("RetrieveOriginalCompanionMorphs: " + companion)
+; ------------------------
+; Loop through all sliderSets, and store the companion's original morphs for that sliderSet
+; ------------------------
+Function StoreOriginalCompanionMorphs(Actor companion)
+	Log("StoreOriginalCompanionMorphs: " + companion)
 	int idxSlider = 0
 	While (idxSlider < SliderNames.Length)
-		;Log("sliderset " + idxSlider)
-		OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))
+		; OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))		
+		float companionMorph = BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None)
+
+		Log("  sliderset " + idxSlider + "; " + companionMorph)
+		OriginalCompanionMorphs.Add(companionMorph)
 		idxSlider += 1
 	EndWhile
 EndFunction
@@ -1336,13 +1361,13 @@ Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 				int offsetIdx = SliderNames.Length * idxComp
 				float companionMorphs = OriginalCompanionMorphs[offsetIdx + idxSlider]
 				float newMorphs = companionMorphs + morph
-				;Log("    setting companion(" + companion + ") slider '" + SliderNames[idxSlider] + "' to " + (OriginalCompanionMorphs[offsetIdx + idxSlider] + morph) + " (base value is " + OriginalCompanionMorphs[offsetIdx + idxSlider] + ")")
+				; Log("    setting companion(" + companion + ") slider '" + SliderNames[idxSlider] + "' to " + (OriginalCompanionMorphs[offsetIdx + idxSlider] + morph) + " (base value is " + OriginalCompanionMorphs[offsetIdx + idxSlider] + ")")
 				BodyGen.SetMorph(companion, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorphs)
 			Else
-				Log("    skipping companion slider:  sex=" + sex)
+				; Log("    skipping companion slider:  sex=" + sex)
 			EndIf
 		Else
-			Log("    skipping companion(" + companion + ") due to being in power armor")
+			; Log("    skipping companion(" + companion + ") due to being in power armor")
 		EndIf
 		idxComp += 1
 	EndWhile
@@ -1353,7 +1378,7 @@ Function ApplyAllCompanionMorphs()
 EndFunction
 
 Function ApplyAllCompanionMorphsWithSound(float radsDifference)
-	Log("ApplyAllCompanionMorphs")
+	; Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		Actor companion = CurrentCompanions[idxComp]
@@ -1447,35 +1472,9 @@ Function PlayCompanionSoundSwell()
 	EndWhile
 EndFunction
 
-Function RemoveDismissedCompanions(Actor[] newCompanions)
-	Log("RemoveDismissedCompanions: " + newCompanions)
-	int idxOld = CurrentCompanions.Length - 1
-	While (idxOld >= 0)
-		Actor oldComp = CurrentCompanions[idxOld]
-		If (newCompanions.Find(oldComp) == -1)
-			Log("  removing companion " + oldComp)
-			CurrentCompanions.Remove(idxOld)
-			RestoreOriginalCompanionMorphs(oldComp, idxOld)
-		EndIf
-		idxOld -= 1
-	EndWhile
-EndFunction
-
-Function AddNewCompanions(Actor[] newCompanions)
-	Log("AddNewCompanions: " + newCompanions)
-	int idxNew = 0
-	While (idxNew < newCompanions.Length)
-		Actor newComp = newCompanions[idxNew]
-		Log("  looking for " + newComp + " -> " + CurrentCompanions.Find(newComp))
-		If (CurrentCompanions.Find(newComp) == -1)
-			Log("  adding companion " + newComp)
-			CurrentCompanions.Add(newComp)
-			RegisterForRemoteEvent(newComp, "OnCompanionDismiss")
-			RetrieveOriginalCompanionMorphs(newComp)
-		EndIf
-		idxNew += 1
-	EndWhile
-EndFunction
+; ------------------------
+; Loop through the given companions, and add it to the various lists if not yet on them, and store the companion's original morphs
+; ------------------------
 
 Event Actor.OnCompanionDismiss(Actor akSender)
 	Log("Actor.OnCompanionDismiss: " + akSender)
@@ -1487,14 +1486,16 @@ Event Actor.OnCompanionDismiss(Actor akSender)
 EndEvent
 
 Actor[] Function GetCompanions()
-	Log("GetCompanions")
-	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
-	Log("  allCompanions: " + allCompanions)
+	; Log("GetCompanions")
+	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]	
+	;Log("  allCompanions: " + allCompanions)
 	Actor[] filteredCompanions = new Actor[0]
 	int idxFilterCompanions = 0
 	While (idxFilterCompanions < allCompanions.Length)
 		Actor companion = allCompanions[idxFilterCompanions]
+		;TODO waar zijn deze extra checks nog voor nodig? is dit voor dismissed companions?
 		If (companion.IsInFaction(CurrentCompanionFaction) || companion.IsInFaction(PlayerAllyFation))
+			;Note("valid companion: " + companion)
 			filteredCompanions.Add(companion)
 		EndIf
 		idxFilterCompanions += 1
@@ -1503,11 +1504,42 @@ Actor[] Function GetCompanions()
 EndFunction
 
 Function UpdateCompanionList()
-	Log("UpdateCompanionList")
+	; Log("UpdateCompanionList")
 	Actor[] newComps = GetCompanions()
 	RemoveDismissedCompanions(newComps)
 	AddNewCompanions(newComps)
-	Log("  CurrentCompanions: " + CurrentCompanions)
+	; Log("  CurrentCompanions: " + CurrentCompanions)
+EndFunction
+
+;TODO zou je Remove en Add kunnen mergen?
+Function RemoveDismissedCompanions(Actor[] newCompanions)
+	; Log("RemoveDismissedCompanions: " + newCompanions)
+	int idxOld = CurrentCompanions.Length - 1
+	While (idxOld >= 0)
+		Actor oldComp = CurrentCompanions[idxOld]
+		If (newCompanions.Find(oldComp) < 0)
+			Log("  removing companion " + oldComp)
+			CurrentCompanions.Remove(idxOld)
+			RestoreOriginalCompanionMorphs(oldComp, idxOld)
+		EndIf
+		idxOld -= 1
+	EndWhile
+EndFunction
+
+Function AddNewCompanions(Actor[] newCompanions)
+	; Log("AddNewCompanions: " + newCompanions)
+	int idxNew = 0
+	While (idxNew < newCompanions.Length)
+		Actor newComp = newCompanions[idxNew]
+		;Log("  looking for " + newComp + " -> " + CurrentCompanions.Find(newComp))
+		If (CurrentCompanions.Find(newComp) < 0)
+			Log("  adding companion " + newComp)
+			CurrentCompanions.Add(newComp)
+			RegisterForRemoteEvent(newComp, "OnCompanionDismiss")
+			StoreOriginalCompanionMorphs(newComp)
+		EndIf
+		idxNew += 1
+	EndWhile
 EndFunction
 
 ; ------------------------
@@ -1797,10 +1829,20 @@ Function Debug_ShowLowestSliderPercentage()
 EndFunction
 
 Function Debug_ResetCompanionMorphsArray()
-	; in case you have somehow filled the OriginalCompanionMorphs array with 0 values (don't ask how I did it)
-	RetrieveAllOriginalCompanionMorphs()
-	; LogCompanionMorphs()
+	; in case you have somehow fubar-ed the OriginalCompanionMorphs array
+	; first reset all companions' morphs
+	RestoreAllOriginalCompanionMorphs()
+
+	; flush the entire OriginalCompanionMorphs array
+	OriginalCompanionMorphs = new float[0]
+
+	; fill the OriginalCompanionMorphs array again with the companions morphs
+	StoreAllOriginalCompanionMorphs()
+
+	; the correct morphs will get applied on the next trigger; this is a debug function after all
 	
+	; LogCompanionMorphs()
+
 	MessageBox("Flushed and repopulated companion morphs array")
 EndFunction
 
