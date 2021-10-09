@@ -175,7 +175,7 @@ Function PerformUpdateIfNecessary()
 EndFunction
 
 string Function GetVersion()
-	return "0.7.1.1"; Sat Oct 09 11:46:00 CET+2 2021
+	return "0.7.1.1"; Sat Oct 09 11:46:00 UTC+2 2021
 EndFunction
 
 ; ------------------------
@@ -1329,7 +1329,7 @@ Function StoreAllOriginalCompanionMorphs()
 	OriginalCompanionMorphs = new float[0]
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
-		Log("companion " + idxComp)
+		;Log("companion " + idxComp)
 		Actor companion = CurrentCompanions[idxComp]
 		StoreOriginalCompanionMorphs(companion)
 		idxComp += 1
@@ -1346,7 +1346,7 @@ Function StoreOriginalCompanionMorphs(Actor companion)
 		; OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))		
 		float companionMorph = BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None)
 
-		Log("  sliderset " + idxSlider + "; " + companionMorph)
+		;Log("  sliderset " + idxSlider + "; " + companionMorph)
 		OriginalCompanionMorphs.Add(companionMorph)
 		idxSlider += 1
 	EndWhile
@@ -1474,19 +1474,10 @@ Function PlayCompanionSoundSwell()
 	EndWhile
 EndFunction
 
-; ------------------------
-; Loop through the given companions, and add it to the various lists if not yet on them, and store the companion's original morphs
-; ------------------------
 
-Event Actor.OnCompanionDismiss(Actor akSender)
-	Log("Actor.OnCompanionDismiss: " + akSender)
-	int idxComp = CurrentCompanions.Find(akSender)
-	If (idxComp > -1)
-		CurrentCompanions.Remove(idxComp)
-		RestoreOriginalCompanionMorphs(akSender, idxComp)
-	EndIf
-EndEvent
-
+; ------------------------
+; Companion administration, storing and removing from various lists
+; ------------------------
 Function UpdateCompanionList()
 	; Log("UpdateCompanionList")
 	Actor[] newComps = GetCompanions()
@@ -1505,7 +1496,6 @@ Actor[] Function GetCompanions()
 		Actor companion = allCompanions[idxFilterCompanions]
 		;TODO waar zijn deze extra checks nog voor nodig? is dit voor dismissed companions?
 		If (companion.IsInFaction(CurrentCompanionFaction) || companion.IsInFaction(PlayerAllyFation))
-			;Note("valid companion: " + companion)			
 			filteredCompanions.Add(companion)
 		EndIf
 		idxFilterCompanions += 1
@@ -1542,10 +1532,12 @@ Function RemoveDismissedCompanions(Actor[] newCompanions)
 			Note("  removing companion " + oldCompId)
 			
 			Actor oldComp = CurrentCompanions[idxOld]
+			; first restore the morphs, then delete from arrays
+			; as restore morphs works with the array values, doing this the other way around means morphs won't get restored properly
+			RestoreOriginalCompanionMorphs(oldComp, idxOld)
 
 			CurrentCompanionIds.Remove(idxOld)
 			CurrentCompanions.Remove(idxOld)
-			RestoreOriginalCompanionMorphs(oldComp, idxOld)
 		EndIf
 		idxOld -= 1
 	EndWhile
@@ -1558,8 +1550,8 @@ Function AddNewCompanions(Actor[] newCompanions)
 		Actor newComp = newCompanions[idxNew]
 		int newCompId = newComp.GetFormId()
 		
-		; can't find the current companionId in the current companionIds array?
-		; add it to both the current companionIds array and the currentCompanions array, register the dismiss event, and store the companion's original morphs
+		; can't find the new companionId in the current companionIds array?
+		; add it to the current companionIds array, the matching Actor to the currentCompanions array, register the dismiss event, and store the companion's original morphs
 		If (CurrentCompanionIds.Find(newCompId) < 0)
 			Note("  adding companion " + newCompId)
 			CurrentCompanionIds.Add(newCompId)
@@ -1570,6 +1562,19 @@ Function AddNewCompanions(Actor[] newCompanions)
 		idxNew += 1
 	EndWhile
 EndFunction
+
+;TODO okay, enige issue die ik nu nog zie is dat deze nooit lijkt af te gaan?
+; gevolg is dat bij dismiss van companion de morphs behouden blijven tot UpdateCompanionList getriggerd wordt, die dan (correct) de companion verwijderd
+
+Event Actor.OnCompanionDismiss(Actor akSender)
+	Log("Actor.OnCompanionDismiss: " + akSender)
+	int idxComp = CurrentCompanions.Find(akSender)
+	If (idxComp >= 0)
+		CurrentCompanionIds.Remove(idxComp)
+		CurrentCompanions.Remove(idxComp)
+		RestoreOriginalCompanionMorphs(akSender, idxComp)
+	EndIf
+EndEvent
 
 ; ------------------------
 ; Check for each slider whether pieces of clothing / armor should get unequipped
