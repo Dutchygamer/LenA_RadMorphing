@@ -36,6 +36,7 @@ float[] OriginalMorphs
 ; flattened array[idxCompanion][idxSliderSet][idxSliderName]
 float[] OriginalCompanionMorphs
 
+int[] CurrentCompanionIds
 Actor[] CurrentCompanions
 
 int UpdateType
@@ -174,7 +175,7 @@ Function PerformUpdateIfNecessary()
 EndFunction
 
 string Function GetVersion()
-	return "0.7.1"; Thu Dec 17 09:11:27 CET 2020
+	return "0.7.1.1"; Sat Oct 09 11:46:00 CET+2 2021
 EndFunction
 
 ; ------------------------
@@ -342,6 +343,7 @@ Function Startup()
 		EndIf
 
 		; set up companions
+		CurrentCompanionIds = new int[0]
 		CurrentCompanions = new Actor[0]
 
 		; reset unequip stack
@@ -1485,6 +1487,14 @@ Event Actor.OnCompanionDismiss(Actor akSender)
 	EndIf
 EndEvent
 
+Function UpdateCompanionList()
+	; Log("UpdateCompanionList")
+	Actor[] newComps = GetCompanions()
+	RemoveDismissedCompanions(newComps)
+	AddNewCompanions(newComps)
+	; Log("  CurrentCompanions: " + CurrentCompanions)
+EndFunction
+
 Actor[] Function GetCompanions()
 	; Log("GetCompanions")
 	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]	
@@ -1495,7 +1505,7 @@ Actor[] Function GetCompanions()
 		Actor companion = allCompanions[idxFilterCompanions]
 		;TODO waar zijn deze extra checks nog voor nodig? is dit voor dismissed companions?
 		If (companion.IsInFaction(CurrentCompanionFaction) || companion.IsInFaction(PlayerAllyFation))
-			;Note("valid companion: " + companion)
+			;Note("valid companion: " + companion)			
 			filteredCompanions.Add(companion)
 		EndIf
 		idxFilterCompanions += 1
@@ -1503,22 +1513,37 @@ Actor[] Function GetCompanions()
 	return filteredCompanions
 EndFunction
 
-Function UpdateCompanionList()
-	; Log("UpdateCompanionList")
-	Actor[] newComps = GetCompanions()
-	RemoveDismissedCompanions(newComps)
-	AddNewCompanions(newComps)
-	; Log("  CurrentCompanions: " + CurrentCompanions)
-EndFunction
-
 ;TODO zou je Remove en Add kunnen mergen?
 Function RemoveDismissedCompanions(Actor[] newCompanions)
 	; Log("RemoveDismissedCompanions: " + newCompanions)
+
+	; first convert the Actor array into an int array
+	; bit wasteful, but we don't have those nifty LINQ functions from C# so this is the next best thing
+	int[] newCompIds = new int[0]
+	int idxNew = 0
+
+	While (idxNew < newCompanions.Length)
+		Actor newComp = newCompanions[idxNew]
+		int newCompId = newComp.GetFormId()
+		newCompIds.Add(newCompId)
+		idxNew += 1
+	EndWhile
+
+	; then compare the new companion id array with the current companionId array
+	; do note that we traverse the current companionId array in reverse order, as removing an earlier entry means all later entries will get shuffled to fill the empty space
+	; if we thus start from the first entry, you will get nullpointers in no time
 	int idxOld = CurrentCompanions.Length - 1
 	While (idxOld >= 0)
-		Actor oldComp = CurrentCompanions[idxOld]
-		If (newCompanions.Find(oldComp) < 0)
-			Log("  removing companion " + oldComp)
+		int oldCompId = CurrentCompanionIds[idxOld]
+
+		; can't find the current companionId in the new companionIds array?
+		; remove it from both the current companionIds array and the currentCompanions array, and restore the companion's original morphs
+		If (newCompIds.Find(oldCompId) < 0)
+			Note("  removing companion " + oldCompId)
+			
+			Actor oldComp = CurrentCompanions[idxOld]
+
+			CurrentCompanionIds.Remove(idxOld)
 			CurrentCompanions.Remove(idxOld)
 			RestoreOriginalCompanionMorphs(oldComp, idxOld)
 		EndIf
@@ -1531,9 +1556,13 @@ Function AddNewCompanions(Actor[] newCompanions)
 	int idxNew = 0
 	While (idxNew < newCompanions.Length)
 		Actor newComp = newCompanions[idxNew]
-		;Log("  looking for " + newComp + " -> " + CurrentCompanions.Find(newComp))
-		If (CurrentCompanions.Find(newComp) < 0)
-			Log("  adding companion " + newComp)
+		int newCompId = newComp.GetFormId()
+		
+		; can't find the current companionId in the current companionIds array?
+		; add it to both the current companionIds array and the currentCompanions array, register the dismiss event, and store the companion's original morphs
+		If (CurrentCompanionIds.Find(newCompId) < 0)
+			Note("  adding companion " + newCompId)
+			CurrentCompanionIds.Add(newCompId)
 			CurrentCompanions.Add(newComp)
 			RegisterForRemoteEvent(newComp, "OnCompanionDismiss")
 			StoreOriginalCompanionMorphs(newComp)
@@ -1768,6 +1797,7 @@ Function ForgetState(bool isCalledByUser=false)
 		OriginalMorphs = none
 		OriginalCompanionMorphs = none
 		
+		CurrentCompanionIds = none
 		CurrentCompanions = none
 		
 		CurrentRads = 0.0
