@@ -1746,14 +1746,14 @@ Function UnequipAll()
 			;int sex = companion.GetLeveledActorBase().GetSex()
 			;If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
 
-			Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
+			Actor:WornItem compItem = companion.GetWornItem(slot)
 
 			; check if item in the slot is not an actor or the pipboy
 			bool compIsArmor = IsItemArmor(compItem)
 
 			; when item is an armor and we can unequip it, do so
 			If (compIsArmor)
-				Log("  unequipping companion(" + companion + ") slot " + UnequipSlots[idxSlot] + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
+				Log("  unequipping companion(" + companion + ") slot " + slot + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
 
 				;TODO moet hier nog random delay in komen?
 
@@ -1761,7 +1761,7 @@ Function UnequipAll()
 
 				; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 				; play the strip sound if available and display a notification in top-left
-				If (!compFound[idxComp] && !companion.IsEquipped(item.item))
+				If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
 					;Note("It is too tight for me")
 					LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
 					compFound[idxComp] = true
