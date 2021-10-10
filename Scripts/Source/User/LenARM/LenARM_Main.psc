@@ -12,11 +12,12 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;-see if the whole update process can be made faster / more efficient
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
-;-TimedBasedMorphs now looks for the actual received radiation for basicly everything. This is most likely the reason why the FakeRads logic is buggy
-;  -things like MorphSounds still seem to look at the actual received rads instead of the FakeRads when you use FakeRads
-;  -might also explain why god-mode together with FakeRads doesn't seem to apply any morphs anymore
 
 ;TODO Ada gets seen as a female companion. Doesn't do morphs, but does play sounds
+
+;TODO je kan woordjes als properties meegeven en dan displayen ipv hardcoded texten in de scripts te doen.
+;voeg toe als property, als type object, en selecteer dan de MESG
+;ff nazoeken hoe je dat dan displayed, vermoed dat het een string property intern is?
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -1280,19 +1281,6 @@ EndFunction
 ; 	EndWhile
 ; EndFunction
 
-
-;TODO okay, nieuwe bug ontdekt met companions:
-;game besluit randomly dat Cait geen companion meer is, en dus worden haar morphs gereset
-;dis brak, maar das niet meest vervelende. Meer vervelend is dat op geen enkele plaats OriginalCompanionMorphs gecleared wordt indien dit gebeurd; 
-; op gegeven moment is die array vol en dan ben je fucked
-;jezus, dit gebeurt nog vaak ook. No wonder dat die array vol gegooid wordt
-;vreemde is: ik zie geen reden waarom Cait niet meer als companion moet worden gezien. Tis steeds zelfde id. 
-;Wat me wel opvalt is dat Cait veranderd van CompanionCrimeFactionHostilityScript naar een workshopnpcscript. Maar dat kan wellicht zijn dat ik dr gerecruit heb.
-;Zou die workshop extended shizzle nu in de weg zitten?
-
-;Tis wel iets wat ik moet nalopen: dit gebeurt vaker dan ik dacht. Zou ook de eerdere issue met Shannon dismissen waarbij morphs niet gereset werden verklaren
-
-
 ; ------------------------
 ; Loops through all current companions, and restores the original morphs
 ; ------------------------
@@ -1486,14 +1474,41 @@ Function UpdateCompanionList()
 	; Log("  CurrentCompanions: " + CurrentCompanions)
 EndFunction
 
+;TODO okay, nieuwe bug ontdekt met companions:
+;game besluit randomly dat Cait geen companion meer is, en dus worden haar morphs gereset
+;dis brak, maar das niet meest vervelende. Meer vervelend is dat op geen enkele plaats OriginalCompanionMorphs gecleared wordt indien dit gebeurd; 
+; op gegeven moment is die array vol en dan ben je fucked
+;jezus, dit gebeurt nog vaak ook. No wonder dat die array vol gegooid wordt
+;vreemde is: ik zie geen reden waarom Cait niet meer als companion moet worden gezien. Tis steeds zelfde id. 
+;Wat me wel opvalt is dat Cait veranderd van CompanionCrimeFactionHostilityScript naar een workshopnpcscript. Maar dat kan wellicht zijn dat ik dr gerecruit heb.
+;Zou die workshop extended shizzle nu in de weg zitten?
+;Tis wel iets wat ik moet nalopen: dit gebeurt vaker dan ik dacht. Zou ook de eerdere issue met Shannon dismissen waarbij morphs niet gereset werden verklaren
+
+;TODO lijkt in sommige gevallen active companions nog steeds te negeren, dunno why
+;vermoed dat het in Game.GetPlayerFollowers zit, gezien ie indien een companion er onterecht uit trapt, hij in de gehele loop niet komt
+;wiki zegt:
+;Actor array containing all actors that are either:
+;    Running an AI procedure that followers the player (e.g. Follow, Range).
+;    Running a package that is flagged to treat the actor as a player-follower (e.g. a Sandbox on a player companion).
+;dit kan verklaren waarom het lijkt dat zodra je in combat gaat hij de companion eruit gaat gooien
+;tis echter wel de juiste functie zo te zien. Vanilla scripts gebruiken die ook
+
+;de alternatieve vraag is: waarom trappen we companions eruit? in theorie zou dat met de Dismiss gedaan moeten worden.
+;altho weet ik nu al dat heel die OnDismiss sowieso niet af gaat...
+
+;zou ook betekenen dat dat hele idee van twee arrays bijhouden om mismatches te voorkomen dus voor niets was als ie nog steeds hetzelfde resultaat doet...
 Actor[] Function GetCompanions()
 	; Log("GetCompanions")
-	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]	
+	Actor[] allCompanions = Game.GetPlayerFollowers() ; as Actor[]	
 	;Log("  allCompanions: " + allCompanions)
 	Actor[] filteredCompanions = new Actor[0]
 	int idxFilterCompanions = 0
 	While (idxFilterCompanions < allCompanions.Length)
 		Actor companion = allCompanions[idxFilterCompanions]
+
+		;int compId = companion.GetFormId()
+		;Note("current companion " + compId)
+
 		;TODO waar zijn deze extra checks nog voor nodig? is dit voor dismissed companions?
 		If (companion.IsInFaction(CurrentCompanionFaction) || companion.IsInFaction(PlayerAllyFation))
 			filteredCompanions.Add(companion)
@@ -1518,6 +1533,8 @@ Function RemoveDismissedCompanions(Actor[] newCompanions)
 		newCompIds.Add(newCompId)
 		idxNew += 1
 	EndWhile
+
+	;Note("companionIds: " + newCompIds)
 
 	; then compare the new companion id array with the current companionId array
 	; do note that we traverse the current companionId array in reverse order, as removing an earlier entry means all later entries will get shuffled to fill the empty space
@@ -1614,7 +1631,7 @@ Function UnequipSlots()
 					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
 					
 					; check if item in the slot is not an actor or the pipboy
-					bool isArmor = (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+					bool isArmor = IsItemArmor(item)
 					; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
 					bool canUnequip = (item.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
 
@@ -1632,29 +1649,40 @@ Function UnequipSlots()
 							found = true
 						EndIf
 					EndIf
-					;TODO companions
-					; deze fixen is niet zo simpel, als je het netjes wilt doen
-					; wat ie nu gaat doen is de oude 'check slot' logica uitvoeren en dan proberen te unequippen
-					; gezien dit voor bepaalde armors issues oplevert, zou je in principe het hele isArmor / canUnequip stuk per companion nog eens moeten doen
-					; gaat qua performance een bitch worden tho...
-					;/int idxComp = 0
+
+					; do the same for the companions
+					int idxComp = 0
 					While (idxComp < CurrentCompanions.Length)
 						Actor companion = CurrentCompanions[idxComp]
 						int sex = companion.GetLeveledActorBase().GetSex()
 						If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
 							Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
-							If (compItem.item && LL_Fourplay.StringSubstring(compItem.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(compItem.modelName, 0, 6) != "Pipboy")
+
+							; check if item in the slot is not an actor or the pipboy
+							bool compIsArmor = IsItemArmor(compItem)
+							; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
+							; for now this looks if the player is wearing a full-body suit, as having to do that check per companion would prolly kill performance
+							bool compCanUnequip = (compItem.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
+
+							; when item is an armor and we can unequip it, do so
+							If (compIsArmor && compCanUnequip)
 								Log("  unequipping companion(" + companion + ") slot " + UnequipSlots[idxSlot] + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
-								companion.UnequipItem(compItem.item)
-								If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
-									Log("  playing companion sound")
+
+								;TODO moet hier nog random delay in komen?
+
+								companion.UnequipItem(compItem.item, false, true)
+
+								; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
+								; play the strip sound if available and display a notification in top-left
+								If (!compFound[idxComp] && !companion.IsEquipped(item.item))
+									;Note("It is too tight for me")
 									LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
 									compFound[idxComp] = true
 								EndIf
 							EndIf
 						EndIf
 						idxComp += 1
-					EndWhile/;
+					EndWhile
 					idxSlot += 1
 				EndWhile
 			EndIf
@@ -1674,19 +1702,17 @@ Function UnequipAll()
 	Log("UnequipAll")
 
 	bool found = false
-
 	bool[] compFound = new bool[CurrentCompanions.Length]
 	int idxSlot = 0
 
 	; these are all the slots we want to unequip
-	int[] allSlots = new int[0]
-	
-	allSlots.Add(3)
-	allSlots.Add(11)
-	allSlots.Add(12)
-	allSlots.Add(13)
-	allSlots.Add(14)
-	allSlots.Add(15)
+	int[] allSlots = new int[0]	
+	allSlots.Add(3)  ; body
+	allSlots.Add(11) ; chest armor
+	allSlots.Add(12) ; arm armor
+	allSlots.Add(13) ; arm armor
+	allSlots.Add(14) ; leg armor
+	allSlots.Add(15) ; leg armor
 
 	; check for each slot
 	While (idxSlot < allSlots.Length)
@@ -1695,7 +1721,7 @@ Function UnequipAll()
 		Actor:WornItem item = PlayerRef.GetWornItem(slot)
 		
 		; check if item in the slot is not an actor or the pipboy
-		bool isArmor = (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+		bool isArmor = IsItemArmor(item)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
@@ -1710,29 +1736,46 @@ Function UnequipAll()
 				found = true
 			EndIf
 		EndIf
-		;TODO companions
-		; zelfde issue speelt hier als met UnequipSlots voor Companions
-		;/int idxComp = 0
+		
+		; do the same for the companions
+		int idxComp = 0
 		While (idxComp < CurrentCompanions.Length)
 			Actor companion = CurrentCompanions[idxComp]
-			int sex = companion.GetLeveledActorBase().GetSex()
-			If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
-				Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
-				If (compItem.item && LL_Fourplay.StringSubstring(compItem.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(compItem.modelName, 0, 6) != "Pipboy")
-					Log("  unequipping companion(" + companion + ") slot " + UnequipSlots[idxSlot] + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
-					companion.UnequipItem(compItem.item)
-					If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
-						Log("  playing companion sound")
-						LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
-						compFound[idxComp] = true
-					EndIf
+
+			;TODO voor nu werkt dit voor alle companions, ipv van een bepaalde sex
+			;int sex = companion.GetLeveledActorBase().GetSex()
+			;If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
+
+			Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
+
+			; check if item in the slot is not an actor or the pipboy
+			bool compIsArmor = IsItemArmor(compItem)
+
+			; when item is an armor and we can unequip it, do so
+			If (compIsArmor)
+				Log("  unequipping companion(" + companion + ") slot " + UnequipSlots[idxSlot] + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
+
+				;TODO moet hier nog random delay in komen?
+
+				companion.UnequipItem(compItem.item, false, true)
+
+				; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
+				; play the strip sound if available and display a notification in top-left
+				If (!compFound[idxComp] && !companion.IsEquipped(item.item))
+					;Note("It is too tight for me")
+					LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
+					compFound[idxComp] = true
 				EndIf
 			EndIf
 			idxComp += 1
-		EndWhile/;
+		EndWhile
 		idxSlot += 1	
 	EndWhile
 	Log("FINISHED UnequipAll")
+EndFunction
+
+bool Function IsItemArmor(Actor:WornItem item)
+	return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 EndFunction
 
 ; ------------------------
@@ -1874,10 +1917,7 @@ Function Debug_ResetCompanionMorphsArray()
 	; fill the OriginalCompanionMorphs array again with the companions morphs
 	StoreAllOriginalCompanionMorphs()
 
-	; the correct morphs will get applied on the next trigger; this is a debug function after all
-	
-	; LogCompanionMorphs()
-
+	; the correct morphs will get applied on the next trigger; this is a debug function after all	
 	MessageBox("Flushed and repopulated companion morphs array")
 EndFunction
 
