@@ -1674,7 +1674,7 @@ Function UnequipSlots()
 
 								; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 								; play the strip sound if available and display a notification in top-left
-								If (!compFound[idxComp] && !companion.IsEquipped(item.item))
+								If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
 									;Note("It is too tight for me")
 									LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
 									compFound[idxComp] = true
