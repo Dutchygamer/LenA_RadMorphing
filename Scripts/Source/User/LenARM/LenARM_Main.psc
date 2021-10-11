@@ -1044,7 +1044,7 @@ Function Pop()
 		; for the unequip state we also want to strip all clothes and armor
 		If (currentPopState == unequipState)
 			;TODO zelfde voor companions doen; zie echter de TODO daarvoor
-			UnequipAll()
+			UnequipAll(effectsCompanions)
 		endif
 
 		ExtendMorphs(currentPopState, effectsCompanions)
@@ -1171,10 +1171,10 @@ Function ExtendMorphs(float step, bool effectsCompanions)
 	EndWhile
 	
 	; apply all new morphs to the body
+	BodyGen.UpdateMorphs(PlayerRef)
 	if (effectsCompanions)
 		ApplyAllCompanionMorphs()
 	endif
-	BodyGen.UpdateMorphs(PlayerRef)
 EndFunction
 
 Function ExtendCompanionMorphs(float step)
@@ -1698,7 +1698,7 @@ Function TriggerUnequipSlots()
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
-Function UnequipAll()
+Function UnequipAll(bool effectsCompanions=false)
 	Log("UnequipAll")
 
 	bool found = false
@@ -1738,37 +1738,41 @@ Function UnequipAll()
 		EndIf
 		
 		; do the same for the companions
-		int idxComp = 0
-		While (idxComp < CurrentCompanions.Length)
-			Actor companion = CurrentCompanions[idxComp]
+		if (effectsCompanions)
+			;TODO moet dit niet doet als companions niet poppen
+			int idxComp = 0
+			While (idxComp < CurrentCompanions.Length)
+				Actor companion = CurrentCompanions[idxComp]
 
-			;TODO voor nu werkt dit voor alle companions, ipv van een bepaalde sex
-			;int sex = companion.GetLeveledActorBase().GetSex()
-			;If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
+				;TODO voor nu werkt dit voor alle companions, ipv van een bepaalde sex
+				;int sex = companion.GetLeveledActorBase().GetSex()
+				;If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
 
-			Actor:WornItem compItem = companion.GetWornItem(slot)
+				Actor:WornItem compItem = companion.GetWornItem(slot)
 
-			; check if item in the slot is not an actor or the pipboy
-			bool compIsArmor = IsItemArmor(compItem)
+				; check if item in the slot is not an actor or the pipboy
+				bool compIsArmor = IsItemArmor(compItem)
 
-			; when item is an armor and we can unequip it, do so
-			If (compIsArmor)
-				Log("  unequipping companion(" + companion + ") slot " + slot + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
+				; when item is an armor and we can unequip it, do so
+				If (compIsArmor)
+					Log("  unequipping companion(" + companion + ") slot " + slot + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
 
-				;TODO moet hier nog random delay in komen?
+					;TODO moet hier nog random delay in komen?
 
-				companion.UnequipItem(compItem.item, false, true)
+					companion.UnequipItem(compItem.item, false, true)
 
-				; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
-				; play the strip sound if available and display a notification in top-left
-				If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
-					;Note("It is too tight for me")
-					LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
-					compFound[idxComp] = true
+					; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
+					; play the strip sound if available and display a notification in top-left
+					If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
+						;Note("It is too tight for me")
+						LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
+						compFound[idxComp] = true
+					EndIf
 				EndIf
-			EndIf
-			idxComp += 1
-		EndWhile
+				idxComp += 1
+			EndWhile
+		endif
+
 		idxSlot += 1	
 	EndWhile
 	Log("FINISHED UnequipAll")
