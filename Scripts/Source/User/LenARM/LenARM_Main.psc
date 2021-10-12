@@ -76,6 +76,8 @@ int CurrentRadsPerk
 bool SlidersEffectFemaleCompanions
 bool SlidersEffectMaleCompanions
 
+bool InCombat
+
 int RestartStackSize
 int UnequipStackSize
 
@@ -233,6 +235,20 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	endif
 EndEvent
 
+Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
+	; aeCombatState: The combat state we just entered, which will be one of the following:
+    ; 0: Not in combat
+    ; 1: In combat
+    ; 2: Searching
+	; leaving combat while we are in combat
+	if (aeCombatState == 0 && InCombat)
+		InCombat = false
+	; not in combat and entering combat
+	elseif (aeCombatState != 0 && !InCombat)
+		InCombat = true
+	endif
+EndEvent
+
 ; ------------------------
 ; Upon entering and exiting the doctor scenes, reset the morphs
 ; ------------------------
@@ -324,6 +340,9 @@ Function Startup()
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
+
+		; start listening whether player is in combat or not
+		RegisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
 
 		; start listening for doctor scene
 		RegisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnBegin")
@@ -425,6 +444,9 @@ Function Shutdown(bool withRestore=true)
 	
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
+		
+		; stop listening for combat state changes
+		RegisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
 	
 		; stop listening for doctor scene
 		;TODO moeten de andere scenes hier ook niet bij staan?
@@ -683,8 +705,11 @@ Function TimerMorphTick()
 	Log("rads taken: " + (radsDifference * 1000))
 	
 	CurrentRads = newRads
-	; companions
-	UpdateCompanionList()
+	; update companions list when not in combat
+	; being in combat means the game looses track of the current companions, giving all kind of wonky results
+	if (!InCombat)
+		UpdateCompanionList()
+	endif
 
 	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
 	if (!HasDoctorOnlySliders)
