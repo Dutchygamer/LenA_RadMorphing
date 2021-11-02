@@ -22,6 +22,8 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;TODO wellicht bijhouden wat we unequippen, en dat weer automatisch equippen?
 ;iig voor de companions
 
+;Shannon dr morphs die ik zelf heb toegepast blijven resetten naar de standaard. Dat, of die van Cait
+
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -743,6 +745,7 @@ Function TimerMorphTick()
 		;TODO kijken of Papyrus iets ondersteund ala continue in een loop
 		;hij herkent continue niet als een valid iets, dus ik betwijfel het
 
+		; only use sliderSets which have actual entries
 		If (sliderSet.NumberOfSliderNames > 0)
 			float calculatedMorphPercentage = CalculateMorphPercentage(newRads, sliderSet)
 
@@ -1065,12 +1068,13 @@ Function Pop()
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < PopStates)	
+		ExtendMorphs(currentPopState, effectsCompanions, false)
+
 		; for the unequip state we also want to strip all clothes and armor
 		If (currentPopState == unequipState)
 			UnequipAll(effectsCompanions)
 		endif
 
-		ExtendMorphs(currentPopState, effectsCompanions, false)
 		Utility.Wait(0.7)
 
 		currentPopState += 1
@@ -1139,7 +1143,6 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the player and companions, and play the swell sound
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
-;TODO je zou deze nog kunnen samenmergen door met 2 bools te werken; eentje voor player en eentje voor companions...
 Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop)
 	Log("extending morphs with: " + step)
 
@@ -1152,9 +1155,6 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop)
 		SliderSet sliderSet = SliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
 			SetMorphs(idxSet, sliderSet, multiplier)
-			if (effectsCompanions)
-				SetCompanionMorphs(idxSet, multiplier, sliderSet.ApplyCompanion)
-			endif
 		EndIf
 		idxSet += 1
 	EndWhile
