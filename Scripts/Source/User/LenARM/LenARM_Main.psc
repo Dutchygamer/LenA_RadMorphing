@@ -688,8 +688,8 @@ EndEvent
 ; Timer-based morphs
 ; ------------------------
 Function TimerMorphTick()
-	; if player is currently popping, we are starting up, or player is in Power Armor, restart timer and do nothing
-	if (IsPopping || IsStartingUp || PlayerRef.IsInPowerArmor())		
+	; if player is currently popping, we are starting up, player is in Power Armor or player is dead, restart timer and do nothing
+	if (IsPopping || IsStartingUp || PlayerRef.IsInPowerArmor() || PlayerRef.IsDead())		
 		StartTimer(UpdateDelay, ETimerMorphTick)
 		return
 	endif
@@ -1220,6 +1220,11 @@ Function ApplyRadsPerk()
         perkLevel = 4
     EndIf
 
+	; when we are on maxed out morphs, use the final perk
+	if (HasReachedMaxMorphs)
+		perkLevel = 5
+	endif
+
 	; when we have enough rads that we should have a difference in perk level, change perks
 	if (CurrentRadsPerk != perkLevel)
 		ClearOldRadsPerks(perkLevel)
@@ -1558,7 +1563,7 @@ Function RemoveDismissedCompanions(Actor[] newCompanions)
 		; can't find the current companionId in the new companionIds array?
 		; remove it from both the current companionIds array and the currentCompanions array, and restore the companion's original morphs
 		If (newCompIds.Find(oldCompId) < 0)
-			Note("  removing companion " + oldCompId)
+			Log("  removing companion " + oldCompId)
 			
 			Actor oldComp = CurrentCompanions[idxOld]
 			; first restore the morphs, then delete from arrays
@@ -1582,7 +1587,7 @@ Function AddNewCompanions(Actor[] newCompanions)
 		; can't find the new companionId in the current companionIds array?
 		; add it to the current companionIds array, the matching Actor to the currentCompanions array, register the dismiss event, and store the companion's original morphs
 		If (CurrentCompanionIds.Find(newCompId) < 0)
-			Note("  adding companion " + newCompId)
+			Log("  adding companion " + newCompId)
 			CurrentCompanionIds.Add(newCompId)
 			CurrentCompanions.Add(newComp)
 			RegisterForRemoteEvent(newComp, "OnCompanionDismiss")
