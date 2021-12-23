@@ -126,6 +126,7 @@ Group Properties
 	Sound Property LenARM_SwellSound Auto Const
 	Sound Property LenARM_PrePopSound Auto Const
 	Sound Property LenARM_PopSound Auto Const
+	Sound Property LenARM_PurgeFailSound Auto Const
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -133,6 +134,7 @@ Group Properties
 	Potion Property GlowingOneBlood Auto Const
 
 	Perk[] Property RadsPerkArray Auto
+	Perk Property RadsPerkFull Auto
 
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
@@ -224,7 +226,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 				; perform the actual popping if enabled in config and not currently in Power Armor
 				if (EnablePopping && !PlayerRef.IsInPowerArmor())
 					Note("This doesn't feel good")
-					LenARM_MorphSound.Play(PlayerRef)
+					LenARM_PurgeFailSound.Play(PlayerRef)
 					Utility.Wait(1.0)
 					Pop()
 				; else only apply the popped debuffs on the player
@@ -1006,6 +1008,7 @@ Function CheckPopWarnings()
 	if (PopWarnings == 0)
 		Note("My body still reacts to rads")
 		PopWarnings += 1
+		; ExtendMorphs(0.25, effectsCompanions, false)
 		LenARM_MorphSound_Med.Play(PlayerRef)
 		if (effectsCompanions)
 			PlayCompanionSoundMedium()
@@ -1013,6 +1016,7 @@ Function CheckPopWarnings()
 	ElseIf (PopWarnings == 1)
 		Note("My body feels so tight")
 		PopWarnings += 1
+		; ExtendMorphs(0.5, effectsCompanions, false)
 		LenARM_MorphSound_High.Play(PlayerRef)
 		if (effectsCompanions)
 			PlayCompanionSoundHigh()
@@ -1020,6 +1024,7 @@ Function CheckPopWarnings()
 	ElseIf (PopWarnings == 2)
 		Note("I'm going to pop if I take more rads")
 		PopWarnings += 1
+		; ExtendMorphs(0.75, effectsCompanions, false)
 		LenARM_FullSound.Play(PlayerRef)
 		if (effectsCompanions)
 			PlayCompanionSoundFull()
@@ -1193,12 +1198,6 @@ EndFunction
 ; Check the total accumulated rads, and apply the matching radsPerk to the player
 ; ------------------------
 Function ApplyRadsPerk()
-	;TODO wellicht anders perks vervangen door potions
-
-	;TODO doe maar goed nadenken over hoe / wanneer we dit aanroepen als je de config aan / uit zet
-	;vermoed nu namelijk dat de perks blijven hangen
-	;visa versa als je ze aanzet en je hebt al rads; hij gaat dan pas bij eerstvolgende rads increase updaten
-
 	; when we have 0 rads, clear all existing perks and don't apply a new one
 	if (TotalRads == 0)
 		ClearAllRadsPerks()
@@ -1228,7 +1227,12 @@ Function ApplyRadsPerk()
 	; when we have enough rads that we should have a difference in perk level, change perks
 	if (CurrentRadsPerk != perkLevel)
 		ClearOldRadsPerks(perkLevel)
-		PlayerRef.AddPerk(RadsPerkArray[perkLevel])
+		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
+		if (perkLevel != 5)
+			PlayerRef.AddPerk(RadsPerkArray[perkLevel])		
+		Else
+			PlayerRef.AddPerk(RadsPerkFull)			
+		endif
 		
 		CurrentRadsPerk = perkLevel
 	endif
@@ -1241,7 +1245,7 @@ EndFunction
 ; ------------------------
 Function ClearOldRadsPerks(int newPerkLevel)
     int i = 0
-    While (i < 5)
+    While (i <= 5)
         If (i != newPerkLevel && PlayerRef.HasPerk(RadsPerkArray[i]))
 			Log("Removing radsperk of level " + i)
 			PlayerRef.RemovePerk(RadsPerkArray[i])
