@@ -1245,13 +1245,19 @@ EndFunction
 ; ------------------------
 Function ClearOldRadsPerks(int newPerkLevel)
     int i = 0
-    While (i <= 5)
+	; loop through the standard perks, remove when not matching new perk level
+    While (i <= 4)
         If (i != newPerkLevel && PlayerRef.HasPerk(RadsPerkArray[i]))
 			Log("Removing radsperk of level " + i)
 			PlayerRef.RemovePerk(RadsPerkArray[i])
         EndIf
         i += 1
     EndWhile
+	
+	; remove the full perk when not matching full perk level
+	if (newPerkLevel != 5)
+		PlayerRef.RemovePerk(RadsPerkFull)
+	endif
 	
 	if (newPerkLevel > -1)
     	Log("RadsPerk Level " + newPerkLevel + " applied")    
