@@ -373,6 +373,9 @@ Function Startup()
 		CurrentCompanionIds = new int[0]
 		CurrentCompanions = new Actor[0]
 
+		SlidersEffectFemaleCompanions = false
+		SlidersEffectMaleCompanions = false
+
 		; reset unequip stack
 		UnequipStackSize = 0
 
