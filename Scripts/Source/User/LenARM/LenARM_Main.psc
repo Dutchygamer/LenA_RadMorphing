@@ -617,9 +617,8 @@ Function LoadSliderSets()
 EndFunction
 
 ; ------------------------
-; Radiation detection and what not
+; Radiation detection and what not. Doesn't work with god mode (TGM), but works fine with invulnerability mode (TIM).
 ; ------------------------
-;TODO doesn't seem to trigger with god mode (TGM) on. Works fine with invulnerability mode (TIM) tho
 Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
 	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
 	TakeFakeRads = true
@@ -856,9 +855,9 @@ Function TimerMorphTick()
 		if (!HasReachedMaxMorphs)
 			if (!IsStartingUp)
 				Note("I won't get any bigger")
-				LenARM_FullSound.Play(PlayerRef)
+				PlaySound2(PlayerRef, 4)
 				if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
-					PlayCompanionSoundFull()
+					PlayCompanionSound(4)
 				endif
 			endif
 			HasReachedMaxMorphs = true
@@ -1012,27 +1011,15 @@ Function CheckPopWarnings()
 	if (PopWarnings == 0)
 		Note("My body still reacts to rads")
 		PopWarnings += 1
-		; ExtendMorphs(0.25, effectsCompanions, false)
-		LenARM_MorphSound_Med.Play(PlayerRef)
-		if (effectsCompanions)
-			PlayCompanionSoundMedium()
-		endif
+		ExtendMorphs(0.25, effectsCompanions, shouldPop = false, soundId = 2)
 	ElseIf (PopWarnings == 1)
 		Note("My body feels so tight")
 		PopWarnings += 1
-		; ExtendMorphs(0.5, effectsCompanions, false)
-		LenARM_MorphSound_High.Play(PlayerRef)
-		if (effectsCompanions)
-			PlayCompanionSoundHigh()
-		endif	
+		ExtendMorphs(0.5, effectsCompanions, shouldPop = false, soundId = 3)
 	ElseIf (PopWarnings == 2)
 		Note("I'm going to pop if I take more rads")
 		PopWarnings += 1
-		; ExtendMorphs(0.75, effectsCompanions, false)
-		LenARM_FullSound.Play(PlayerRef)
-		if (effectsCompanions)
-			PlayCompanionSoundFull()
-		endif	
+		ExtendMorphs(0.75, effectsCompanions, shouldPop = false, soundId = 4)
 	Else
 		Pop()
 	endif
@@ -1060,9 +1047,9 @@ Function Pop()
 
 	; play the full sound for the companions and player
 	if (effectsCompanions)
-		PlayCompanionSoundFull()
+		PlayCompanionSound(4)
 	endif	
-	LenARM_FullSound.Play(PlayerRef)
+	PlaySound2(PlayerRef, 4)
 	; then paralyse companions and player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
 	if (PopShouldParalyze)		
@@ -1076,7 +1063,7 @@ Function Pop()
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < PopStates)	
-		ExtendMorphs(currentPopState, effectsCompanions, false)
+		ExtendMorphs(currentPopState, effectsCompanions, shouldPop = false)
 
 		; for the unequip state we also want to strip all clothes and armor
 		If (currentPopState == PopStripState)
@@ -1089,7 +1076,7 @@ Function Pop()
 	EndWhile
 
 	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
-	ExtendMorphs(currentPopState, effectsCompanions, true)
+	ExtendMorphs(currentPopState, effectsCompanions, shouldPop = true)
 
 	; apply the debuffs on the player and reset the player's rads by ingesting the respective potions
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
@@ -1148,10 +1135,10 @@ Function UnparalyzeCompanions()
 EndFunction
 
 ; ------------------------
-; Increase all sliders by a percentage multiplied with the input for the player and companions, and play the swell sound
+; Increase all sliders by a percentage multiplied with the input for the player and companions, and play the sound with given id (default Swell sound)
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
-Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop)
+Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int soundId = 5)
 	Log("extending morphs with: " + step)
 
 	; calculate the new morphs multiplier
@@ -1179,14 +1166,14 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop)
 		LenARM_PopSound.Play(PlayerRef)
 		ResetMorphs()	
 	else
-		; first apply the morphs (with swell sound) for each of the companions
+		; first apply the morphs (with sound) for each of the companions
 		if (effectsCompanions)
-			ApplyAllCompanionMorphsWithSwellSound()
+			PlayCompanionSound(soundId)
 		endif
 	
-		; then apply the morphs (with swell sound) to the player
+		; then apply the morphs (with sound) to the player
 		BodyGen.UpdateMorphs(PlayerRef)
-		LenARM_SwellSound.Play(PlayerRef)
+		PlaySound2(PlayerRef, soundId)
 	endif
 EndFunction
 
@@ -1390,9 +1377,8 @@ Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	EndWhile
 EndFunction
 
-;TODO dis lelijk, maar zover ik ff kon testen kan je geen Sound meegeven als param (je kan Sound.Play vervolgens niet aanroepen)
-;kijken of dit toch niet op een of andere manier mogelijk is; dingen zoals Actors kan je wel meegeven als params en dan aanroepen
-Function PlayCompanionSoundMedium()
+;TODO betere naam
+Function PlayCompanionSound(int soundId)
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
 		Actor companion = CurrentCompanions[idxComp]
@@ -1405,62 +1391,7 @@ Function PlayCompanionSoundMedium()
 
 			Utility.Wait(randomFloat)
 			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_MorphSound_Med.Play(companion)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-Function PlayCompanionSoundHigh()
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before playing morph sounds on the companion
-			float randomFloat = GetRandomCompanionDelay()
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_MorphSound_High.Play(companion)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-Function PlayCompanionSoundFull()
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before playing morph sounds on the companion
-			float randomFloat = GetRandomCompanionDelay()
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_FullSound.Play(companion)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-Function ApplyAllCompanionMorphsWithSwellSound()
-	; Log("ApplyAllCompanionMorphs")
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before appying the morphs (and morph sounds) on the companion
-			float randomFloat = GetRandomCompanionDelay()
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_SwellSound.Play(companion)
+			PlaySound2(companion, soundId)
 		endif
 		idxComp += 1
 	EndWhile
@@ -1828,15 +1759,46 @@ Function PlayMorphSound(Actor akSender, float radsDifference)
 	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
 	elseif (radsDifference <= MediumRadsThreshold)
 		Log("  medium rads taken")
-		LenARM_MorphSound.Play(akSender)
+		PlaySound2(akSender, 1)
 	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
 	elseif (radsDifference <= HighRadsThreshold)
 		Log("  high rads taken")
-		LenARM_MorphSound_Med.Play(akSender)
+		PlaySound2(akSender, 2)
 	; everything above HighRadsThreshold rads taken
 	elseif (radsDifference > HighRadsThreshold)
 		Log("  very high rads taken")
+		PlaySound2(akSender, 3)
+	endif
+EndFunction
+
+; ------------------------
+; Play a sound depending on the given id
+; 1 = MorphSound_Low
+; 2 = MorphSound_Medium
+; 3 = MorphSound_High
+; 4 = MorphSound_Full
+; 5 = MorphSound_Swell
+; 6 = MorphSound_PrePop
+; 7 = MorphSound_Pop
+; ------------------------
+;TODO wellicht omzetten naar losse consts en bovenin definieren en dan gebruiken
+;TODO betere naam, of anders PlayMorphSound betere naam geven
+Function PlaySound2(Actor akSender, int soundId)
+	if (soundId == 1) ;EnumMorphSounds.MorphSound_Low)
+		LenARM_MorphSound.Play(akSender)
+	elseif (soundId == 2) ;EnumMorphSounds.MorphSound_Medium)
+		LenARM_MorphSound_Med.Play(akSender)
+	elseif (soundId == 3) ;EnumMorphSounds.MorphSound_High)
 		LenARM_MorphSound_High.Play(akSender)
+	elseif (soundId == 4) ;EnumMorphSounds.MorphSound_Full)
+		LenARM_FullSound.Play(akSender)
+	elseif (soundId == 5) ;EnumMorphSounds.MorphSound_Swell)
+		LenARM_SwellSound.Play(akSender)
+	;TODO deze twee zijn niet nodig denk ik?
+	elseif (soundId == 6) ;EnumMorphSounds.MorphSound_PrePop)
+		LenARM_PrePopSound.Play(akSender)
+	elseif (soundId == 7) ;EnumMorphSounds.MorphSound_Pop)
+		LenARM_PopSound.Play(akSender)
 	endif
 EndFunction
 
