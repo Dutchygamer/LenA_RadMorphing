@@ -235,6 +235,18 @@
 					}
 				},
 				{
+					"text": "Pop strip state",
+					"help": "The state in which the player gets stripped of all clothes and armour. Should be less then total pop states. Set to 0 to disable stripping. Default: 3",
+					"type": "slider",
+					"id": "iPopStripState:General",
+					"valueOptions": {
+						"sourceType": "ModSettingInt",
+						"min": 0,
+						"max": 20,
+						"step": 1
+					}
+				},
+				{
 					"text": "Companions can also be 'popped' in the same way the player can. This only works if player popping is enabled, and there is at least 1 slider set which effects companions. <b>Do note that this will slow down the entire 'popping' process by at least a factor of 3, so if you intend to use this, it is adviced to at least disable ' Pop paralyzes'</b>.",
 					"type": "text",
 					"html": true

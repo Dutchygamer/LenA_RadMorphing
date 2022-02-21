@@ -69,6 +69,7 @@ bool EnablePopping
 bool EnableCompanionPopping
 int PopStates
 bool PopShouldParalyze
+int PopStripState
 ; how many pop warnings have we displayed
 int PopWarnings
 bool IsPopping
@@ -1042,7 +1043,6 @@ EndFunction
 ; ------------------------
 Function Pop()
 	int currentPopState = 1
-	int unequipState = 3 ;TODO make config in MCM?
 	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
 	IsPopping = true
@@ -1079,7 +1079,7 @@ Function Pop()
 		ExtendMorphs(currentPopState, effectsCompanions, false)
 
 		; for the unequip state we also want to strip all clothes and armor
-		If (currentPopState == unequipState)
+		If (currentPopState == PopStripState)
 			UnequipAll(effectsCompanions)
 		endif
 
@@ -1392,52 +1392,6 @@ EndFunction
 
 ;TODO dis lelijk, maar zover ik ff kon testen kan je geen Sound meegeven als param (je kan Sound.Play vervolgens niet aanroepen)
 ;kijken of dit toch niet op een of andere manier mogelijk is; dingen zoals Actors kan je wel meegeven als params en dan aanroepen
-Function ApplyAllCompanionMorphsWithSwellSound()
-	; Log("ApplyAllCompanionMorphs")
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before appying the morphs (and morph sounds) on the companion
-			float randomFloat = GetRandomCompanionDelay()
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_SwellSound.Play(companion)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; this one will always be seperated due to the additional logic involved
-Function ApplyAllCompanionMorphsAndPop()
-	; Log("ApplyAllCompanionMorphs")
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before appying the morphs (and morph sounds) on the companion
-			float randomFloat = GetRandomCompanionDelay(2,3)
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_PrePopSound.PlayAndWait(companion)
-			LenARM_PopSound.Play(companion)
-
-			RestoreOriginalCompanionMorphs(companion, idxComp)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
-;TODO dis lelijk, maar zover ik ff kon testen kan je geen Sound meegeven als param (je kan Sound.Play vervolgens niet aanroepen)
-;kijken of dit toch niet op een of andere manier mogelijk is; dingen zoals Actors kan je wel meegeven als params en dan aanroepen
 Function PlayCompanionSoundMedium()
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
@@ -1488,6 +1442,49 @@ Function PlayCompanionSoundFull()
 			Utility.Wait(randomFloat)
 			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
 			LenARM_FullSound.Play(companion)
+		endif
+		idxComp += 1
+	EndWhile
+EndFunction
+Function ApplyAllCompanionMorphsWithSwellSound()
+	; Log("ApplyAllCompanionMorphs")
+	int idxComp = 0
+	While (idxComp < CurrentCompanions.Length)
+		Actor companion = CurrentCompanions[idxComp]
+		int sex = companion.GetLeveledActorBase().GetSex()
+
+		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
+		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+			; do a random delay before appying the morphs (and morph sounds) on the companion
+			float randomFloat = GetRandomCompanionDelay()
+
+			Utility.Wait(randomFloat)
+			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+			LenARM_SwellSound.Play(companion)
+		endif
+		idxComp += 1
+	EndWhile
+EndFunction
+
+; this one will always be seperated due to the additional logic involved
+Function ApplyAllCompanionMorphsAndPop()
+	; Log("ApplyAllCompanionMorphs")
+	int idxComp = 0
+	While (idxComp < CurrentCompanions.Length)
+		Actor companion = CurrentCompanions[idxComp]
+		int sex = companion.GetLeveledActorBase().GetSex()
+
+		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
+		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
+			; do a random delay before appying the morphs (and morph sounds) on the companion
+			float randomFloat = GetRandomCompanionDelay(2,3)
+
+			Utility.Wait(randomFloat)
+			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
+			LenARM_PrePopSound.PlayAndWait(companion)
+			LenARM_PopSound.Play(companion)
+
+			RestoreOriginalCompanionMorphs(companion, idxComp)
 		endif
 		idxComp += 1
 	EndWhile
