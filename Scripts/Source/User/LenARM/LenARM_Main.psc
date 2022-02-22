@@ -839,7 +839,7 @@ Function TimerMorphTick()
 		BodyGen.UpdateMorphs(PlayerRef)
 		; play morph sound when we haven't reached max morphs yet
 		if (!maxedOutMorphs)
-			PlayMorphSound(PlayerRef, radsDifference)
+			CalculateAndPlayMorphSound(PlayerRef, radsDifference)
 		endif
 		; when at least one of the sliderSets effects companions, play the morph sound for them as well
 		if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
@@ -855,7 +855,7 @@ Function TimerMorphTick()
 		if (!HasReachedMaxMorphs)
 			if (!IsStartingUp)
 				Note("I won't get any bigger")
-				PlaySound2(PlayerRef, 4)
+				PlayMorphSound(PlayerRef, 4)
 				if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 					PlayCompanionSound(4)
 				endif
@@ -1049,7 +1049,7 @@ Function Pop()
 	if (effectsCompanions)
 		PlayCompanionSound(4)
 	endif	
-	PlaySound2(PlayerRef, 4)
+	PlayMorphSound(PlayerRef, 4)
 	; then paralyse companions and player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
 	if (PopShouldParalyze)		
@@ -1173,7 +1173,7 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int so
 	
 		; then apply the morphs (with sound) to the player
 		BodyGen.UpdateMorphs(PlayerRef)
-		PlaySound2(PlayerRef, soundId)
+		PlayMorphSound(PlayerRef, soundId)
 	endif
 EndFunction
 
@@ -1371,13 +1371,12 @@ Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 
 			Utility.Wait(randomFloat)
 			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			PlayMorphSound(CurrentCompanions[idxComp], radsDifference)
+			CalculateAndPlayMorphSound(CurrentCompanions[idxComp], radsDifference)
 		endif
 		idxComp += 1
 	EndWhile
 EndFunction
 
-;TODO betere naam
 Function PlayCompanionSound(int soundId)
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
@@ -1391,7 +1390,7 @@ Function PlayCompanionSound(int soundId)
 
 			Utility.Wait(randomFloat)
 			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			PlaySound2(companion, soundId)
+			PlayMorphSound(companion, soundId)
 		endif
 		idxComp += 1
 	EndWhile
@@ -1747,7 +1746,7 @@ EndFunction
 ; ------------------------
 ; Play a sound depending on the rads difference and the MCM settings
 ; ------------------------
-Function PlayMorphSound(Actor akSender, float radsDifference)
+Function CalculateAndPlayMorphSound(Actor akSender, float radsDifference)
 	; don't try to play sounds on startup
 	if (IsStartingUp)
 		return
@@ -1759,15 +1758,15 @@ Function PlayMorphSound(Actor akSender, float radsDifference)
 	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
 	elseif (radsDifference <= MediumRadsThreshold)
 		Log("  medium rads taken")
-		PlaySound2(akSender, 1)
+		PlayMorphSound(akSender, 1)
 	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
 	elseif (radsDifference <= HighRadsThreshold)
 		Log("  high rads taken")
-		PlaySound2(akSender, 2)
+		PlayMorphSound(akSender, 2)
 	; everything above HighRadsThreshold rads taken
 	elseif (radsDifference > HighRadsThreshold)
 		Log("  very high rads taken")
-		PlaySound2(akSender, 3)
+		PlayMorphSound(akSender, 3)
 	endif
 EndFunction
 
@@ -1778,27 +1777,19 @@ EndFunction
 ; 3 = MorphSound_High
 ; 4 = MorphSound_Full
 ; 5 = MorphSound_Swell
-; 6 = MorphSound_PrePop
-; 7 = MorphSound_Pop
 ; ------------------------
 ;TODO wellicht omzetten naar losse consts en bovenin definieren en dan gebruiken
-;TODO betere naam, of anders PlayMorphSound betere naam geven
-Function PlaySound2(Actor akSender, int soundId)
-	if (soundId == 1) ;EnumMorphSounds.MorphSound_Low)
+Function PlayMorphSound(Actor akSender, int soundId)
+	if (soundId == 1)
 		LenARM_MorphSound.Play(akSender)
-	elseif (soundId == 2) ;EnumMorphSounds.MorphSound_Medium)
+	elseif (soundId == 2)
 		LenARM_MorphSound_Med.Play(akSender)
-	elseif (soundId == 3) ;EnumMorphSounds.MorphSound_High)
+	elseif (soundId == 3)
 		LenARM_MorphSound_High.Play(akSender)
-	elseif (soundId == 4) ;EnumMorphSounds.MorphSound_Full)
+	elseif (soundId == 4)
 		LenARM_FullSound.Play(akSender)
-	elseif (soundId == 5) ;EnumMorphSounds.MorphSound_Swell)
+	elseif (soundId == 5)
 		LenARM_SwellSound.Play(akSender)
-	;TODO deze twee zijn niet nodig denk ik?
-	elseif (soundId == 6) ;EnumMorphSounds.MorphSound_PrePop)
-		LenARM_PrePopSound.Play(akSender)
-	elseif (soundId == 7) ;EnumMorphSounds.MorphSound_Pop)
-		LenARM_PopSound.Play(akSender)
 	endif
 EndFunction
 
