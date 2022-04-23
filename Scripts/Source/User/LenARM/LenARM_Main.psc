@@ -41,6 +41,7 @@ float[] OriginalMorphs
 
 ; flattened array[idxCompanion][idxSliderSet][idxSliderName]
 float[] OriginalCompanionMorphs
+bool HasFilledOriginalCompanionMorphs
 
 int[] CurrentCompanionIds
 Actor[] CurrentCompanions
@@ -70,6 +71,7 @@ bool EnableCompanionPopping
 int PopStates
 bool PopShouldParalyze
 int PopStripState
+bool PopUseFullSounds
 ; how many pop warnings have we displayed
 int PopWarnings
 bool IsPopping
@@ -128,6 +130,7 @@ Group Properties
 	Sound Property LenARM_PrePopSound Auto Const
 	Sound Property LenARM_PopSound Auto Const
 	Sound Property LenARM_PurgeFailSound Auto Const
+	Sound Property LenARM_FullGroanSound Auto Const
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -341,6 +344,8 @@ Function Startup()
 		EnableCompanionPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableCompanionPopping:General")
 		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
 		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
+		PopStripState = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStripState:General")
+		PopUseFullSounds = MCM.GetModSettingBool("LenA_RadMorphing", "bPopUseFullSounds:General")
 
 		MaxRadiationMultiplier = MCM.GetModSettingInt("LenA_RadMorphing", "iMaxRadiationMultiplier:General")
 		
@@ -699,6 +704,11 @@ Function TimerMorphTick()
 		return
 	endif
 
+	if (!HasFilledOriginalCompanionMorphs && OriginalCompanionMorphs.Length >= 127)
+		HasFilledOriginalCompanionMorphs = true
+		TechnicalNote("OriginalCompanionMorphs limit reached")
+	endif
+
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
@@ -999,10 +1009,18 @@ EndFunction
 ; Roll a dice whether to increase the PopWarnings by 1, with various effects on a success
 ; ------------------------
 Function CheckPopWarnings()
+	;TODO komt hier langs na startup, en kan dus dan popstates increasen
+	;komt vermoelijk als je rads hebt als ie startup moet doen => Timer ziet dat als rads increase => triggered deze functie
+
 	; 30% base chance to trigger
 	bool shouldPop = ShouldPop(3)
 
 	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
+
+	; when enabled, always play the dedicated sounds even if we don't trigger
+	if (PopUseFullSounds)
+		LenARM_FullGroanSound.Play(PlayerRef)
+	endif
 
 	if (!shouldPop)
 		return
@@ -1901,6 +1919,9 @@ Function Debug_ResetCompanionMorphsArray()
 
 	; flush the entire OriginalCompanionMorphs array
 	OriginalCompanionMorphs = new float[0]
+
+	; reset our check bool
+	HasFilledOriginalCompanionMorphs = false
 
 	; fill the OriginalCompanionMorphs array again with the companions morphs
 	StoreAllOriginalCompanionMorphs()

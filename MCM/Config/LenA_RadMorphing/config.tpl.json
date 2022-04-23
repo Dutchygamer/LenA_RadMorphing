@@ -235,6 +235,15 @@
 					}
 				},
 				{
+					"text": "Play sound effects when maxed-out",
+					"help": "Play sound effect upon taking any sort of radiation when popping is enabled and having reached maxed-out morphs. This will continue until the morphs are reset or the player has popped. Default: false",
+					"type": "switcher",
+					"id": "bPopUseFullSounds:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				},
+				{
 					"text": "Pop strip state",
 					"help": "The state in which the player gets stripped of all clothes and armour. Should be less then total pop states. Set to 0 to disable stripping. Default: 3",
 					"type": "slider",
