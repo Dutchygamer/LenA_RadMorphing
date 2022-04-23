@@ -1637,22 +1637,20 @@ Function UnequipSlots()
 		bool[] compFound = new bool[CurrentCompanions.Length]
 		int idxSet = 0
 
-		;TODO spannend, dit kijkt al alleen maar naar slot 0 en 3... waarom gaat dat met die Nazi outfits van OaR toch mis?
-		; omdat dit specifiek gemaakt is voor hazmat suit, en er gekeken wordt of head (0) en body (3) zelfde bevatten
-		; beter is om dit body (3) en torso armor (11) te maken
-		; eugh, enige probleem is, is dat dit weer specifiek is voor mijn use case dat ik alleen torso armor unequip
-
-		; check if we are currently wearing a full-body suit (ie anything that gets unequipped when equipping torso armor)
+		; check if we are currently wearing a full-body suit (ie Hazmat suit)
 		; the unequip logic has some issues when wearing full-body suits when unequipping any of the armor slots
 		; it keeps trying to unequip the item with each call, but keeps on failing because the full-body suit technically both does and doesn't use the slots
-		; the workaround is to first check what we have equipped in slot 3 (body) and 11 (armor torso), as it seems full-body suits cover these two slots
+		; the workaround is to first check what we have equipped in slot 0 (head top) and 3 (body), as it seems full-body suits cover these two slots
 		; do both slots have an item, and is this the same item, then mark we are wearing a full-body suit
 		bool hasFullBodyItem = false
+		Actor:WornItem itemSlot0 = PlayerRef.GetWornItem(0)
 		Actor:WornItem itemSlot3 = PlayerRef.GetWornItem(3)
-		Actor:WornItem itemSlot11 = PlayerRef.GetWornItem(11)
-		if (itemSlot11 != None && itemSlot11.item != None && itemSlot3 != None && itemSlot3.item != None && itemSlot11.item == itemSlot3.item)
+
+		if (itemSlot0 != None && itemSlot0.item != None && itemSlot3 != None && itemSlot3.item != None && itemSlot0.item == itemSlot3.item)
 			hasFullBodyItem = true
 		EndIf
+		
+		Log(hasFullBodyItem)
 
 		; check for each sliderSet
 		While (idxSet < SliderSets.Length)
