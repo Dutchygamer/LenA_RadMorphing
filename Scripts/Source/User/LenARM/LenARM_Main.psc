@@ -13,16 +13,12 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
 
-;TODO Ada gets seen as a female companion. Doesn't do morphs, but does play sounds
-
 ;TODO je kan woordjes als properties meegeven en dan displayen ipv hardcoded texten in de scripts te doen.
 ;voeg toe als property, als type object, en selecteer dan de MESG
 ;ff nazoeken hoe je dat dan displayed, vermoed dat het een string property intern is?
 
 ;TODO wellicht bijhouden wat we unequippen, en dat weer automatisch equippen?
 ;iig voor de companions
-
-;Shannon dr morphs die ik zelf heb toegepast blijven resetten naar de standaard. Dat, of die van Cait
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -397,24 +393,24 @@ Function Startup()
 		; reapply base morphs for the doctor-only reset morphs
 		int idxSet = 0
 		While (idxSet < SliderSets.Length)
-			SliderSet set = SliderSets[idxSet]
+			SliderSet sliderSet = SliderSets[idxSet]
 			;TODO hier ook bepalen wat de laagste min slider is
 			;TODO hier ook bepalen wat de hoogste max slider is
 
-			If (GetOnlyDoctorCanReset(set) && set.IsAdditive)
+			If (GetOnlyDoctorCanReset(sliderSet) && GetIsAdditive(sliderSet))
 				HasDoctorOnlySliders = true
-				if (set.BaseMorph > 0)
+				if (sliderSet.BaseMorph > 0)
 					Log("reload sliderset " + idxSet)
-					SetMorphs(idxSet, set, set.BaseMorph)
-					SetCompanionMorphs(idxSet, set.BaseMorph, set.ApplyCompanion)
+					SetMorphs(idxSet, sliderSet, sliderSet.BaseMorph)
+					SetCompanionMorphs(idxSet, sliderSet.BaseMorph, sliderSet.ApplyCompanion)
 				endif
 			endif
 
 			; store whether we have sliders which should effect companions of a specific sex
-			If (!SlidersEffectFemaleCompanions && (set.ApplyCompanion == EApplyCompanionFemale || set.ApplyCompanion == EApplyCompanionAll))
+			If (!SlidersEffectFemaleCompanions && (sliderSet.ApplyCompanion == EApplyCompanionFemale || sliderSet.ApplyCompanion == EApplyCompanionAll))
 				SlidersEffectFemaleCompanions = true
 			endif
-			If (!SlidersEffectFemaleCompanions && (set.ApplyCompanion == EApplyCompanionMale || set.ApplyCompanion == EApplyCompanionAll))
+			If (!SlidersEffectFemaleCompanions && (sliderSet.ApplyCompanion == EApplyCompanionMale || sliderSet.ApplyCompanion == EApplyCompanionAll))
 				SlidersEffectMaleCompanions = true
 			endif
 
@@ -522,9 +518,9 @@ Function Restart()
 		; ; if we don't do this, then on startup it will load the previous value, which is either 0 if we haven't had a rad decrease, or the value it was on last rad decrease
 		; int idxSet = 0
 		; While (idxSet < SliderSets.Length)
-		; 	SliderSet set = SliderSets[idxSet]
-		; 	If (set.OnlyDoctorCanReset && set.IsAdditive)
-		; 		set.BaseMorph = set.CurrentMorph
+		; 	SliderSet sliderSet = SliderSets[idxSet]
+		; 	If (GetOnlyDoctorCanReset(sliderSet)&& GetIsAdditive(sliderSet))
+		; 		sliderSet.BaseMorph = sliderSet.CurrentMorph
 		; 	endif
 		; 	idxSet += 1
 		; EndWhile
@@ -784,7 +780,7 @@ Function TimerMorphTick()
 
 				; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
 				; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
-				If (sliderSet.IsAdditive)
+				If (GetIsAdditive(sliderSet))
 					morphPercentage += sliderSet.BaseMorph
 					If (GetHasAdditiveLimit(sliderSet))
 						maxMorphPercentage = (1.0 + GetAdditiveLimit(sliderSet))
@@ -832,7 +828,7 @@ Function TimerMorphTick()
 
 			; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
 			; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
-			ElseIf (sliderSet.IsAdditive)
+			ElseIf (GetIsAdditive(sliderSet))
 				sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
 				sliderSet.CurrentMorph = calculatedMorphPercentage
 			EndIf
@@ -901,35 +897,35 @@ EndFunction
 ; ------------------------
 
 ;TODO voor nu werken deze zoals eerst; kmoet al die bool (en float) vars erin hangen, en in de configs hangen
-bool Function GetOnlyDoctorCanReset(SliderSet set)
+bool Function GetOnlyDoctorCanReset(SliderSet sliderSet)
 	; If (OverrideOnlyDoctorCanReset != EOverrideBoolNoOverride)
 	; 	return OverrideOnlyDoctorCanReset == EOverrideBoolTrue
 	; Else
-		return set.OnlyDoctorCanReset
+		return sliderSet.OnlyDoctorCanReset
 	; EndIf
 EndFunction
 
-bool Function GetIsAdditive(SliderSet set)
+bool Function GetIsAdditive(SliderSet sliderSet)
 	; If (OverrideIsAdditive != EOverrideBoolNoOverride)
 	; 	return OverrideIsAdditive == EOverrideBoolTrue
 	; Else
-		return set.IsAdditive
+		return sliderSet.IsAdditive
 	; EndIf
 EndFunction
 
-bool Function GetHasAdditiveLimit(SliderSet set)
+bool Function GetHasAdditiveLimit(SliderSet sliderSet)
 	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
 	; 	return OverrideHasAdditiveLimit == EOverrideBoolTrue
 	; Else
-		return set.HasAdditiveLimit
+		return sliderSet.HasAdditiveLimit
 	; EndIf
 EndFunction
 
-float Function GetAdditiveLimit(SliderSet set)
+float Function GetAdditiveLimit(SliderSet sliderSet)
 	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
 	; 	return OverrideAdditiveLimit
 	; Else
-		return set.AdditiveLimit
+		return sliderSet.AdditiveLimit
 	; EndIf
 EndFunction
 
@@ -1014,10 +1010,10 @@ Function ResetMorphs()
 	; reset saved morphs in SliderSets
 	int idxSet = 0
 	While (idxSet < SliderSets.Length)
-		SliderSet set = SliderSets[idxSet]
-		set.BaseMorph = 0.0
-		set.CurrentMorph = 0.0
-		set.IsMaxedOut = false
+		SliderSet sliderSet = SliderSets[idxSet]
+		sliderSet.BaseMorph = 0.0
+		sliderSet.CurrentMorph = 0.0
+		sliderSet.IsMaxedOut = false
 		idxSet += 1
 	EndWhile
 EndFunction
@@ -1971,7 +1967,7 @@ Function Debug_ShowLowestSliderPercentage()
 		If (sliderSet.NumberOfSliderNames > 0)
 			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
 			float sliderPercentage = sliderSet.CurrentMorph
-			If (sliderSet.IsAdditive)
+			If (GetIsAdditive(sliderSet))
 				sliderPercentage += sliderSet.BaseMorph
 			EndIf
 
@@ -2144,37 +2140,37 @@ EndGroup
 ; ------------------------
 SliderSet Function SliderSet_Constructor(int idxSet)
 	;Log("SliderSet_Constructor: " + idxSet)
-	SliderSet set = new SliderSet
-	set.SliderName = MCM.GetModSettingString("LenA_RadMorphing", "sSliderName:Slider" + idxSet)
-	If (set.SliderName != "")
-		set.IsUsed = true
-		set.TargetMorph = MCM.GetModSettingFloat("LenA_RadMorphing", "fTargetMorph:Slider" + idxSet) / 100.0
-		set.ThresholdMin = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMin:Slider" + idxSet) / 100.0
-		set.ThresholdMax = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMax:Slider" + idxSet) / 100.0
-		set.UnequipSlot = MCM.GetModSettingString("LenA_RadMorphing", "sUnequipSlot:Slider" + idxSet)
-		set.ThresholdUnequip = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdUnequip:Slider" + idxSet) / 100.0
-		set.OnlyDoctorCanReset = MCM.GetModSettingBool("LenA_RadMorphing", "bOnlyDoctorCanReset:Slider" + idxSet)
-		set.IsAdditive = MCM.GetModSettingBool("LenA_RadMorphing", "bIsAdditive:Slider" + idxSet)
-		set.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
-		set.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
-		set.ApplyCompanion = MCM.GetModSettingInt("LenA_RadMorphing", "iApplyCompanion:Slider" + idxSet)
-		set.ExcludeFromPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bExcludeFromPopping:Slider" + idxSet)
+	SliderSet sliderSet = new SliderSet
+	sliderSet.SliderName = MCM.GetModSettingString("LenA_RadMorphing", "sSliderName:Slider" + idxSet)
+	If (sliderSet.SliderName != "")
+		sliderSet.IsUsed = true
+		sliderSet.TargetMorph = MCM.GetModSettingFloat("LenA_RadMorphing", "fTargetMorph:Slider" + idxSet) / 100.0
+		sliderSet.ThresholdMin = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMin:Slider" + idxSet) / 100.0
+		sliderSet.ThresholdMax = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMax:Slider" + idxSet) / 100.0
+		sliderSet.UnequipSlot = MCM.GetModSettingString("LenA_RadMorphing", "sUnequipSlot:Slider" + idxSet)
+		sliderSet.ThresholdUnequip = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdUnequip:Slider" + idxSet) / 100.0
+		sliderSet.OnlyDoctorCanReset = MCM.GetModSettingBool("LenA_RadMorphing", "bOnlyDoctorCanReset:Slider" + idxSet)
+		sliderSet.IsAdditive = MCM.GetModSettingBool("LenA_RadMorphing", "bIsAdditive:Slider" + idxSet)
+		sliderSet.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
+		sliderSet.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
+		sliderSet.ApplyCompanion = MCM.GetModSettingInt("LenA_RadMorphing", "iApplyCompanion:Slider" + idxSet)
+		sliderSet.ExcludeFromPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bExcludeFromPopping:Slider" + idxSet)
 
-		string[] names = StringSplit(set.SliderName, "|")
-		set.NumberOfSliderNames = names.Length
+		string[] names = StringSplit(sliderSet.SliderName, "|")
+		sliderSet.NumberOfSliderNames = names.Length
 
-		If (set.UnequipSlot != "")
-			string[] slots = StringSplit(set.UnequipSlot, "|")
-			set.NumberOfUnequipSlots = slots.Length
+		If (sliderSet.UnequipSlot != "")
+			string[] slots = StringSplit(sliderSet.UnequipSlot, "|")
+			sliderSet.NumberOfUnequipSlots = slots.Length
 		Else
-			set.NumberOfUnequipSlots = 0
+			sliderSet.NumberOfUnequipSlots = 0
 		EndIf
 	Else
-		set.IsUsed = false
+		sliderSet.IsUsed = false
 	EndIf
 
 	;Log("  " + set)
-	return set
+	return sliderSet
 EndFunction
 
 int Function SliderSet_GetSliderNameOffset(int idxSet)
