@@ -20,6 +20,9 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;TODO wellicht bijhouden wat we unequippen, en dat weer automatisch equippen?
 ;iig voor de companions
 
+;TODO de resterende wijzigingen van LenAnderson:
+;https://github.com/LenAnderson/LenA_RadMorphing/compare/4cccf04..334a699
+
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -209,11 +212,6 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	;moet je wel uitzoeken of / hoe je scripts vanuit een andere script aan kan roepen...
 	; if we ingest potions, check if it is one of the mod-specific drugs
 	If (akBaseObject as Potion)	
-
-		;TODO eigenlijk moeten beide van te voren kijken of je niet in Power Armor it
-		; nu doet ie alleen de check indien je gaat poppen, maar gaat anders wel de morphs resetten
-		; vermoed dat dat issues oplevert
-
 		; ingested reset morphs potion => reset the morphs
 		if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
 			Note("My body goes back to normal")
@@ -709,6 +707,8 @@ Function TimerMorphTick()
 		return
 	endif
 
+	; when the companion morphs array has been filled, display a message once
+	; this message will get reset once the array has been cleared
 	if (!HasFilledOriginalCompanionMorphs && OriginalCompanionMorphs.Length >= 127)
 		HasFilledOriginalCompanionMorphs = true
 		TechnicalNote("OriginalCompanionMorphs limit reached")
@@ -891,12 +891,11 @@ Function TimerMorphTick()
 EndFunction
 
 
-
 ; ------------------------
 ; Slider set overrides
 ; ------------------------
 
-;TODO voor nu werken deze zoals eerst; kmoet al die bool (en float) vars erin hangen, en in de configs hangen
+;TODO voor nu werken deze zoals eerst; kmoet al die bool (en float) vars erin hangen samen met de enum, en in de configs hangen
 bool Function GetOnlyDoctorCanReset(SliderSet sliderSet)
 	; If (OverrideOnlyDoctorCanReset != EOverrideBoolNoOverride)
 	; 	return OverrideOnlyDoctorCanReset == EOverrideBoolTrue
