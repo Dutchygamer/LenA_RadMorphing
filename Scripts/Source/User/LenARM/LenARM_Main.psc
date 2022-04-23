@@ -85,6 +85,7 @@ bool SlidersEffectFemaleCompanions
 bool SlidersEffectMaleCompanions
 
 bool InCombat
+FormList DD_FL_All
 
 int RestartStackSize
 int UnequipStackSize
@@ -272,6 +273,8 @@ Event Scene.OnEnd(Scene akSender)
 	float radsNow = PlayerRef.GetValue(Rads)
 	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
 
+	;TODO kzie dat LenAnderson hier nog meer doet, naast dat ie het anders heeft opgezet:
+	;https://github.com/LenAnderson/LenA_RadMorphing/compare/4cccf04..334a699#diff-cf41e4f3e45042dd90f3c9900096513df3b291d27c44417a55a129897c412ab1
 	; as the base game uses different quests for Doctors then for the Doctors from the DLC, we must check each seperate quest sadly
 	If (DialogueGenericDoctors.DoctorJustCuredRads == 1 || DLC03CoA_DialogueNucleusArchemist.DoctorJustCuredRads == 1 || DLC03DialogueFarHarbor.DoctorJustCuredRads == 1 || DLC03AcadiaDialogue.DoctorJustCuredRads == 1 || DLC04SettlementDoctor.DoctorJustCuredRads == 1)
 		ResetMorphs()
@@ -351,6 +354,12 @@ Function Startup()
 		
 		EnableRadsPerks = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableRadsPerks:General")
 
+		; check for DD
+		If (Game.IsPluginInstalled("Devious Devices.esm"))
+			Log("found DD")
+			DD_FL_All = Game.getFormFromFile(0x0905E95B, "Devious Devices.esm") as FormList
+		EndIf
+
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
 
@@ -392,7 +401,7 @@ Function Startup()
 			;TODO hier ook bepalen wat de laagste min slider is
 			;TODO hier ook bepalen wat de hoogste max slider is
 
-			If (set.OnlyDoctorCanReset && set.IsAdditive)
+			If (GetOnlyDoctorCanReset(set) && set.IsAdditive)
 				HasDoctorOnlySliders = true
 				if (set.BaseMorph > 0)
 					Log("reload sliderset " + idxSet)
@@ -462,7 +471,7 @@ Function Shutdown(bool withRestore=true)
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
 		
 		; stop listening for combat state changes
-		RegisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
+		UnregisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
 	
 		; stop listening for doctor scene
 		;TODO moeten de andere scenes hier ook niet bij staan?
@@ -767,7 +776,7 @@ Function TimerMorphTick()
 			; only try to apply the morphs if either
 			; -the new morph is larger then the slider's current morph
 			; -the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
-			If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!sliderSet.OnlyDoctorCanReset && calculatedMorphPercentage != sliderSet.CurrentMorph))
+			If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!GetOnlyDoctorCanReset(sliderSet) && calculatedMorphPercentage != sliderSet.CurrentMorph))
 				; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 				; both will get modified if we have additive morphs enabled for this sliderSet
 				float morphPercentage = calculatedMorphPercentage
@@ -777,8 +786,8 @@ Function TimerMorphTick()
 				; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
 				If (sliderSet.IsAdditive)
 					morphPercentage += sliderSet.BaseMorph
-					If (sliderSet.HasAdditiveLimit)
-						maxMorphPercentage = (1.0 + sliderSet.AdditiveLimit)
+					If (GetHasAdditiveLimit(sliderSet))
+						maxMorphPercentage = (1.0 + GetAdditiveLimit(sliderSet))
 						morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
 					EndIf
 				EndIf
@@ -786,12 +795,12 @@ Function TimerMorphTick()
 				;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
 
 				; when we have an additive slider with no limit, apply the morphs without further checks
-				if (sliderSet.IsAdditive && !sliderSet.HasAdditiveLimit)
+				if (GetIsAdditive(sliderSet)&& !GetHasAdditiveLimit(sliderSet))
 					changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 				; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
 				ElseIf (morphPercentage <= maxMorphPercentage)
 					; -sliderSet is doctor-only reset and the sliderset isn't maxed out
-					if (sliderSet.OnlyDoctorCanReset && !sliderSet.IsMaxedOut)
+					if (GetOnlyDoctorCanReset(sliderSet) && !sliderSet.IsMaxedOut)
 						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 						
 						; when the morphs are maxed out, set this on the sliderSet
@@ -803,7 +812,7 @@ Function TimerMorphTick()
 						endif								
 					; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
 					; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
-					elseif (!sliderSet.OnlyDoctorCanReset && (!sliderSet.IsMaxedOut || radsDifference < 0))
+					elseif (!GetOnlyDoctorCanReset(sliderSet) && (!sliderSet.IsMaxedOut || radsDifference < 0))
 						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 						
 						; when the morphs are maxed out, set this on the sliderSet
@@ -878,7 +887,50 @@ Function TimerMorphTick()
 			CheckPopWarnings()
 		endif
 	EndIf
-	StartTimer(UpdateDelay, ETimerMorphTick)
+
+	; only restart the timer if we aren't shutting down, so it doesn't try to perform updates when the mod is in the process of stopping
+	If (!IsShuttingDown)
+		StartTimer(UpdateDelay, ETimerMorphTick)
+	endif
+EndFunction
+
+
+
+; ------------------------
+; Slider set overrides
+; ------------------------
+
+;TODO voor nu werken deze zoals eerst; kmoet al die bool (en float) vars erin hangen, en in de configs hangen
+bool Function GetOnlyDoctorCanReset(SliderSet set)
+	; If (OverrideOnlyDoctorCanReset != EOverrideBoolNoOverride)
+	; 	return OverrideOnlyDoctorCanReset == EOverrideBoolTrue
+	; Else
+		return set.OnlyDoctorCanReset
+	; EndIf
+EndFunction
+
+bool Function GetIsAdditive(SliderSet set)
+	; If (OverrideIsAdditive != EOverrideBoolNoOverride)
+	; 	return OverrideIsAdditive == EOverrideBoolTrue
+	; Else
+		return set.IsAdditive
+	; EndIf
+EndFunction
+
+bool Function GetHasAdditiveLimit(SliderSet set)
+	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
+	; 	return OverrideHasAdditiveLimit == EOverrideBoolTrue
+	; Else
+		return set.HasAdditiveLimit
+	; EndIf
+EndFunction
+
+float Function GetAdditiveLimit(SliderSet set)
+	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
+	; 	return OverrideAdditiveLimit
+	; Else
+		return set.AdditiveLimit
+	; EndIf
 EndFunction
 
 ; ------------------------
@@ -1576,6 +1628,11 @@ EndFunction
 ; Check for each slider whether pieces of clothing / armor should get unequipped
 ; ------------------------
 Function UnequipSlots()
+	; don't bother unequipping if player is in power armor
+	If (PlayerRef.IsInPowerArmor())
+		return
+	EndIf
+
 	Log("UnequipSlots (stack=" + UnequipStackSize + ")")
 	UnequipStackSize += 1
 	If (UnequipStackSize <= 1)
@@ -1583,6 +1640,8 @@ Function UnequipSlots()
 
 		bool[] compFound = new bool[CurrentCompanions.Length]
 		int idxSet = 0
+
+		;TODO spannend, dit kijkt al alleen maar naar slot 0 en 3... waarom gaat dat met die Nazi outfits van OaR toch mis?
 
 		; check if we are currently wearing a full-body suit (ie Hazmat suit)
 		; the unequip logic has some issues when wearing full-body suits when unequipping any of the armor slots
@@ -1609,7 +1668,7 @@ Function UnequipSlots()
 				While (idxSlot < unequipSlotOffset + sliderSet.NumberOfUnequipSlots)
 					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
 					
-					; check if item in the slot is not an actor or the pipboy
+					; check if item in the slot is clothes / armor
 					bool isArmor = IsItemArmor(item)
 					; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
 					bool canUnequip = (item.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
@@ -1637,7 +1696,7 @@ Function UnequipSlots()
 						If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
 							Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
 
-							; check if item in the slot is not an actor or the pipboy
+							; check if item in the slot is clothes / armor
 							bool compIsArmor = IsItemArmor(compItem)
 							; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
 							; for now this looks if the player is wearing a full-body suit, as having to do that check per companion would prolly kill performance
@@ -1652,9 +1711,8 @@ Function UnequipSlots()
 								companion.UnequipItem(compItem.item, false, true)
 
 								; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
-								; play the strip sound if available and display a notification in top-left
+								; play the strip sound if available
 								If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
-									;Note("It is too tight for me")
 									LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
 									compFound[idxComp] = true
 								EndIf
@@ -1678,6 +1736,11 @@ Function TriggerUnequipSlots()
 EndFunction
 
 Function UnequipAll(bool effectsCompanions=false)
+	; don't bother unequipping if player is in power armor
+	If (PlayerRef.IsInPowerArmor())
+		return
+	EndIf
+
 	Log("UnequipAll")
 
 	bool found = false
@@ -1758,7 +1821,23 @@ Function UnequipAll(bool effectsCompanions=false)
 EndFunction
 
 bool Function IsItemArmor(Actor:WornItem item)
-	return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+	;return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
+
+	; sanity check
+	if (!item.item)
+		return false
+	endif
+	; ignore equipped actors and the pipboy
+	If (LL_Fourplay.StringSubstring(item.modelName, 0, 6) == "Actors" || LL_Fourplay.StringSubstring(item.modelName, 0, 6) == "Pipboy")
+		return false
+	EndIf
+	; ignore DD equipment
+	If (DD_FL_All != None && DD_FL_All.Find(item.item) > -1)
+		return false
+	EndIf
+
+	; anything else is armor
+	return true
 EndFunction
 
 ; ------------------------
