@@ -132,6 +132,15 @@ Group Properties
 	Sound Property LenARM_PurgeFailSound Auto Const
 	Sound Property LenARM_FullGroanSound Auto Const
 
+	Message Property LenARM_DropClothesMessage Auto
+	Message Property LenARM_MaxedOutMorphsMessage Auto
+	Message Property LenARM_PopWarning0Message Auto
+	Message Property LenARM_PopWarning1Message Auto
+	Message Property LenARM_PopWarning2Message Auto
+	Message Property LenARM_RadPurgeFailureMessage Auto
+	Message Property LenARM_RadPurgePopFailureMessage Auto
+	Message Property LenARM_RadPurgeSuccessMessage Auto
+
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
 
@@ -214,7 +223,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	If (akBaseObject as Potion)	
 		; ingested reset morphs potion => reset the morphs
 		if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
-			Note("My body goes back to normal")
+			LenARM_RadPurgeSuccessMessage.Show()
 			ResetMorphs()
 		; ingested experimental reset morphs potion => chance to reset the morphs, else pop
 		elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
@@ -224,17 +233,17 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 			if (shouldPop)
 				; perform the actual popping if enabled in config and not currently in Power Armor
 				if (EnablePopping && !PlayerRef.IsInPowerArmor())
-					Note("This doesn't feel good")
+					LenARM_RadPurgePopFailureMessage.Show()
 					LenARM_PurgeFailSound.Play(PlayerRef)
 					Utility.Wait(1.0)
 					Pop()
 				; else only apply the popped debuffs on the player
 				else
-					Note("It worked, but I feel weak")
+					LenARM_RadPurgeFailureMessage.Show()
 					PlayerRef.EquipItem(PoppedPotion, abSilent = true)
 				endif
 			Else
-				Note("My body goes back to normal")
+				LenARM_RadPurgeSuccessMessage.Show()
 				ResetMorphs()					
 			endIf
 		endif
@@ -869,7 +878,7 @@ Function TimerMorphTick()
 		; also play a sound effect if we have it
 		if (!HasReachedMaxMorphs)
 			if (!IsStartingUp)
-				Note("I won't get any bigger")
+				LenARM_MaxedOutMorphsMessage.Show()
 				PlayMorphSound(PlayerRef, 4)
 				if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 					PlayCompanionSound(4)
@@ -1074,15 +1083,15 @@ Function CheckPopWarnings()
 	endif
 
 	if (PopWarnings == 0)
-		Note("My body still reacts to rads")
+		LenARM_PopWarning0Message.Show()
 		PopWarnings += 1
 		ExtendMorphs(0.25, effectsCompanions, shouldPop = false, soundId = 2)
 	ElseIf (PopWarnings == 1)
-		Note("My body feels so tight")
+		LenARM_PopWarning1Message.Show()
 		PopWarnings += 1
 		ExtendMorphs(0.5, effectsCompanions, shouldPop = false, soundId = 3)
 	ElseIf (PopWarnings == 2)
-		Note("I'm going to pop if I take more rads")
+		LenARM_PopWarning2Message.Show()
 		PopWarnings += 1
 		ExtendMorphs(0.75, effectsCompanions, shouldPop = false, soundId = 4)
 	Else
@@ -1679,7 +1688,7 @@ Function UnequipSlots()
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
 						If (!found && !PlayerRef.IsEquipped(item.item))
-							Note("It is too tight for me")
+							LenARM_DropClothesMessage.Show()
 							LenARM_DropClothesSound.Play(PlayerRef)
 							found = true
 						EndIf
