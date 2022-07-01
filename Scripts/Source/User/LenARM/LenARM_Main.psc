@@ -217,6 +217,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		TriggerUnequipSlots()
 	endif
 
+	;/
 	;TODO kijken of we dit niet via aparte scripts die specifiek voor de potions zijn kunnen laten lopen
 	;moet je wel uitzoeken of / hoe je scripts vanuit een andere script aan kan roepen...
 	; if we ingest potions, check if it is one of the mod-specific drugs
@@ -247,7 +248,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 				ResetMorphs()					
 			endIf
 		endif
-	endif
+	endif/;
 EndEvent
 
 Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
@@ -1097,6 +1098,11 @@ Function CheckPopWarnings()
 	Else
 		Pop()
 	endif
+EndFunction
+
+; so we can access it from the sub-scripts
+bool Function IsPoppingEnabled()
+	return EnablePopping
 EndFunction
 
 ; ------------------------
