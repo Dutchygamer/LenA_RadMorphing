@@ -71,6 +71,8 @@ bool PopUseFullSounds
 int PopWarnings
 bool IsPopping
 
+Actor:WornItem[] PoppingUnequippedItems
+
 int MaxRadiationMultiplier
 
 bool EnableRadsPerks
@@ -212,39 +214,6 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
 	endif
-
-	;/
-	;TODO kijken of we dit niet via aparte scripts die specifiek voor de potions zijn kunnen laten lopen
-	;moet je wel uitzoeken of / hoe je scripts vanuit een andere script aan kan roepen...
-	; if we ingest potions, check if it is one of the mod-specific drugs
-	If (akBaseObject as Potion)	
-		; ingested reset morphs potion => reset the morphs
-		if (akBaseObject.GetFormID() == ResetMorphsPotion.GetFormID())
-			LenARM_RadPurgeSuccessMessage.Show()
-			ResetMorphs()
-		; ingested experimental reset morphs potion => chance to reset the morphs, else pop
-		elseIf (akBaseObject.GetFormID() == ResetMorphsExperimentalPotion.GetFormID())
-			; base 50% chance to trigger
-			bool shouldPop = ShouldPop(5)
-		
-			if (shouldPop)
-				; perform the actual popping if enabled in config and not currently in Power Armor
-				if (EnablePopping && !PlayerRef.IsInPowerArmor())
-					LenARM_RadPurgePopFailureMessage.Show()
-					LenARM_PurgeFailSound.Play(PlayerRef)
-					Utility.Wait(1.0)
-					Pop()
-				; else only apply the popped debuffs on the player
-				else
-					LenARM_RadPurgeFailureMessage.Show()
-					PlayerRef.EquipItem(PoppedPotion, abSilent = true)
-				endif
-			Else
-				LenARM_RadPurgeSuccessMessage.Show()
-				ResetMorphs()					
-			endIf
-		endif
-	endif/;
 EndEvent
 
 Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
@@ -390,6 +359,8 @@ Function Startup()
 
 		SlidersEffectFemaleCompanions = false
 		SlidersEffectMaleCompanions = false
+
+		PoppingUnequippedItems = new Actor:WornItem[0]
 
 		; reset unequip stack
 		UnequipStackSize = 0
@@ -1166,6 +1137,10 @@ Function Pop()
 	if (PopShouldParalyze)
 		Utility.Wait(1.5)
 		PlayerRef.SetValue(ParalysisAV, 0)
+
+		;TODO make configurabel
+		ReEquipAll()
+
 		if (effectsCompanions)
 			UnparalyzeCompanions()
 		endif	
@@ -1749,7 +1724,7 @@ Function UnequipAll(bool effectsCompanions=false)
 	If (PlayerRef.IsInPowerArmor())
 		return
 	EndIf
-
+	
 	Log("UnequipAll")
 
 	bool found = false
@@ -1778,6 +1753,8 @@ Function UnequipAll(bool effectsCompanions=false)
 		If (isArmor)
 			Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
+			;TODO make configurabel
+			PoppingUnequippedItems.Add(item);
 			PlayerRef.UnequipItem(item.item, false, true)
 			
 			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
@@ -1847,6 +1824,19 @@ bool Function IsItemArmor(Actor:WornItem item)
 
 	; anything else is armor
 	return true
+EndFunction
+
+Function ReEquipAll()
+	int idxItem = 0
+	While (idxItem < PoppingUnequippedItems.Length)
+		Actor:WornItem item = PoppingUnequippedItems[idxItem]
+		
+		PlayerRef.EquipItem(item.item, false, true)
+
+		idxItem += 1
+	EndWhile
+
+	PoppingUnequippedItems = new Actor:WornItem[0]
 EndFunction
 
 ; ------------------------
