@@ -13,10 +13,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
 ;-update companions again (see TODO: companions)
 
-;TODO je kan woordjes als properties meegeven en dan displayen ipv hardcoded texten in de scripts te doen.
-;voeg toe als property, als type object, en selecteer dan de MESG
-;ff nazoeken hoe je dat dan displayed, vermoed dat het een string property intern is?
-
 ;TODO wellicht bijhouden wat we unequippen, en dat weer automatisch equippen?
 ;iig voor de companions
 
@@ -974,7 +970,7 @@ EndFunction
 ; ------------------------
 ; Apply the given sliderSet's morphs to the matching BodyGen sliders
 ; ------------------------
-Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
+Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage, bool effectsCompanions = true)
 	int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
 	int idxSlider = sliderNameOffset
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
@@ -983,7 +979,8 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
-		If (sliderSet.ApplyCompanion != EApplyCompanionNone)
+		
+		If (sliderSet.ApplyCompanion != EApplyCompanionNone && effectsCompanions)
 			SetCompanionMorphs(idxSlider, morphPercentage * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
 		EndIf
 		idxSlider += 1
@@ -1229,7 +1226,7 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int so
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
-			SetMorphs(idxSet, sliderSet, multiplier)
+			SetMorphs(idxSet, sliderSet, multiplier, effectsCompanions)
 		EndIf
 		idxSet += 1
 	EndWhile
