@@ -1016,9 +1016,10 @@ bool Function ShouldPop(int popChance)
 	int random = Utility.RandomInt(1, 10)
 	int playerLuck = PlayerRef.GetValue(LuckAV) as int
 
-	; divide the player luck by 10, rounding down
-	; ie luck of 3 becomes 1, luck of 10 becomes 3
-	int roundedLuck = playerLuck / 3
+	; take player luck, subtract 1, divide by 3 while rounding down
+	; we do the luck - 1 so a luck of 1 doesn't always give a minimum boost of 1
+	; ie luck of 1 becomes 0, luck 3 becomes 1, luck of 10 becomes 3
+	int roundedLuck = (playerLuck-1) / 3
 
 	; base pop chance is X/10, but X can be reduced by the player's Luck stat
 	; depending on X it technically can become 0 or less, especially with stat boosters
