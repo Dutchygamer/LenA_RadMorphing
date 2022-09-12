@@ -1628,16 +1628,26 @@ Function UnequipSlots()
 		; check if we are currently wearing a full-body suit (ie Hazmat suit)
 		; the unequip logic has some issues when wearing full-body suits when unequipping any of the armor slots
 		; it keeps trying to unequip the item with each call, but keeps on failing because the full-body suit technically both does and doesn't use the slots
-		; the workaround is to first check what we have equipped in slot 0 (head top) and 3 (body), as it seems full-body suits cover these two slots
-		; do both slots have an item, and is this the same item, then mark we are wearing a full-body suit
-		bool hasFullBodyItem = false
-		Actor:WornItem itemSlot0 = PlayerRef.GetWornItem(0)
-		Actor:WornItem itemSlot3 = PlayerRef.GetWornItem(3)
+		; the workaround is as follows:
+		; - first check what we have equipped in slot 3/4 (body) and 11 (torso armor), as it seems full-body suits cover these two slots
+		; we check both slot 3 and 4 as the Far Harbor Diving Suit uses slot 4 instead of the usual 3
+		; - do both slots have an item, check if the item in slot 11 has no name
+		; for whatever awful reason when a piece of clothing covers both the body and the torso armor slots, it lacks a display name for the armor slots
+		; - if all of this is true, then we have a full-body suit, and should not try to strip it
 
-		if (itemSlot0 != None && itemSlot0.item != None && itemSlot3 != None && itemSlot3.item != None && itemSlot0.item == itemSlot3.item)
+		bool hasFullBodyItem = false
+		Actor:WornItem itemSlot3 = PlayerRef.GetWornItem(3)
+		Actor:WornItem itemSlot4 = PlayerRef.GetWornItem(4)
+		Actor:WornItem itemSlot11 = PlayerRef.GetWornItem(11)
+
+		var itemSlot3_Occupied = itemSlot3 != None && itemSlot3.item != None
+		var itemSlot4_Occupied = itemSlot4 != None && itemSlot4.item != None
+		var itemSlot11_Occupied = itemSlot11 != None && itemSlot11.item != None
+
+		if ((itemSlot3_Occupied || itemSlot4_Occupied) && itemSlot11_Occupied && itemSlot11.item.GetName() == "")
 			hasFullBodyItem = true
 		EndIf
-		
+
 		Log(hasFullBodyItem)
 
 		; check for each sliderSet
