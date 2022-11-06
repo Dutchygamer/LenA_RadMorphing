@@ -268,6 +268,8 @@ Event OnTimer(int tid)
 		UnequipSlots()
 	ElseIf (tid == ETimerFakeRads)
 		AddFakeRads()
+	ElseIf (tid == ETimerDelayPop)
+		TryPop()
 	EndIf
 EndEvent
 
@@ -1076,7 +1078,8 @@ Function CheckPopWarnings()
 		PopWarnings += 1
 		ExtendMorphs(0.75, effectsCompanions, shouldPop = false, soundId = 4)
 	Else
-		Pop()
+		IsPopping = true
+		TryPop()
 	endif
 EndFunction
 
@@ -1086,13 +1089,30 @@ bool Function IsPoppingEnabled()
 EndFunction
 
 ; ------------------------
+; Safety net so popping doesn't break NPC conversations or VATS
+; ------------------------
+Function TryPop()
+	var isInVATS = (Game.IsMovementControlsEnabled()) == false
+	var isInScene = PlayerRef.IsInScene()
+	var isInTrade = Utility.IsInMenuMode()
+
+	; player should not be in VATS, not be in a conversation and not be trading
+	If (!isInVATS && !isInScene && !isInTrade)
+		Pop()
+	; if so, put on the queue and retry after a second
+	Else
+		StartTimer(1, ETimerDelayPop)
+	EndIf
+EndFunction
+
+; ------------------------
 ; Paralyze the player, expand current morphs several times, reset the morphs, apply debuff, and unparalyze the player
 ; ------------------------
 Function Pop()
 	int currentPopState = 1
 	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
-	IsPopping = true
+	; IsPopping = true
 
 	Log("pop!")
 
@@ -2130,6 +2150,7 @@ Group EnumTimerId
 	int Property ETimerShutdownRestoreMorphs = 3 Auto Const
 	int Property ETimerUnequipSlots = 4 Auto Const
 	int Property ETimerFakeRads = 5 Auto Const
+	int Property ETimerDelayPop = 6 Auto Const
 EndGroup
 
 Group EnumApplyCompanion
