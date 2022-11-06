@@ -71,6 +71,10 @@ bool PopUseFullSounds
 int PopWarnings
 bool IsPopping
 
+bool TutorialDisplayed_DroppedClothes
+bool TutorialDisplayed_MaxedOutMorphs
+bool TutorialDisplayed_Popped
+
 Actor:WornItem[] PoppingUnequippedItems
 
 int MaxRadiationMultiplier
@@ -855,10 +859,13 @@ Function TimerMorphTick()
 			endif
 			HasReachedMaxMorphs = true
 
-			if (EnablePopping)
-				LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage", 8, 0, 1)
-			else
-				LenARM_Tutorial_MaxedOutMorphsMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsMessage", 8, 0, 1)
+			if (!TutorialDisplayed_MaxedOutMorphs)
+				TutorialDisplayed_MaxedOutMorphs = true
+				if (EnablePopping)
+					LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage", 8, 0, 1)
+				else
+					LenARM_Tutorial_MaxedOutMorphsMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsMessage", 8, 0, 1)
+				endif
 			endif
 		
 		; when popping is enabled, randomly on taking rads increase the PopWarnings
@@ -1165,7 +1172,10 @@ Function Pop()
 	; unset the IsPopping flag before we undo the paralysing
 	IsPopping = false
 		
-	LenARM_Tutorial_PoppedMessage.ShowAsHelpMessage("LenARM_Tutorial_PoppedMessage", 8, 0, 1)
+	if (!TutorialDisplayed_Popped)
+		TutorialDisplayed_Popped = true
+		LenARM_Tutorial_PoppedMessage.ShowAsHelpMessage("LenARM_Tutorial_PoppedMessage", 8, 0, 1)
+	endif
 				
 	; wait a bit before we can actually stand up again
 	if (PopShouldParalyze)
@@ -1710,7 +1720,10 @@ Function UnequipSlots()
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
 						If (!found && !PlayerRef.IsEquipped(item.item))
-							LenARM_Tutorial_DropClothesMessage.ShowAsHelpMessage("LenARM_Tutorial_DropClothesMessage", 8, 0, 1)
+							if (!TutorialDisplayed_DroppedClothes)
+								TutorialDisplayed_DroppedClothes = true
+								LenARM_Tutorial_DropClothesMessage.ShowAsHelpMessage("LenARM_Tutorial_DropClothesMessage", 8, 0, 1)
+							endif
 							LenARM_DropClothesMessage.Show()
 							LenARM_DropClothesSound.Play(PlayerRef)
 							found = true
