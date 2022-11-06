@@ -138,6 +138,10 @@ Group Properties
 	Message Property LenARM_RadPurgeFailureMessage Auto
 	Message Property LenARM_RadPurgePopFailureMessage Auto
 	Message Property LenARM_RadPurgeSuccessMessage Auto
+	Message Property LenARM_Tutorial_DropClothesMessage Auto
+	Message Property LenARM_Tutorial_MaxedOutMorphsMessage Auto
+	Message Property LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage Auto
+	Message Property LenARM_Tutorial_PoppedMessage Auto
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -721,11 +725,6 @@ Function TimerMorphTick()
 		TotalRads += radsDifference
 	endif
 	
-	; recalculate which radsPerk to apply when enabled
-	if (EnableRadsPerks)
-		ApplyRadsPerk()
-	endif
-
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
 	bool changedMorphs = false
@@ -853,6 +852,12 @@ Function TimerMorphTick()
 				endif
 			endif
 			HasReachedMaxMorphs = true
+
+			if (EnablePopping)
+				LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage", 8, 0, 1)
+			else
+				LenARM_Tutorial_MaxedOutMorphsMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsMessage", 8, 0, 1)
+			endif
 		
 		; when popping is enabled, randomly on taking rads increase the PopWarnings
 		; when PopWarnings eventually has reached three, 'pop' the player
@@ -860,6 +865,12 @@ Function TimerMorphTick()
 			CheckPopWarnings()
 		endif
 	EndIf
+
+	; recalculate which radsPerk to apply when enabled
+	; do after we have updated everything else
+	if (EnableRadsPerks)
+		ApplyRadsPerk()
+	endif
 
 	; only restart the timer if we aren't shutting down, so it doesn't try to perform updates when the mod is in the process of stopping
 	If (!IsShuttingDown)
@@ -1133,6 +1144,8 @@ Function Pop()
 
 	; unset the IsPopping flag before we undo the paralysing
 	IsPopping = false
+		
+	LenARM_Tutorial_PoppedMessage.ShowAsHelpMessage("LenARM_Tutorial_PoppedMessage", 8, 0, 1)
 				
 	; wait a bit before we can actually stand up again
 	if (PopShouldParalyze)
@@ -1144,7 +1157,7 @@ Function Pop()
 
 		if (effectsCompanions)
 			UnparalyzeCompanions()
-		endif	
+		endif
 	endif
 EndFunction
 
@@ -1677,6 +1690,7 @@ Function UnequipSlots()
 						; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
 						; play the strip sound if available and display a notification in top-left
 						If (!found && !PlayerRef.IsEquipped(item.item))
+							LenARM_Tutorial_DropClothesMessage.ShowAsHelpMessage("LenARM_Tutorial_DropClothesMessage", 8, 0, 1)
 							LenARM_DropClothesMessage.Show()
 							LenARM_DropClothesSound.Play(PlayerRef)
 							found = true
@@ -2092,7 +2106,6 @@ EndFunction
 
 ; show a message in the top-left
 Function Note(string msg)
-	;TODO je zou dat als zo'n Vaultboy ding linksbovenin moeten kunnen doen; Player Comments doet dat wel bijvoorbeeld
 	Debug.Notification(msg)
 	Log(msg)
 EndFunction
