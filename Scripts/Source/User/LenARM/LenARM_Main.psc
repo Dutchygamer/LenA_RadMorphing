@@ -1085,7 +1085,7 @@ Function CheckPopWarnings()
 		PopWarnings += 1
 		ExtendMorphs(0.75, effectsCompanions, shouldPop = false, soundId = 4)
 	Else
-		IsPopping = true
+		; IsPopping = true
 		TryPop()
 	endif
 EndFunction
@@ -1119,7 +1119,7 @@ Function Pop()
 	int currentPopState = 1
 	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
-	; IsPopping = true
+	IsPopping = true
 
 	Log("pop!")
 
@@ -1514,6 +1514,93 @@ Function ApplyAllCompanionMorphsAndPop()
 		endif
 		idxComp += 1
 	EndWhile
+EndFunction
+
+
+Function BloatActor(Actor akTarget, int bloatState)
+	float morphPercentage = 0.2 * bloatState
+
+	int idxSet = 0
+	; apply it to all morphs from slidersets which aren't excluded
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]		
+		If (sliderSet.NumberOfSliderNames > 0)
+			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
+			int idxSlider = sliderNameOffset
+			int sex = akTarget.GetLeveledActorBase().GetSex()
+			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
+				float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
+		
+				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
+				idxSlider += 1
+			EndWhile
+		EndIf
+		idxSet += 1
+	EndWhile
+	
+
+	
+	; calculate the perk level
+	int perkLevel = ((morphPercentage * 10) / 2) as int
+
+	; limit to 4 just in case (we have 5 perks, starting from 0)
+    If (perkLevel > 5)
+        perkLevel = 5
+    EndIf
+
+	; when we have enough rads that we should have a difference in perk level, change perks
+	if (CurrentRadsPerk != perkLevel)
+		ClearNPCOldRadsPerks(perkLevel, akTarget)
+		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
+		if (perkLevel != 5)
+			akTarget.AddPerk(RadsPerkArray[perkLevel])		
+		Else
+			akTarget.AddPerk(RadsPerkFull)			
+		endif
+	endif
+
+
+	LenARM_FullGroanSound.Play(akTarget)
+	; do a random delay before appying the morphs (and morph sounds) on the akTarget
+	float randomFloat = GetRandomCompanionDelay(2,3)
+
+	Utility.Wait(randomFloat)
+	BodyGen.UpdateMorphs(akTarget)
+
+	if (perkLevel < 5)
+		LenARM_MorphSound_High.Play(akTarget)
+	else
+		LenARM_FullSound.Play(akTarget)
+	endif
+
+	; LenARM_PrePopSound.PlayAndWait(akTarget)
+	; LenARM_PopSound.Play(akTarget)
+
+		;RestoreOriginalCompanionMorphs(companion, idxComp)
+	;endif
+EndFunction
+
+
+;TODO kan je dedupliceren door aan ClearOldRadsPerks een Actor mee te geven
+Function ClearNPCOldRadsPerks(int newPerkLevel, Actor akTarget)
+    int i = 0
+	; loop through the standard perks, remove when not matching new perk level
+    While (i <= 4)
+        If (i != newPerkLevel && akTarget.HasPerk(RadsPerkArray[i]))
+			Log("Removing radsperk of level " + i)
+			akTarget.RemovePerk(RadsPerkArray[i])
+        EndIf
+        i += 1
+    EndWhile
+	
+	; remove the full perk when not matching full perk level
+	if (newPerkLevel != 5)
+		akTarget.RemovePerk(RadsPerkFull)
+	endif
+	
+	if (newPerkLevel > -1)
+    	Log("RadsPerk Level " + newPerkLevel + " applied")    
+	endif
 EndFunction
 
 ; ------------------------
