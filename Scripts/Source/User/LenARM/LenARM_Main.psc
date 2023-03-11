@@ -416,7 +416,7 @@ Function Startup()
 			ApplyRadsPerk()
 		; else clear any existing perks
 		Else
-			ClearAllRadsPerks()
+			ClearAllRadsPerks(PlayerRef)
 		endif
 
 		If (UpdateType == EUpdateTypeImmediately)
@@ -1002,7 +1002,7 @@ Function ResetMorphs()
 	TotalRads = 0
 
 	; reset the rad perks
-	ClearAllRadsPerks()
+	ClearAllRadsPerks(PlayerRef)
 
 	; reset saved morphs in SliderSets
 	int idxSet = 0
@@ -1323,9 +1323,9 @@ Function BloatActor(Actor akTarget, int bloatState)
 	; je zou eigenlijk moeten oppikken welke perk de NPC nu heeft en dat vergelijken
 	; echter zit je dan dezelfde meuk te doen als we in ClearOldRadsPerks doen...
 
-	; when we have enough rads that we should have a difference in perk level, change perks
-	if (CurrentRadsPerk != perkLevel)
-		ClearOldRadsPerks(perkLevel, akTarget)
+	; compare current akTarget radsPerk level vs the new level, change perks if needed
+	if (GetCurrentRadsPerkLevel(akTarget) != perkLevel)
+		ClearOldRadsPerks(akTarget, perkLevel)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
 			akTarget.AddPerk(RadsPerkArray[perkLevel])		
@@ -1401,6 +1401,21 @@ Function ApplyRadsPerk()
 		
 		CurrentRadsPerk = perkLevel
 	endif
+EndFunction
+
+
+int Function GetCurrentRadsPerkLevel(Actor akTarget)
+    int i = 0
+    While (i <= 4)
+		; when akTarget has the radsPerk, return its id
+        If (akTarget.HasPerk(RadsPerkArray[i]))
+			return i
+        EndIf
+        i += 1
+    EndWhile
+	
+	; fallback in case we actor has no radsPerk
+	return 0
 EndFunction
 
 ; ------------------------
