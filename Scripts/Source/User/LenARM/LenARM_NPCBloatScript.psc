@@ -3,10 +3,6 @@ ScriptName LenARM:LenARM_NPCBloatScript extends ActiveMagicEffect
 LenARM_Main Property LenARM_Main Auto
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
-	
-Form Property BloatNPCPopExplosion Auto
-
-;TODO gaat nog iets niet helemaal goed; krijg voor elkaar dat ze 2x poppen?
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
     ; when in Power Armor don't morph
@@ -33,18 +29,14 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         if (bloatStage > 5)
             akTarget.SetValue(NPCBloatStage, 0)
 
-            ;TODO wellicht toch terug naar BloatActor zodat we het direct kunnen doen met de pop?
-            ; spread the joy to nearby NPCs
-            akTarget.PlaceAtMe(BloatNPCPopExplosion)
-            
             ; wait a bit before taking away our immunity
             Utility.Wait(1)
             akTarget.SetValue(NPCBloatImmunity, 0)
             ; unparalize the npc after a bit, but do leave them open for renewed bloating
             Utility.Wait(9)
             LenARM_Main.UnParalyzeNPC(akTarget)
-        ; else take away our immunity
-        else            
+        ; else take away our immunity directly
+        else
             akTarget.SetValue(NPCBloatImmunity, 0)
         endif
 
