@@ -1,11 +1,20 @@
 ScriptName LenARM:LenARM_NPCBloatScript extends ActiveMagicEffect
 
 LenARM_Main Property LenARM_Main Auto
-actorValue property NPCBloatStage auto
+actorValue property NPCBloatStage auto	
+actorValue property NPCBloatImmunity auto	
+	
+Form Property BloatNPCPopExplosion Auto
+
+;TODO gaat nog iets niet helemaal goed; krijg voor elkaar dat ze 2x poppen?
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
-    ; when in Power Armor don't reset morphs
+    ; when in Power Armor don't morph
 	If (akTarget.IsInPowerArmor())
+		return
+	EndIf
+    ; when immune to bloating don't morph
+	If ((akTarget.getValue(NPCBloatImmunity) as bool) == true)
 		return
 	EndIf
     
@@ -15,15 +24,29 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
     if (sex == LenARM_Main.ESexFemale)        
         int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + 1
         akTarget.SetValue(NPCBloatStage, bloatStage)
+        ; make ourselves immune to further bloating until we are done
+        akTarget.SetValue(NPCBloatImmunity, 1)
+
         LenARM_Main.BloatActor(akTarget, bloatStage)
 
-        ; after popping, reset bloatStage back to 0
+        ; after popping, keep us paralyzed for a bit
         if (bloatStage > 5)
             akTarget.SetValue(NPCBloatStage, 0)
 
+            ;TODO wellicht toch terug naar BloatActor zodat we het direct kunnen doen met de pop?
+            ; spread the joy to nearby NPCs
+            akTarget.PlaceAtMe(BloatNPCPopExplosion)
+            
+            ; wait a bit before taking away our immunity
+            Utility.Wait(1)
+            akTarget.SetValue(NPCBloatImmunity, 0)
             ; unparalize the npc after a bit, but do leave them open for renewed bloating
-            Utility.Wait(10)
+            Utility.Wait(9)
             LenARM_Main.UnParalyzeNPC(akTarget)
+        ; else take away our immunity
+        else            
+            akTarget.SetValue(NPCBloatImmunity, 0)
         endif
+
     endif
 EndEvent

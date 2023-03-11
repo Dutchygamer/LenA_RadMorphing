@@ -160,7 +160,7 @@ Group Properties
 	Potion Property PoppedPotion Auto Const	
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
-	Potion Property ResetRadsPotion Auto Const	
+	Potion Property ResetRadsPotion Auto Const
 EndGroup
 
 ; ------------------------
@@ -1360,7 +1360,7 @@ Function BloatActor(Actor akTarget, int bloatState)
 		BodyGen.UpdateMorphs(akTarget)
 		LenARM_PrePopSound.PlayAndWait(akTarget)
 		LenARM_PopSound.Play(akTarget)
-		
+
 		SetBloatMorphs(akTarget, 0, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 		ClearAllRadsPerks(akTarget)
