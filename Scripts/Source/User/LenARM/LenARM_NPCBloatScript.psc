@@ -16,5 +16,14 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + 1
         akTarget.SetValue(NPCBloatStage, bloatStage)
         LenARM_Main.BloatActor(akTarget, bloatStage)
+
+        ; after popping, reset bloatStage back to 0
+        if (bloatStage > 5)
+            akTarget.SetValue(NPCBloatStage, 0)
+
+            ; unparalize the npc after a bit, but do leave them open for renewed bloating
+            Utility.Wait(10)
+            LenARM_Main.UnParalyzeNPC(akTarget)
+        endif
     endif
 EndEvent

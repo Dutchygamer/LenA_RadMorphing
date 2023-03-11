@@ -1293,24 +1293,11 @@ Function BloatActor(Actor akTarget, int bloatState)
 
 	LenARM_FullGroanSound.Play(akTarget)
 	
-	int idxSet = 0
-	; apply it to all morphs from slidersets which aren't excluded
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]		
-		If (sliderSet.NumberOfSliderNames > 0)
-			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
-			int idxSlider = sliderNameOffset
-			int sex = akTarget.GetLeveledActorBase().GetSex()
-			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
-				float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
-		
-				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
-				idxSlider += 1
-			EndWhile
-		EndIf
-		idxSet += 1
-	EndWhile
-		
+	SetBloatMorphs(akTarget, morphPercentage, shouldPop = false)
+	;TODO mooiste zou zijn als je ook kan strippen, echter dat werkt per slider
+	; je gaat vervolgens dan per slider zn huidige morphs vergelijken met zn stored morphs
+	; aka met wat we hier doen gaat dat niet
+	
 	; calculate the perk level
 	int perkLevel = ((morphPercentage * 10) / 2) as int
 
@@ -1318,10 +1305,6 @@ Function BloatActor(Actor akTarget, int bloatState)
     If (perkLevel > 5)
         perkLevel = 5
     EndIf
-
-	;TODO dit klopt dus niet, moeten niet CurrentRadsPerk gebruiken want dis voor Player
-	; je zou eigenlijk moeten oppikken welke perk de NPC nu heeft en dat vergelijken
-	; echter zit je dan dezelfde meuk te doen als we in ClearOldRadsPerks doen...
 
 	; compare current akTarget radsPerk level vs the new level, change perks if needed
 	if (GetCurrentRadsPerkLevel(akTarget) != perkLevel)
@@ -1345,17 +1328,67 @@ Function BloatActor(Actor akTarget, int bloatState)
 	elseif (perkLevel == 5 && bloatState == 5)
 		PlayMorphSound(akTarget, 4)
 	elseif (perkLevel == 5 && bloatState > 5)
-		;TODO pop?
+		
+		PlayMorphSound(akTarget, 4)
 
+		akTarget.SetValue(ParalysisAV, 1)
+		akTarget.PushActorAway(akTarget, 0.5)		
+
+		int currentPopState = 1
+		float multiplier = morphPercentage + 0.1
+
+		; gradually increase the morphs and unequip the clothes
+		While (currentPopState < PopStates)	
+			SetBloatMorphs(akTarget, multiplier, shouldPop = true)
+			
+			BodyGen.UpdateMorphs(akTarget)
+			PlayMorphSound(akTarget, 5)
+
+			; for the unequip state we also want to strip all clothes and armor
+			If (currentPopState == PopStripState)
+				UnequipAllNPC(akTarget)
+			endif
+	
+			Utility.Wait(0.7)
+	
+			currentPopState += 1
+			multiplier += 0.1
+		EndWhile
+
+		; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
+		SetBloatMorphs(akTarget, multiplier, shouldPop = true)			
+		BodyGen.UpdateMorphs(akTarget)
 		LenARM_PrePopSound.PlayAndWait(akTarget)
 		LenARM_PopSound.Play(akTarget)
+		
+		SetBloatMorphs(akTarget, 0, shouldPop = false)
+		BodyGen.UpdateMorphs(akTarget)
+		ClearAllRadsPerks(akTarget)
 	endif
+EndFunction
 
-	; LenARM_PrePopSound.PlayAndWait(akTarget)
-	; LenARM_PopSound.Play(akTarget)
+Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)	
+	int idxSet = 0
+	; apply it to all morphs from slidersets which aren't excluded
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]		
+		If (sliderSet.NumberOfSliderNames > 0 && (!shouldPop || (shouldPop && !sliderSet.ExcludeFromPopping)))
+			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
+			int idxSlider = sliderNameOffset
+			int sex = akTarget.GetLeveledActorBase().GetSex()
+			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
+				float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
+		
+				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
+				idxSlider += 1
+			EndWhile
+		EndIf
+		idxSet += 1
+	EndWhile
+EndFunction
 
-		;RestoreOriginalCompanionMorphs(companion, idxComp)
-	;endif
+Function UnParalyzeNPC(Actor akTarget)
+	akTarget.SetValue(ParalysisAV, 0)
 EndFunction
 
 
@@ -1402,7 +1435,6 @@ Function ApplyRadsPerk()
 		CurrentRadsPerk = perkLevel
 	endif
 EndFunction
-
 
 int Function GetCurrentRadsPerkLevel(Actor akTarget)
     int i = 0
@@ -1956,6 +1988,51 @@ Function UnequipAll(bool effectsCompanions=false)
 		idxSlot += 1	
 	EndWhile
 	Log("FINISHED UnequipAll")
+EndFunction
+
+Function UnequipAllNPC(Actor akTarget)
+	; don't bother unequipping if akTarget is in power armor
+	If (akTarget.IsInPowerArmor())
+		return
+	EndIf
+
+	bool found = false
+	int idxSlot = 0
+
+	; these are all the slots we want to unequip
+	int[] allSlots = new int[0]	
+	allSlots.Add(3)  ; body
+	allSlots.Add(11) ; chest armor
+	allSlots.Add(12) ; arm armor
+	allSlots.Add(13) ; arm armor
+	allSlots.Add(14) ; leg armor
+	allSlots.Add(15) ; leg armor
+
+	; check for each slot
+	While (idxSlot < allSlots.Length)
+		int slot = allSlots[idxSlot]
+		
+		Actor:WornItem item = akTarget.GetWornItem(slot)
+		
+		; check if item in the slot is not an actor or the pipboy
+		bool isArmor = IsItemArmor(item)
+
+		; when item is an armor and we can unequip it, do so
+		If (isArmor)
+			Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+
+			akTarget.UnequipItem(item.item, false, true)
+			
+			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
+			; play the strip sound if available
+			If (!found && !akTarget.IsEquipped(item.item))
+				LenARM_DropClothesSound.Play(akTarget)
+				found = true
+			EndIf
+		EndIf
+		
+		idxSlot += 1	
+	EndWhile
 EndFunction
 
 bool Function IsItemArmor(Actor:WornItem item)
