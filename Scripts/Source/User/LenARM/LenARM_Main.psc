@@ -1288,8 +1288,7 @@ EndFunction
 ; Intended for use on non-player and non-companion NPCs.
 ; ------------------------
 Function BloatActor(Actor akTarget, int bloatState)
-	;float morphPercentage2 = 0.2; * bloatState
-	float morphPercentage = 0.2 * bloatState
+	float morphPercentage = 0.2
 
 	;TODO zoek na of je dit ergens kan standardizeren, echter heb ik er weinig hoop op
 	; de andere twee plekken zijn SetMorphs en SetCompanionMorphs en die doen dingen in die loop specifiek voor player en companions
@@ -1301,10 +1300,10 @@ Function BloatActor(Actor akTarget, int bloatState)
 	; je gaat vervolgens dan per slider zn huidige morphs vergelijken met zn stored morphs
 	; aka met wat we hier doen gaat dat niet
 	
-	; calculate the perk level
-	int perkLevel = ((morphPercentage * 10) / 2) as int
+	; perkLevel is equal to the bloat state 
+	int perkLevel = bloatState
 
-	; limit to 4 just in case (we have 5 perks, starting from 0)
+	; limit to 5 just in case (we have 5 perks, starting from 0)
     If (perkLevel > 5)
         perkLevel = 5
     EndIf
@@ -1330,16 +1329,15 @@ Function BloatActor(Actor akTarget, int bloatState)
 		PlayMorphSound(akTarget, 3)
 	elseif (perkLevel == 5 && bloatState == 5)
 		PlayMorphSound(akTarget, 4)
-	elseif (perkLevel == 5 && bloatState > 5)
-		
+	elseif (perkLevel == 5 && bloatState > 5)		
 		PlayMorphSound(akTarget, 4)
 
 		akTarget.SetValue(ParalysisAV, 1)
 		akTarget.PushActorAway(akTarget, 0.5)		
 
 		int currentPopState = 1
-		;float multiplier = 0.1
-		float multiplier = morphPercentage + 0.1
+		float multiplier = 0.1
+		float totalPopMultiplier = multiplier
 
 		; gradually increase the morphs and unequip the clothes
 		While (currentPopState < PopStates)	
@@ -1356,22 +1354,29 @@ Function BloatActor(Actor akTarget, int bloatState)
 			Utility.Wait(0.7)
 	
 			currentPopState += 1
-			multiplier += 0.1
+			totalPopMultiplier += multiplier
 		EndWhile
 
-		; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
+		; apply the final morphs, and do the 'pop'
 		SetBloatMorphs(akTarget, multiplier, shouldPop = true)			
 		BodyGen.UpdateMorphs(akTarget)
 		LenARM_PrePopSound.PlayAndWait(akTarget)
 		LenARM_PopSound.Play(akTarget)
 		
+		totalPopMultiplier += multiplier
+		
 		; spread the joy to nearby NPCs
 		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
-		SetBloatMorphs(akTarget, 0, shouldPop = false)
-		;float reset = ((morphPercentage2 * 5) + (multiplier * (PopStates + 1))) * -1
-		;SetBloatMorphs(akTarget, reset, shouldPop = false)
+		; reset all the morphs back to 0
+		; we need to do some calculations so we go back to the original NPC's morphs
+		;TODO is al stukken beter, echter reset ie nog niet alles
+		; ik denk dat het hem nog in totalPopMultiplier zit die een rondje te weinig loopt, maar ik weet niet zeker
+		; het verschil wordt wel groter met meerdere pops
+		float reset = ((morphPercentage * 5) + totalPopMultiplier) * -1
+		SetBloatMorphs(akTarget, reset, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
+
 		ClearAllRadsPerks(akTarget)
 		akTarget.EquipItem(PoppedPotion, abSilent = true)
 	endif
@@ -1380,12 +1385,6 @@ EndFunction
 Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)	
 	int idxSet = 0
 
-	;TODO dit houdt nu geen rekening met originele NPC morphs (van bijvoorbeeld een looksmenu preset)
-	; had poging gedaan om in de binnenste while ook de huidige morphs op te halen, maar je loopt dan tegen paar issues aan:
-	; - dit is dus inclusief al applied morphs van eerdere bloats, wat betekend dat je niet iedere keer een groter percentage moet meegeven maar steeds hetzelfde (om te voorkomen dat je exponentiele morphs krijgt)
-	; - hij lijkt nog niet helemaal de juiste slidersets te pakken; nipple morphs worden bijvoorbeeld redelijk extreem
-	; - resetten bij poppen vraagt wat creatieve wiskunde gezien je niet simpelweg kan zetten "oh zet de morphs maar weer terug naar 0" want dat reset je ze dus naar je BodySlide standaard ipv NPC standaard
-	
 	; apply it to all morphs from slidersets which aren't excluded
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]		
@@ -1395,12 +1394,9 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 			int sex = akTarget.GetLeveledActorBase().GetSex()
 			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
 				;TODO not the most efficient way tho...	
-				;TODO heb ook gevoel dat dit
-				;float npcMorph = BodyGen.GetMorph(akTarget, True, SliderNames[idxSlider], None)
+				float npcMorph = BodyGen.GetMorph(akTarget, True, SliderNames[idxSlider], None)
 
-				float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
-				
-				;float newMorphs = npcMorph + newMorph
+				float newMorph = npcMorph + (morphPercentage * sliderSet.targetMorph)
 		
 				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
 				idxSlider += 1
