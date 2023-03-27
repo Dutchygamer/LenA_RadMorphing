@@ -1287,15 +1287,20 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on non-player and non-companion NPCs.
 ; ------------------------
-Function BloatActor(Actor akTarget, int bloatState)
-	float morphPercentage = 0.2
+Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
+	float morphPercentage = 0.2 * toAdd
+	; limit morphs to 100%
+	if (morphPercentage > 1.0)
+		morphPercentage = 1.0
+	endif
+
+	;Note(bloatState + "; " + toAdd + "; " + morphPercentage)
 
 	;TODO zoek na of je dit ergens kan standardizeren, echter heb ik er weinig hoop op
 	; de andere twee plekken zijn SetMorphs en SetCompanionMorphs en die doen dingen in die loop specifiek voor player en companions
 
 	LenARM_FullGroanSound.Play(akTarget)
 	
-	SetBloatMorphs(akTarget, morphPercentage, shouldPop = false)
 	;TODO mooiste zou zijn als je ook kan strippen, echter dat werkt per slider
 	; je gaat vervolgens dan per slider zn huidige morphs vergelijken met zn stored morphs
 	; aka met wat we hier doen gaat dat niet
@@ -1321,9 +1326,13 @@ Function BloatActor(Actor akTarget, int bloatState)
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
 	float randomFloat = GetRandomDelay(2,3)
-
 	Utility.Wait(randomFloat)
-	BodyGen.UpdateMorphs(akTarget)
+
+	; only apply initial morphs if we are not going to pop
+	if (bloatState <= 5)
+		SetBloatMorphs(akTarget, morphPercentage, shouldPop = false)
+		BodyGen.UpdateMorphs(akTarget)
+	endif
 
 	if (perkLevel < 5)
 		PlayMorphSound(akTarget, 3)
@@ -1351,7 +1360,7 @@ Function BloatActor(Actor akTarget, int bloatState)
 				UnequipAllNPC(akTarget)
 			endif
 	
-			Utility.Wait(0.7)
+			;Utility.Wait(0.7)
 	
 			currentPopState += 1
 			totalPopMultiplier += multiplier
@@ -1363,17 +1372,15 @@ Function BloatActor(Actor akTarget, int bloatState)
 		LenARM_PrePopSound.PlayAndWait(akTarget)
 		LenARM_PopSound.Play(akTarget)
 		
-		totalPopMultiplier += multiplier
-		
 		; spread the joy to nearby NPCs
 		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
 		; reset all the morphs back to 0
 		; we need to do some calculations so we go back to the original NPC's morphs
-		;TODO is al stukken beter, echter reset ie nog niet alles
-		; ik denk dat het hem nog in totalPopMultiplier zit die een rondje te weinig loopt, maar ik weet niet zeker
-		; het verschil wordt wel groter met meerdere pops
-		float reset = ((morphPercentage * 5) + totalPopMultiplier) * -1
+		float reset = (1.0 + totalPopMultiplier) * -1
+
+		;Note(totalPopMultiplier + "; " + reset)
+
 		SetBloatMorphs(akTarget, reset, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 

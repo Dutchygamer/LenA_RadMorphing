@@ -3,6 +3,7 @@ ScriptName LenARM:LenARM_NPCBloatScript extends ActiveMagicEffect
 LenARM_Main Property LenARM_Main Auto
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
+int property StageToAdd = 1 auto
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
     ; when in Power Armor don't morph
@@ -18,12 +19,13 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 
     ; for now only work on females
     if (sex == LenARM_Main.ESexFemale)        
-        int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + 1
+        int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + StageToAdd
+
         akTarget.SetValue(NPCBloatStage, bloatStage)
         ; make ourselves immune to further bloating until we are done
         akTarget.SetValue(NPCBloatImmunity, 1)
 
-        LenARM_Main.BloatActor(akTarget, bloatStage)
+        LenARM_Main.BloatActor(akTarget, bloatStage, StageToAdd)
 
         ; after popping, keep us paralyzed for a bit
         if (bloatStage > 5)
