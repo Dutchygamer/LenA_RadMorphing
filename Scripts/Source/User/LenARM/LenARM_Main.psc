@@ -1159,7 +1159,8 @@ Function Pop()
 			UnequipAll(effectsCompanions)
 		endif
 
-		Utility.Wait(0.7)
+		;Utility.Wait(0.7)
+		Utility.Wait(0.3)
 
 		currentPopState += 1
 	EndWhile
@@ -1346,7 +1347,7 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 
 		int currentPopState = 1
 		float multiplier = 0.1
-		float totalPopMultiplier = multiplier
+		float totalPopMultiplier = multiplier * PopStates
 
 		; gradually increase the morphs and unequip the clothes
 		While (currentPopState < PopStates)	
@@ -1361,9 +1362,10 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 			endif
 	
 			;Utility.Wait(0.7)
+			Utility.Wait(0.3)
 	
 			currentPopState += 1
-			totalPopMultiplier += multiplier
+			;totalPopMultiplier += multiplier
 		EndWhile
 
 		; apply the final morphs, and do the 'pop'

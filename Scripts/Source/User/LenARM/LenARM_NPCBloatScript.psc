@@ -18,12 +18,12 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 	int sex = akTarget.GetLeveledActorBase().GetSex()
 
     ; for now only work on females
-    if (sex == LenARM_Main.ESexFemale)        
-        int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + StageToAdd
-
-        akTarget.SetValue(NPCBloatStage, bloatStage)
+    if (sex == LenARM_Main.ESexFemale)     
         ; make ourselves immune to further bloating until we are done
         akTarget.SetValue(NPCBloatImmunity, 1)
+
+        int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + StageToAdd
+        akTarget.SetValue(NPCBloatStage, bloatStage)
 
         LenARM_Main.BloatActor(akTarget, bloatStage, StageToAdd)
 
@@ -41,6 +41,5 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         else
             akTarget.SetValue(NPCBloatImmunity, 0)
         endif
-
     endif
 EndEvent
