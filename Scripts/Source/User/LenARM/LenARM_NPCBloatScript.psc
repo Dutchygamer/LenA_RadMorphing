@@ -6,12 +6,8 @@ actorValue property NPCBloatImmunity auto
 int property StageToAdd = 1 auto
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
-    ; when in Power Armor don't morph
-	If (akTarget.IsInPowerArmor())
-		return
-	EndIf
-    ; when immune to bloating don't morph
-	If ((akTarget.getValue(NPCBloatImmunity) as bool) == true)
+    ; when in Power Armor, dead or immune to bloating don't morph
+	If (akTarget.IsInPowerArmor() || akTarget.IsDead() || ((akTarget.getValue(NPCBloatImmunity) as bool) == true))
 		return
 	EndIf
     

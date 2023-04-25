@@ -1118,6 +1118,11 @@ EndFunction
 ; Paralyze the player, expand current morphs several times, reset the morphs, apply debuff, and unparalyze the player
 ; ------------------------
 Function Pop()
+	; don't pop player that is dead
+	if (PlayerRef.IsDead())
+		return
+	endif
+
 	int currentPopState = 1
 	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
@@ -1151,7 +1156,12 @@ Function Pop()
 	Utility.Wait(0.7)
 
 	; gradually increase the morphs and unequip the clothes
-	While (currentPopState < PopStates)	
+	While (currentPopState < PopStates)			
+		; stop if player has died
+		if (PlayerRef.IsDead())
+			return
+		endif
+
 		ExtendMorphs(currentPopState, effectsCompanions, shouldPop = false)
 
 		; for the unequip state we also want to strip all clothes and armor
@@ -1164,6 +1174,11 @@ Function Pop()
 
 		currentPopState += 1
 	EndWhile
+	
+	; stop if player has died
+	if (PlayerRef.IsDead())
+		return
+	endif
 
 	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 	ExtendMorphs(currentPopState, effectsCompanions, shouldPop = true)
@@ -1289,6 +1304,11 @@ EndFunction
 ; Intended for use on non-player and non-companion NPCs.
 ; ------------------------
 Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
+	; don't bloat actor that is dead
+	if (akTarget.IsDead())
+		return
+	endif
+
 	float morphPercentage = 0.2 * toAdd
 	; limit morphs to 100%
 	if (morphPercentage > 1.0)
@@ -1351,6 +1371,11 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 
 		; gradually increase the morphs and unequip the clothes
 		While (currentPopState < PopStates)	
+			; don't pop actor that is dead
+			if (akTarget.IsDead())
+				return
+			endif
+
 			SetBloatMorphs(akTarget, multiplier, shouldPop = true)
 			
 			BodyGen.UpdateMorphs(akTarget)
@@ -1365,8 +1390,12 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 			Utility.Wait(0.3)
 	
 			currentPopState += 1
-			;totalPopMultiplier += multiplier
 		EndWhile
+
+		; don't pop actor that is dead
+		if (akTarget.IsDead())
+			return
+		endif
 
 		; apply the final morphs, and do the 'pop'
 		SetBloatMorphs(akTarget, multiplier, shouldPop = true)			
