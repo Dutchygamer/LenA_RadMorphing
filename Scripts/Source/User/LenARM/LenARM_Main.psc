@@ -71,9 +71,9 @@ bool PopUseFullSounds
 int PopWarnings
 bool IsPopping
 
-bool TutorialDisplayed_DroppedClothes
-bool TutorialDisplayed_MaxedOutMorphs
-bool TutorialDisplayed_Popped
+bool TutorialDisplayed_DroppedClothes = false
+bool TutorialDisplayed_MaxedOutMorphs = false
+bool TutorialDisplayed_Popped = false
 
 Actor:WornItem[] PoppingUnequippedItems
 
