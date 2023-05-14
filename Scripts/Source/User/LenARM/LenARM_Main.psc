@@ -1382,9 +1382,7 @@ Function BloatPop(Actor akTarget)
 
 	int currentPopState = 1
 	float multiplier = 0.1
-	; PopStates +1 as we apply the final bloat morphs after the final popState
-	; float totalPopMultiplier = multiplier * (PopStates + 1)
-	float totalPopMultiplier = multiplier
+	float totalPopMultiplier = 0
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < PopStates)	
@@ -1428,12 +1426,9 @@ Function BloatPop(Actor akTarget)
 
 	; reset all the morphs back to 0
 	; we need to do some calculations so we go back to the original NPC's morphs
-
-	;TODO dit gaat nog steeds niet goed; ik verlies nu steeds 0.05 van de breasts slider per 'pop'
-
 	float reset = (1.0 + totalPopMultiplier) * -1
 
-	Note(totalPopMultiplier + "; " + reset)
+	; Note(totalPopMultiplier + "; " + reset)
 
 	SetBloatMorphs(akTarget, reset, shouldPop = false)
 	BodyGen.UpdateMorphs(akTarget)
@@ -1457,8 +1452,11 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 				;TODO not the most efficient way tho...	
 				float npcMorph = BodyGen.GetMorph(akTarget, True, SliderNames[idxSlider], None)
 
-				;TODO zit het probleem anders hiero in? dat we hier steeds een tik teveel eraf halen?
 				float newMorph = npcMorph + (morphPercentage * sliderSet.targetMorph)
+
+				if (SliderNames[idxSlider] == "Breasts")
+					Log(npcMorph + "; " + morphPercentage + "; " + sliderSet.targetMorph)
+				endif
 		
 				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
 				idxSlider += 1
