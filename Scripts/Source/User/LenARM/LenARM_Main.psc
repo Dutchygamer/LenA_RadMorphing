@@ -1367,7 +1367,9 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 
 		int currentPopState = 1
 		float multiplier = 0.1
-		float totalPopMultiplier = multiplier * PopStates
+		; PopStates +1 as we apply the final bloat morphs after the final popState
+		; float totalPopMultiplier = multiplier * (PopStates + 1)
+		float totalPopMultiplier = multiplier
 
 		; gradually increase the morphs and unequip the clothes
 		While (currentPopState < PopStates)	
@@ -1377,6 +1379,7 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 			endif
 
 			SetBloatMorphs(akTarget, multiplier, shouldPop = true)
+			totalPopMultiplier += multiplier
 			
 			BodyGen.UpdateMorphs(akTarget)
 			PlayMorphSound(akTarget, 5)
@@ -1388,7 +1391,7 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 	
 			;Utility.Wait(0.7)
 			Utility.Wait(0.3)
-	
+
 			currentPopState += 1
 		EndWhile
 
@@ -1398,7 +1401,9 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 		endif
 
 		; apply the final morphs, and do the 'pop'
-		SetBloatMorphs(akTarget, multiplier, shouldPop = true)			
+		SetBloatMorphs(akTarget, multiplier, shouldPop = true)		
+		totalPopMultiplier += multiplier
+		
 		BodyGen.UpdateMorphs(akTarget)
 		LenARM_PrePopSound.PlayAndWait(akTarget)
 		LenARM_PopSound.Play(akTarget)
@@ -1408,9 +1413,12 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 
 		; reset all the morphs back to 0
 		; we need to do some calculations so we go back to the original NPC's morphs
+
+		;TODO dit gaat nog steeds niet goed; ik verlies nu steeds 0.05 van de breasts slider per 'pop'
+
 		float reset = (1.0 + totalPopMultiplier) * -1
 
-		;Note(totalPopMultiplier + "; " + reset)
+		Note(totalPopMultiplier + "; " + reset)
 
 		SetBloatMorphs(akTarget, reset, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
@@ -1434,6 +1442,7 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 				;TODO not the most efficient way tho...	
 				float npcMorph = BodyGen.GetMorph(akTarget, True, SliderNames[idxSlider], None)
 
+				;TODO zit het probleem anders hiero in? dat we hier steeds een tik teveel eraf halen?
 				float newMorph = npcMorph + (morphPercentage * sliderSet.targetMorph)
 		
 				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
@@ -1598,6 +1607,13 @@ EndFunction
 ; ------------------------
 Function StoreOriginalCompanionMorphs(Actor companion)
 	Log("StoreOriginalCompanionMorphs: " + companion)
+
+	; safety net so we don't try to keep on filling the companion morphs array when it is already filled
+	if (HasFilledOriginalCompanionMorphs)
+		Log("OriginalCompanionMorphs filled")
+		return
+	endif
+
 	int idxSlider = 0
 	While (idxSlider < SliderNames.Length)
 		; OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))		
@@ -1803,6 +1819,8 @@ Function AddNewCompanions(Actor[] newCompanions)
 		Actor newComp = newCompanions[idxNew]
 		int newCompId = newComp.GetFormId()
 		
+		;TODO hier kijken of companion geen robot is?
+
 		; can't find the new companionId in the current companionIds array?
 		; add it to the current companionIds array, the matching Actor to the currentCompanions array, register the dismiss event, and store the companion's original morphs
 		If (CurrentCompanionIds.Find(newCompId) < 0)
