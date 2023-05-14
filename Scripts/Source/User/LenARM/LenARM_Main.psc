@@ -1303,31 +1303,38 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on non-player and non-companion NPCs.
 ; ------------------------
-Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
+Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
 		return
 	endif
 
-	float morphPercentage = 0.2 * toAdd
-	; limit morphs to 100%
-	if (morphPercentage > 1.0)
-		morphPercentage = 1.0
+	LenARM_FullGroanSound.Play(akTarget)
+	
+	; calculate the max bloatStage, limited to 6
+	int maxBloatStage = currentBloatStage + toAdd
+	if (maxBloatStage > 6)
+		maxBloatStage = 6
 	endif
+	int nextBloatStage = currentBloatStage + 1
+	float morphPercentage = 0.2
 
-	;Note(bloatState + "; " + toAdd + "; " + morphPercentage)
+	; keep bloating the actor until the bloatStage is equal to expected result
+	while (nextBloatStage <= maxBloatStage)
+		; Note(bloatStage + "; " + toAdd + "; " + morphPercentage)
+		;Note(nextBloatStage + "; " + morphPercentage)
 
+		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
+		nextBloatStage += 1
+	endwhile
+EndFunction
+
+Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage)
 	;TODO zoek na of je dit ergens kan standardizeren, echter heb ik er weinig hoop op
 	; de andere twee plekken zijn SetMorphs en SetCompanionMorphs en die doen dingen in die loop specifiek voor player en companions
 
-	LenARM_FullGroanSound.Play(akTarget)
-	
-	;TODO mooiste zou zijn als je ook kan strippen, echter dat werkt per slider
-	; je gaat vervolgens dan per slider zn huidige morphs vergelijken met zn stored morphs
-	; aka met wat we hier doen gaat dat niet
-	
 	; perkLevel is equal to the bloat state 
-	int perkLevel = bloatState
+	int perkLevel = nextBloatStage
 
 	; limit to 5 just in case (we have 5 perks, starting from 0)
     If (perkLevel > 5)
@@ -1350,83 +1357,91 @@ Function BloatActor(Actor akTarget, int bloatState, int toAdd = 1)
 	Utility.Wait(randomFloat)
 
 	; only apply initial morphs if we are not going to pop
-	if (bloatState <= 5)
+	if (nextBloatStage <= 5)
 		SetBloatMorphs(akTarget, morphPercentage, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 	endif
 
+	; play the matching sound
 	if (perkLevel < 5)
 		PlayMorphSound(akTarget, 3)
-	elseif (perkLevel == 5 && bloatState == 5)
+	elseif (perkLevel == 5 && nextBloatStage == 5)
 		PlayMorphSound(akTarget, 4)
-	elseif (perkLevel == 5 && bloatState > 5)		
-		PlayMorphSound(akTarget, 4)
+	; pop the actor 
+	elseif (perkLevel == 5 && nextBloatStage > 5)		
+		Utility.Wait(randomFloat)
+		BloatPop(akTarget)
+	endif
+EndFunction
 
-		akTarget.SetValue(ParalysisAV, 1)
-		akTarget.PushActorAway(akTarget, 0.5)		
+Function BloatPop(Actor akTarget)
+	PlayMorphSound(akTarget, 4)
 
-		int currentPopState = 1
-		float multiplier = 0.1
-		; PopStates +1 as we apply the final bloat morphs after the final popState
-		; float totalPopMultiplier = multiplier * (PopStates + 1)
-		float totalPopMultiplier = multiplier
+	akTarget.SetValue(ParalysisAV, 1)
+	akTarget.PushActorAway(akTarget, 0.5)		
 
-		; gradually increase the morphs and unequip the clothes
-		While (currentPopState < PopStates)	
-			; don't pop actor that is dead
-			if (akTarget.IsDead())
-				return
-			endif
+	int currentPopState = 1
+	float multiplier = 0.1
+	; PopStates +1 as we apply the final bloat morphs after the final popState
+	; float totalPopMultiplier = multiplier * (PopStates + 1)
+	float totalPopMultiplier = multiplier
 
-			SetBloatMorphs(akTarget, multiplier, shouldPop = true)
-			totalPopMultiplier += multiplier
-			
-			BodyGen.UpdateMorphs(akTarget)
-			PlayMorphSound(akTarget, 5)
-
-			; for the unequip state we also want to strip all clothes and armor
-			If (currentPopState == PopStripState)
-				UnequipAllNPC(akTarget)
-			endif
-	
-			;Utility.Wait(0.7)
-			Utility.Wait(0.3)
-
-			currentPopState += 1
-		EndWhile
-
+	; gradually increase the morphs and unequip the clothes
+	While (currentPopState < PopStates)	
 		; don't pop actor that is dead
 		if (akTarget.IsDead())
 			return
 		endif
 
-		; apply the final morphs, and do the 'pop'
-		SetBloatMorphs(akTarget, multiplier, shouldPop = true)		
+		SetBloatMorphs(akTarget, multiplier, shouldPop = true)
 		totalPopMultiplier += multiplier
 		
 		BodyGen.UpdateMorphs(akTarget)
-		LenARM_PrePopSound.PlayAndWait(akTarget)
-		LenARM_PopSound.Play(akTarget)
-		
-		; spread the joy to nearby NPCs
-		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+		PlayMorphSound(akTarget, 5)
 
-		; reset all the morphs back to 0
-		; we need to do some calculations so we go back to the original NPC's morphs
+		; for the unequip state we also want to strip all clothes and armor
+		If (currentPopState == PopStripState)
+			UnequipAllNPC(akTarget)
+		endif
 
-		;TODO dit gaat nog steeds niet goed; ik verlies nu steeds 0.05 van de breasts slider per 'pop'
+		;Utility.Wait(0.7)
+		Utility.Wait(0.3)
 
-		float reset = (1.0 + totalPopMultiplier) * -1
+		currentPopState += 1
+	EndWhile
 
-		Note(totalPopMultiplier + "; " + reset)
-
-		SetBloatMorphs(akTarget, reset, shouldPop = false)
-		BodyGen.UpdateMorphs(akTarget)
-
-		ClearAllRadsPerks(akTarget)
-		akTarget.EquipItem(PoppedPotion, abSilent = true)
+	; don't pop actor that is dead
+	if (akTarget.IsDead())
+		return
 	endif
+
+	; apply the final morphs, and do the 'pop'
+	SetBloatMorphs(akTarget, multiplier, shouldPop = true)		
+	totalPopMultiplier += multiplier
+	
+	BodyGen.UpdateMorphs(akTarget)
+	LenARM_PrePopSound.PlayAndWait(akTarget)
+	LenARM_PopSound.Play(akTarget)
+	
+	; spread the joy to nearby NPCs
+	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+
+	; reset all the morphs back to 0
+	; we need to do some calculations so we go back to the original NPC's morphs
+
+	;TODO dit gaat nog steeds niet goed; ik verlies nu steeds 0.05 van de breasts slider per 'pop'
+
+	float reset = (1.0 + totalPopMultiplier) * -1
+
+	Note(totalPopMultiplier + "; " + reset)
+
+	SetBloatMorphs(akTarget, reset, shouldPop = false)
+	BodyGen.UpdateMorphs(akTarget)
+
+	ClearAllRadsPerks(akTarget)
+	akTarget.EquipItem(PoppedPotion, abSilent = true)
 EndFunction
+
 
 Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)	
 	int idxSet = 0
@@ -1820,6 +1835,7 @@ Function AddNewCompanions(Actor[] newCompanions)
 		int newCompId = newComp.GetFormId()
 		
 		;TODO hier kijken of companion geen robot is?
+		; is alleen haast niet te doen; er lijkt geen manier om Keywords van een Class te laden, wat de meest makkelijke manier zou zijn...
 
 		; can't find the new companionId in the current companionIds array?
 		; add it to the current companionIds array, the matching Actor to the currentCompanions array, register the dismiss event, and store the companion's original morphs

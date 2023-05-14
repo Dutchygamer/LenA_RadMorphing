@@ -18,19 +18,20 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         ; make ourselves immune to further bloating until we are done
         akTarget.SetValue(NPCBloatImmunity, 1)
 
-        int bloatStage = (akTarget.getValue(NPCBloatStage) as int) + StageToAdd
-        akTarget.SetValue(NPCBloatStage, bloatStage)
+        int currentBloatStage = (akTarget.getValue(NPCBloatStage) as int)
+        int expectedBloatStage = currentBloatStage + StageToAdd
+        akTarget.SetValue(NPCBloatStage, expectedBloatStage)
 
-        LenARM_Main.BloatActor(akTarget, bloatStage, StageToAdd)
+        LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd)
 
         ; after popping, keep us paralyzed for a bit
-        if (bloatStage > 5)
+        if (expectedBloatStage > 5)
             akTarget.SetValue(NPCBloatStage, 0)
 
             ; wait a bit before taking away our immunity
             Utility.Wait(1)
             akTarget.SetValue(NPCBloatImmunity, 0)
-            ; unparalize the npc after a bit, but do leave them open for renewed bloating
+            ; unparalyze the npc after a bit, but do leave them open for renewed bloating
             Utility.Wait(9)
             LenARM_Main.UnParalyzeNPC(akTarget)
         ; else take away our immunity directly
