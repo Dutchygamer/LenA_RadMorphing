@@ -1321,10 +1321,15 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 
 	; keep bloating the actor until the bloatStage is equal to expected result
 	while (nextBloatStage <= maxBloatStage)
+		; float nextMorphPercentage = morphPercentage * nextBloatStage
 		; Note(bloatStage + "; " + toAdd + "; " + morphPercentage)
 		;Note(nextBloatStage + "; " + morphPercentage)
 
 		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
+		; ApplyBloatStage(akTarget, nextBloatStage, nextMorphPercentage)
+		
+		Utility.Wait(1.0)
+
 		nextBloatStage += 1
 	endwhile
 EndFunction
@@ -1383,6 +1388,7 @@ Function BloatPop(Actor akTarget)
 	int currentPopState = 1
 	float multiplier = 0.1
 	float totalPopMultiplier = 0
+	; float nextMorphPercentage = multiplier * currentPopState
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < PopStates)	
@@ -1390,8 +1396,9 @@ Function BloatPop(Actor akTarget)
 		if (akTarget.IsDead())
 			return
 		endif
-
+		
 		SetBloatMorphs(akTarget, multiplier, shouldPop = true)
+		; SetBloatMorphs(akTarget, nextMorphPercentage, shouldPop = true)
 		totalPopMultiplier += multiplier
 		
 		BodyGen.UpdateMorphs(akTarget)
@@ -1403,9 +1410,11 @@ Function BloatPop(Actor akTarget)
 		endif
 
 		;Utility.Wait(0.7)
-		Utility.Wait(0.3)
+		; Utility.Wait(0.3)
+		Utility.Wait(1.0)
 
 		currentPopState += 1
+		; nextMorphPercentage = multiplier * currentPopState
 	EndWhile
 
 	; don't pop actor that is dead
@@ -1415,6 +1424,7 @@ Function BloatPop(Actor akTarget)
 
 	; apply the final morphs, and do the 'pop'
 	SetBloatMorphs(akTarget, multiplier, shouldPop = true)		
+	; SetBloatMorphs(akTarget, nextMorphPercentage, shouldPop = true)		
 	totalPopMultiplier += multiplier
 	
 	BodyGen.UpdateMorphs(akTarget)
@@ -1427,6 +1437,7 @@ Function BloatPop(Actor akTarget)
 	; reset all the morphs back to 0
 	; we need to do some calculations so we go back to the original NPC's morphs
 	float reset = (1.0 + totalPopMultiplier) * -1
+	; float reset = 0
 
 	; Note(totalPopMultiplier + "; " + reset)
 
@@ -1449,16 +1460,20 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 			int idxSlider = sliderNameOffset
 			int sex = akTarget.GetLeveledActorBase().GetSex()
 			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
+				string slider = SliderNames[idxSlider]
+
 				;TODO not the most efficient way tho...	
-				float npcMorph = BodyGen.GetMorph(akTarget, True, SliderNames[idxSlider], None)
+				float npcMorph = BodyGen.GetMorph(akTarget, True, slider, None)
 
 				float newMorph = npcMorph + (morphPercentage * sliderSet.targetMorph)
+				; float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
 
-				if (SliderNames[idxSlider] == "Breasts")
-					Log(npcMorph + "; " + morphPercentage + "; " + sliderSet.targetMorph)
-				endif
-		
-				BodyGen.SetMorph(akTarget, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
+				; ;TODO debug ding
+				; if (slider == "Breasts")
+				; 	Log(npcMorph + "; " + morphPercentage + "; " + sliderSet.targetMorph + "; " + newMorph)
+				; endif
+						
+				BodyGen.SetMorph(akTarget, sex==ESexFemale, slider, kwMorph, newMorph)
 				idxSlider += 1
 			EndWhile
 		EndIf
@@ -1539,7 +1554,7 @@ Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
 	; loop through the standard perks, remove when not matching new perk level
     While (i <= 4)
         If (i != newPerkLevel && akTarget.HasPerk(RadsPerkArray[i]))
-			Log("Removing radsperk of level " + i)
+			; Log("Removing radsperk of level " + i)
 			akTarget.RemovePerk(RadsPerkArray[i])
         EndIf
         i += 1
@@ -1550,9 +1565,9 @@ Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
 		akTarget.RemovePerk(RadsPerkFull)
 	endif
 	
-	if (newPerkLevel > -1)
-    	Log("RadsPerk Level " + newPerkLevel + " applied")    
-	endif
+	; if (newPerkLevel > -1)
+    ; 	Log("RadsPerk Level " + newPerkLevel + " applied")    
+	; endif
 EndFunction
 
 Function ClearAllRadsPerks(Actor akTarget)
