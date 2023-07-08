@@ -1150,8 +1150,8 @@ Function Pop()
 		if (effectsCompanions)
 			ParalyzeCompanions()
 		endif	
-		PlayerRef.SetValue(ParalysisAV, 1)
-		PlayerRef.PushActorAway(PlayerRef, 0.5)						
+		
+		ParalyzeActor(PlayerRef)
 	endif
 	Utility.Wait(0.7)
 
@@ -1198,7 +1198,8 @@ Function Pop()
 	; wait a bit before we can actually stand up again
 	if (PopShouldParalyze)
 		Utility.Wait(1.5)
-		PlayerRef.SetValue(ParalysisAV, 0)
+
+		UnParalyzeActor(PlayerRef)
 
 		;TODO make configurabel
 		ReEquipAll()
@@ -1222,8 +1223,7 @@ Function ParalyzeCompanions()
 
 			Utility.Wait(randomFloat)
 
-			companion.SetValue(ParalysisAV, 1)
-			companion.PushActorAway(companion, 0.5)	
+			ParalyzeActor(companion)
 		endif
 		idxComp += 1
 	EndWhile
@@ -1242,7 +1242,7 @@ Function UnparalyzeCompanions()
 
 			Utility.Wait(randomFloat)
 
-			companion.SetValue(ParalysisAV, 0)
+			UnParalyzeActor(companion)
 		endif
 		idxComp += 1
 	EndWhile
@@ -1319,6 +1319,11 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 	int nextBloatStage = currentBloatStage + 1
 	float morphPercentage = 0.2
 
+	; when actor should get bloated to popping, always paralyze first
+	if (toAdd > 5)		
+		ParalyzeActor(akTarget)
+	endIf
+
 	; keep bloating the actor until the bloatStage is equal to expected result
 	while (nextBloatStage <= maxBloatStage)
 		; float nextMorphPercentage = morphPercentage * nextBloatStage
@@ -1382,8 +1387,7 @@ EndFunction
 Function BloatPop(Actor akTarget)
 	PlayMorphSound(akTarget, 4)
 
-	akTarget.SetValue(ParalysisAV, 1)
-	akTarget.PushActorAway(akTarget, 0.5)		
+	ParalyzeActor(akTarget)
 
 	int currentPopState = 1
 	float multiplier = 0.1
@@ -1481,10 +1485,15 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 	EndWhile
 EndFunction
 
-Function UnParalyzeNPC(Actor akTarget)
-	akTarget.SetValue(ParalysisAV, 0)
+
+Function ParalyzeActor(Actor akTarget)
+	akTarget.SetValue(ParalysisAV, 1)
+	akTarget.PushActorAway(akTarget, 0.5)	
 EndFunction
 
+Function UnParalyzeActor(Actor akTarget)
+	akTarget.SetValue(ParalysisAV, 0)
+EndFunction
 
 ; ------------------------
 ; Check the total accumulated rads, and apply the matching radsPerk to the player

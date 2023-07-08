@@ -33,7 +33,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             akTarget.SetValue(NPCBloatImmunity, 0)
             ; unparalyze the npc after a bit, but do leave them open for renewed bloating
             Utility.Wait(9)
-            LenARM_Main.UnParalyzeNPC(akTarget)
+            LenARM_Main.UnParalyzeActor(akTarget)
         ; else take away our immunity directly
         else
             akTarget.SetValue(NPCBloatImmunity, 0)
