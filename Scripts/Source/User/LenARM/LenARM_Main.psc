@@ -2031,11 +2031,12 @@ Function UnequipAll(bool effectsCompanions=false)
 	; these are all the slots we want to unequip
 	int[] allSlots = new int[0]	
 	allSlots.Add(3)  ; body
-	allSlots.Add(11) ; chest armor
-	allSlots.Add(12) ; arm armor
-	allSlots.Add(13) ; arm armor
-	allSlots.Add(14) ; leg armor
-	allSlots.Add(15) ; leg armor
+	allSlots.Add(6)  ; [U] Torso
+	allSlots.Add(11) ; [A] Torso
+	allSlots.Add(12) ; [A] L Arm
+	allSlots.Add(13) ; [A] R Arm
+	allSlots.Add(14) ; [A] L Leg
+	allSlots.Add(15) ; [A] R Leg
 
 	; check for each slot
 	While (idxSlot < allSlots.Length)
