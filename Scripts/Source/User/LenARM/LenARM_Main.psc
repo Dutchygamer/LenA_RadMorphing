@@ -146,6 +146,7 @@ Group Properties
 	Message Property LenARM_Tutorial_MaxedOutMorphsMessage Auto
 	Message Property LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage Auto
 	Message Property LenARM_Tutorial_PoppedMessage Auto
+	Message Property LenARM_BloatingAgentInjected Auto
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -161,8 +162,10 @@ Group Properties
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
 	Potion Property ResetRadsPotion Auto Const
+	Potion Property BloatSuitInjectAgent Auto Const
 	
 	Form Property BloatNPCPopExplosion Auto
+	Form Property BloatingSuit Auto
 EndGroup
 
 ; ------------------------
@@ -2206,6 +2209,19 @@ Function CalculateAndPlayMorphSound(Actor akSender, float radsDifference)
 	elseif (radsDifference > HighRadsThreshold)
 		Log("  very high rads taken")
 		PlayMorphSound(akSender, 3)
+	endif
+EndFunction
+
+; ------------------------
+; Bloating Suit inject bloating agent action
+; ------------------------
+Function SuitInjectBloatingAgent()
+	If (PlayerRef.IsEquipped(BloatingSuit))
+		LenARM_BloatingAgentInjected.Show()
+		PlayerRef.EquipItem(BloatSuitInjectAgent, abSilent = true)
+	else
+		TechnicalNote("Bloating Outfit not equipped!")
+		;LenARM_BloatingAgentInjected.Show()
 	endif
 EndFunction
 

@@ -1,0 +1,15 @@
+{
+  "modName": "LenA_RadMorphing",
+  "keybinds": [
+    {
+      "id": "lenA_InjectBloat",
+      "desc": "Inject Bloating Agent",
+      "action": {
+        "type": "CallFunction",
+		"form": "LenA_RadMorphing.esp|F99",
+        "function": "SuitInjectBloatingAgent",
+        "params": []
+      }
+    },
+  ]
+}
