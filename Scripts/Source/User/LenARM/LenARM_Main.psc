@@ -75,6 +75,9 @@ bool TutorialDisplayed_DroppedClothes = false
 bool TutorialDisplayed_MaxedOutMorphs = false
 bool TutorialDisplayed_Popped = false
 
+bool hasBloatingSuitEquipped = false
+bool canGiveBloatingSuitAmmo = true
+
 Actor:WornItem[] PoppingUnequippedItems
 
 int MaxRadiationMultiplier
@@ -146,7 +149,7 @@ Group Properties
 	Message Property LenARM_Tutorial_MaxedOutMorphsMessage Auto
 	Message Property LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage Auto
 	Message Property LenARM_Tutorial_PoppedMessage Auto
-	Message Property LenARM_BloatingAgentInjected Auto
+	Message Property LenARM_BloatingAgentInjectedMessage Auto
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -166,6 +169,9 @@ Group Properties
 	
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatingSuit Auto
+	
+	Ammo Property ThirstZapperBloatAmmo Auto Const
+	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const	
 EndGroup
 
 ; ------------------------
@@ -279,6 +285,8 @@ Event OnTimer(int tid)
 		AddFakeRads()
 	ElseIf (tid == ETimerDelayPop)
 		TryPop()
+	ElseIf (tid == ETimerBloatSuit)
+		BloatSuitGiveAmmo()
 	EndIf
 EndEvent
 
@@ -432,6 +440,8 @@ Function Startup()
 			RegisterForPlayerSleep()
 		EndIf
 
+		BloatSuitGiveAmmo()
+
 		IsStartingUp = false
 		Log("Startup complete")
 	ElseIf (MCM.GetModSettingBool("LenA_RadMorphing", "bWarnDisabled:General"))
@@ -452,6 +462,7 @@ Function Shutdown(bool withRestore=true)
 	
 		; stop timer
 		CancelTimer(ETimerMorphTick)
+		CancelTimer(ETimerBloatSuit)
 	
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -1539,6 +1550,8 @@ Function ApplyRadsPerk()
 		endif
 		
 		CurrentRadsPerk = perkLevel
+		; enable bloating suit ammo when we switch perks
+		canGiveBloatingSuitAmmo = true
 	endif
 EndFunction
 
@@ -2217,13 +2230,58 @@ EndFunction
 ; ------------------------
 Function SuitInjectBloatingAgent()
 	If (PlayerRef.IsEquipped(BloatingSuit))
-		LenARM_BloatingAgentInjected.Show()
-		PlayerRef.EquipItem(BloatSuitInjectAgent, abSilent = true)
+		int bloatingAmmoCount = PlayerRef.GetItemCount(ThirstZapperBloatAmmo)
+		if (bloatingAmmoCount > 0)
+			LenARM_BloatingAgentInjectedMessage.Show()
+			PlayerRef.EquipItem(BloatSuitInjectAgent, abSilent = true)
+			PlayerRef.RemoveItem(ThirstZapperBloatAmmo, 1, abSilent = true)
+			LenARM_FullGroanSound.Play(PlayerRef)
+		else
+			TechnicalNote("No Bloating Ammo!")
+		endif
 	else
 		TechnicalNote("Bloating Outfit not equipped!")
 		;LenARM_BloatingAgentInjected.Show()
 	endif
 EndFunction
+
+Function BloatingSuitEquipped()
+	;TechnicalNote("Bloating Outfit equipped!")
+	hasBloatingSuitEquipped = true
+EndFunction
+
+Function BloatingSuitUnequipped()
+	;TechnicalNote("Bloating Outfit unequipped!")
+	hasBloatingSuitEquipped = false
+EndFunction
+
+Function BloatSuitGiveAmmo()
+	if (!hasBloatingSuitEquipped || !canGiveBloatingSuitAmmo)
+		StartTimer(5, ETimerBloatSuit)
+		return
+	endif
+
+	;TechnicalNote("Bloating Outfit gives ammo!")
+
+	; you won't get anything for the first perk, only from second perk onwards
+	if (CurrentRadsPerk == 1)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
+	elseif (CurrentRadsPerk == 2)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
+	elseif (CurrentRadsPerk == 3)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 10, abSilent = true)
+	elseif (CurrentRadsPerk == 4)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 10, abSilent = true)
+	elseif (CurrentRadsPerk == 5)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo_Concentrated, 5, abSilent = true)
+	endif
+
+	canGiveBloatingSuitAmmo = false
+
+	; bit longer timer as we don't switch perks often
+	StartTimer(5, ETimerBloatSuit)
+EndFunction
+
 
 ; ------------------------
 ; Play a sound depending on the given id
@@ -2465,6 +2523,7 @@ Group EnumTimerId
 	int Property ETimerUnequipSlots = 4 Auto Const
 	int Property ETimerFakeRads = 5 Auto Const
 	int Property ETimerDelayPop = 6 Auto Const
+	int Property ETimerBloatSuit = 7 Auto Const
 EndGroup
 
 Group EnumApplyCompanion

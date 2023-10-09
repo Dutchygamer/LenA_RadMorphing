@@ -136,7 +136,7 @@
 		  "help": "Use this hotkey to inject bloating agent into yourself when wearing the suit.",
 		  "valueOptions": {
 			"allowModifierKeys": true
-		  }
+		}
 	}
 	],
     "pages": [
