@@ -136,6 +136,7 @@ Group Properties
 	Sound Property LenARM_PopSound Auto Const
 	Sound Property LenARM_PurgeFailSound Auto Const
 	Sound Property LenARM_FullGroanSound Auto Const
+	Sound Property LenARM_BloatSuitMilkSound Auto Const
 
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
@@ -150,6 +151,8 @@ Group Properties
 	Message Property LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage Auto
 	Message Property LenARM_Tutorial_PoppedMessage Auto
 	Message Property LenARM_BloatingAgentInjectedMessage Auto
+	Message Property LenARM_BloatingAgentMissingMessage Auto
+	Message Property LenARM_BloatingSuitMissingMessage Auto
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -2235,13 +2238,13 @@ Function SuitInjectBloatingAgent()
 			LenARM_BloatingAgentInjectedMessage.Show()
 			PlayerRef.EquipItem(BloatSuitInjectAgent, abSilent = true)
 			PlayerRef.RemoveItem(ThirstZapperBloatAmmo, 1, abSilent = true)
-			LenARM_FullGroanSound.Play(PlayerRef)
 		else
-			TechnicalNote("No Bloating Ammo!")
+			;TechnicalNote("No Bloating Ammo!")
+			LenARM_BloatingAgentMissingMessage.Show()
 		endif
 	else
-		TechnicalNote("Bloating Outfit not equipped!")
-		;LenARM_BloatingAgentInjected.Show()
+		;TechnicalNote("Bloating Outfit not equipped!")
+		LenARM_BloatingSuitMissingMessage.Show()
 	endif
 EndFunction
 
@@ -2262,18 +2265,19 @@ Function BloatSuitGiveAmmo()
 	endif
 
 	;TechnicalNote("Bloating Outfit gives ammo!")
+	LenARM_BloatSuitMilkSound.Play(PlayerRef)
 
 	; you won't get anything for the first perk, only from second perk onwards
 	if (CurrentRadsPerk == 1)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 3, abSilent = true)
 	elseif (CurrentRadsPerk == 2)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 3, abSilent = true)
 	elseif (CurrentRadsPerk == 3)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 10, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
 	elseif (CurrentRadsPerk == 4)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 10, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 6, abSilent = true)
 	elseif (CurrentRadsPerk == 5)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo_Concentrated, 5, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo_Concentrated, 1, abSilent = true)
 	endif
 
 	canGiveBloatingSuitAmmo = false
