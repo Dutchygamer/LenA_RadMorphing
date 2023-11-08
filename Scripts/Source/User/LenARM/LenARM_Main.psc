@@ -111,7 +111,6 @@ Group Properties
 	Keyword Property kwMorph Auto Const
 
 	ActorValue Property Rads Auto Const
-	ActorValue Property NPCBloatQueue Auto Const
 
 	; Base Game
 	Scene Property DoctorMedicineScene03_AllDone Auto Const
@@ -1326,69 +1325,36 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 	if (akTarget.IsDead())
 		return
 	endif
-	
-	int currentBloatQueue = (akTarget.getValue(NPCBloatQueue) as int)
-	; don't bloat actor if we have nothing enqueued
-	if (currentBloatQueue < 1)
-		TechnicalNote("nothing enqueued!")
-		return
-	endif
 
 	LenARM_FullGroanSound.Play(akTarget)
 	
-	; ; calculate the max bloatStage, limited to 6
-	; int maxBloatStage = currentBloatStage + toAdd
-	; if (maxBloatStage > 6)
-	; 	maxBloatStage = 6
-	; endif
+	; calculate the max bloatStage, limited to 6
+	int maxBloatStage = currentBloatStage + toAdd
+	if (maxBloatStage > 6)
+		maxBloatStage = 6
+	endif
 	int nextBloatStage = currentBloatStage + 1
 	float morphPercentage = 0.2
 
-	; ; when actor should get bloated to popping, always paralyze first
-	; if (toAdd > 5)		
-	; 	ParalyzeActor(akTarget)
-	; endIf
+	; when actor should get bloated to popping, always paralyze first
+	if (toAdd > 5)		
+		ParalyzeActor(akTarget)
+	endIf
 
-	; keep bloating the actor as long as we have something enqueued and we are not at max bloat stage
-	while ((akTarget.getValue(NPCBloatQueue) as int) > 0 && nextBloatStage <= 6)
-		currentBloatQueue = (akTarget.getValue(NPCBloatQueue) as int)
-		TechnicalNote("applying " + currentBloatQueue + "; nextStage " + nextBloatStage)
+	; keep bloating the actor until the bloatStage is equal to expected result
+	while (nextBloatStage <= maxBloatStage)
+		; float nextMorphPercentage = morphPercentage * nextBloatStage
+		; Note(bloatStage + "; " + toAdd + "; " + morphPercentage)
+		;Note(nextBloatStage + "; " + morphPercentage)
 
-		; ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
+		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
+		; ApplyBloatStage(akTarget, nextBloatStage, nextMorphPercentage)
 		
 		; Utility.Wait(1.0)
-		Utility.Wait(3)
+		; Utility.Wait(0.7)
 
-		if (nextBloatStage < 6)
-			nextBloatStage += 1		
-			currentBloatQueue -= 1
-
-			akTarget.SetValue(NPCBloatQueue, currentBloatQueue)
-		else
-			akTarget.SetValue(NPCBloatQueue, 0)
-		endif
+		nextBloatStage += 1
 	endwhile
-	
-	;TODO valideer of ie hier altijd uit komt
-	;TODO kijk wat ie doet als ie al bezig is en we bloaten NPC nog eens (zou in de loop moeten blijven)
-	;TODO hoe doen we poppen
-	;TODO toAdd hebben we denk ik niet meer als param nodig
-
-	; TechnicalNote("done")
-
-	; ; keep bloating the actor until the bloatStage is equal to expected result
-	; while (nextBloatStage <= maxBloatStage)
-	; 	; float nextMorphPercentage = morphPercentage * nextBloatStage
-	; 	; Note(bloatStage + "; " + toAdd + "; " + morphPercentage)
-	; 	;Note(nextBloatStage + "; " + morphPercentage)
-
-	; 	ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
-	; 	; ApplyBloatStage(akTarget, nextBloatStage, nextMorphPercentage)
-		
-	; 	Utility.Wait(1.0)
-
-	; 	nextBloatStage += 1
-	; endwhile
 EndFunction
 
 Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage)
@@ -1415,7 +1381,8 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	endif
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	float randomFloat = GetRandomDelay(2,3)
+	; float randomFloat = GetRandomDelay(2,3)
+	float randomFloat = GetRandomDelay(1,2)
 	Utility.Wait(randomFloat)
 
 	; only apply initial morphs if we are not going to pop
@@ -1446,6 +1413,11 @@ Function BloatPop(Actor akTarget)
 	float totalPopMultiplier = 0
 	; float nextMorphPercentage = multiplier * currentPopState
 
+	; do a random delay before appying the morphs (and morph sounds) on the akTarget
+	; float randomFloat = GetRandomDelay(2,3)
+	float randomFloat = GetRandomDelay(1,2)
+	Utility.Wait(randomFloat)
+
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < PopStates)	
 		; don't pop actor that is dead
@@ -1465,9 +1437,9 @@ Function BloatPop(Actor akTarget)
 			UnequipAllNPC(akTarget)
 		endif
 
-		;Utility.Wait(0.7)
+		Utility.Wait(0.7)
 		; Utility.Wait(0.3)
-		Utility.Wait(1.0)
+		; Utility.Wait(1.0)
 
 		currentPopState += 1
 		; nextMorphPercentage = multiplier * currentPopState
