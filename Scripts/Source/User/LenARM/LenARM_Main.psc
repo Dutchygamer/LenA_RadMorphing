@@ -1407,6 +1407,9 @@ Function BloatPop(Actor akTarget)
 	PlayMorphSound(akTarget, 4)
 
 	ParalyzeActor(akTarget)
+	
+	; add bloating ammo to actor's inventory
+	akTarget.AddItem(ThirstZapperBloatAmmo, 3, abSilent = true)
 
 	int currentPopState = 1
 	float multiplier = 0.1
@@ -1461,6 +1464,9 @@ Function BloatPop(Actor akTarget)
 	
 	; spread the joy to nearby NPCs
 	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+
+	; add some more bloating ammo to actor's inventory when they've been allowed to pop
+	akTarget.AddItem(ThirstZapperBloatAmmo, 2, abSilent = true)
 
 	; reset all the morphs back to 0
 	; we need to do some calculations so we go back to the original NPC's morphs
@@ -2276,13 +2282,13 @@ Function BloatSuitGiveAmmo()
 
 	; you won't get anything for the first perk, only from second perk onwards
 	if (CurrentRadsPerk == 1)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 3, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 2, abSilent = true)
 	elseif (CurrentRadsPerk == 2)
 		PlayerRef.AddItem(ThirstZapperBloatAmmo, 3, abSilent = true)
 	elseif (CurrentRadsPerk == 3)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 4, abSilent = true)
 	elseif (CurrentRadsPerk == 4)
-		PlayerRef.AddItem(ThirstZapperBloatAmmo, 6, abSilent = true)
+		PlayerRef.AddItem(ThirstZapperBloatAmmo, 5, abSilent = true)
 	elseif (CurrentRadsPerk == 5)
 		PlayerRef.AddItem(ThirstZapperBloatAmmo_Concentrated, 1, abSilent = true)
 	endif
