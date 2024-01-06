@@ -78,6 +78,8 @@ bool TutorialDisplayed_Popped = false
 bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
 
+bool hasMoleCowDisease = false
+
 Actor:WornItem[] PoppingUnequippedItems
 
 int MaxRadiationMultiplier
@@ -153,6 +155,7 @@ Group Properties
 	Message Property LenARM_BloatingAgentInjectedMessage Auto
 	Message Property LenARM_BloatingAgentMissingMessage Auto
 	Message Property LenARM_BloatingSuitMissingMessage Auto
+	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -169,12 +172,17 @@ Group Properties
 	Potion Property ResetMorphsPotion Auto Const
 	Potion Property ResetRadsPotion Auto Const
 	Potion Property BloatSuitInjectAgent Auto Const
+
+	Spell Property MoleCowMilkSpell Auto Const
+	MagicEffect Property LenARM_MS19MoleratEffect Auto Const
 	
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatingSuit Auto
 	
 	Ammo Property ThirstZapperBloatAmmo Auto Const
 	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const	
+	
+	FormList Property MoleCowMilkTriggers Auto
 EndGroup
 
 ; ------------------------
@@ -235,6 +243,12 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
+	endif
+
+	; when ingesting consumable check if we're suffering from molecow disease and it is one of the triggers
+	if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && MoleCowMilkTriggers.Find(akBaseObject) > -1)
+		LenARM_MoleCowMilkTriggerMessage.Show()
+		MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
 	endif
 EndEvent
 
