@@ -78,7 +78,7 @@ bool TutorialDisplayed_Popped = false
 bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
 
-bool hasMoleCowDisease = false
+bool hasHadMoleCowDisease = false
 
 Actor:WornItem[] PoppingUnequippedItems
 
@@ -238,11 +238,15 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	EndIf
 
 	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
-	; this will break the hacky "unequip weapon slots" logic some people use tho...
 	If (akBaseObject as Armor)
 		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
+	endif
+
+	; if player doesn't had molecow disease yet but has the magic effect, set the bool to true
+	if (hasHadMoleCowDisease == false && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect))
+		hasHadMoleCowDisease = true
 	endif
 
 	; when ingesting consumable check if we're suffering from molecow disease and it is one of the triggers
@@ -988,7 +992,15 @@ EndFunction
 ; Calculate the morph for the given sliderSet based on the given morph percentage and target morph
 ; ------------------------
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
-	return (OriginalMorphs[idxSlider] + (morphPercentage * targetMorph))
+	; when player has (or has had) molecow disease, apply permanent breast size increase
+	float molecowBonus = 0.0
+	if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
+		;TODO make buff configurable slider
+		molecowBonus = 0.25
+		Log("    applying molecow boost for breasts")		
+	endif
+
+	return (OriginalMorphs[idxSlider] + molecowBonus + (morphPercentage * targetMorph))
 EndFunction
 
 ; ------------------------
