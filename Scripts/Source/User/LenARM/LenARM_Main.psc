@@ -1352,7 +1352,9 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 		return
 	endif
 
-	LenARM_FullGroanSound.Play(akTarget)
+	;TODO obsolete, zit op magic effect nu
+	; dat of die andere sound effect hiernaartoe verplaatsen
+	;LenARM_FullGroanSound.Play(akTarget)
 	
 	; calculate the max bloatStage, limited to 6
 	int maxBloatStage = currentBloatStage + toAdd
