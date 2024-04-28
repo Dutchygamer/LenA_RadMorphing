@@ -997,7 +997,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
 		;TODO make buff configurable slider
 		molecowBonus = 0.25
-		Log("    applying molecow boost for breasts")		
+		;Log("    applying molecow boost for breasts")		
 	endif
 
 	return (OriginalMorphs[idxSlider] + molecowBonus + (morphPercentage * targetMorph))
