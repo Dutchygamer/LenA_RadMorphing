@@ -130,13 +130,10 @@
 				  "type": "section"
 				},
 				{
-				  "id": "lenA_InjectBloat",
+				  "id": "lenAInjectBloat",
 				  "text": "Inject Bloating Agent",
 				  "type": "hotkey",
-				  "help": "Use this hotkey to inject bloating agent into yourself when wearing the suit.",
-				  "valueOptions": {
-					"allowModifierKeys": true
-					}
+				  "help": "Use this hotkey to inject bloating agent into yourself when wearing the suit."
 				}
             ]
         },
