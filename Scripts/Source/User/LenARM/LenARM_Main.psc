@@ -79,6 +79,7 @@ bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
 
 bool hasHadMoleCowDisease = false
+bool hasNippleBlockers = false
 
 Actor:WornItem[] PoppingUnequippedItems
 
@@ -239,6 +240,17 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 
 	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
 	If (akBaseObject as Armor)
+
+		; ; check if we have a sharp object in inventory
+		; int I = 0
+		; While (I < SharpObjects.GetSize() && !canPopBalloon)
+		; 	SharpObject = SharpObjects.GetAt(I)
+		; 	If (PlayerRef.GetItemCount(SharpObject) > 0)
+		; 		canPopBalloon = True
+		; 	EndIf
+		; 	I += 1
+		; EndWhile
+
 		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
@@ -1008,7 +1020,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 			;Log("    applying molecow boost for breasts")		
 		endif
 		; when player has nipple piercing equipped, apply permanent breast size increase
-		if (1 == 0) ;TODO
+		if (hasNippleBlockers) ;TODO
 			;TODO make buff configurable slider
 			morphBonus += 0.1
 			;Log("    applying molecow boost for breasts")		
