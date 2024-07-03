@@ -992,15 +992,30 @@ EndFunction
 ; Calculate the morph for the given sliderSet based on the given morph percentage and target morph
 ; ------------------------
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
-	; when player has (or has had) molecow disease, apply permanent breast size increase
-	float molecowBonus = 0.0
-	if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
-		;TODO make buff configurable slider
-		molecowBonus = 0.25
-		;Log("    applying molecow boost for breasts")		
+	float morphBonus = 0.0
+
+	if (SliderNames[idxSlider] == "Breasts")
+		; when player has (or has had) molecow disease, apply permanent breast size increase
+		if (hasHadMoleCowDisease)
+			;TODO make buff configurable slider
+			morphBonus += 0.25
+			;Log("    applying molecow boost for breasts")		
+		endif
+		; when player has bloating suit equipped, apply permanent breast size increase
+		if (hasBloatingSuitEquipped)
+			;TODO make buff configurable slider
+			morphBonus += 0.1
+			;Log("    applying molecow boost for breasts")		
+		endif
+		; when player has nipple piercing equipped, apply permanent breast size increase
+		if (1 == 0) ;TODO
+			;TODO make buff configurable slider
+			morphBonus += 0.1
+			;Log("    applying molecow boost for breasts")		
+		endif
 	endif
 
-	return (OriginalMorphs[idxSlider] + molecowBonus + (morphPercentage * targetMorph))
+	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
 EndFunction
 
 ; ------------------------
