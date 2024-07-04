@@ -1272,7 +1272,7 @@ Function Pop()
 		UnParalyzeActor(PlayerRef)
 
 		;TODO make configurabel
-		ReEquipAll()
+		;ReEquipAll()
 
 		if (effectsCompanions)
 			UnparalyzeCompanions()
