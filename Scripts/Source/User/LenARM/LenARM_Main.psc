@@ -184,6 +184,7 @@ Group Properties
 	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const	
 	
 	FormList Property MoleCowMilkTriggers Auto
+	FormList Property NippleBlockers Auto
 EndGroup
 
 ; ------------------------
@@ -240,16 +241,11 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 
 	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
 	If (akBaseObject as Armor)
-
-		; ; check if we have a sharp object in inventory
-		; int I = 0
-		; While (I < SharpObjects.GetSize() && !canPopBalloon)
-		; 	SharpObject = SharpObjects.GetAt(I)
-		; 	If (PlayerRef.GetItemCount(SharpObject) > 0)
-		; 		canPopBalloon = True
-		; 	EndIf
-		; 	I += 1
-		; EndWhile
+		; if player didn't had any nipple blockers equipped but now has, set the bool to true
+		if (!hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
+			;Note("nippleblocker found")
+			hasNippleBlockers = true
+		endif
 
 		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
@@ -267,6 +263,21 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
 	endif
 EndEvent
+
+; ------------------------
+; On equipping / ingestion of an item, check if we must do something with it
+; ------------------------
+Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
+	If (PlayerRef.IsInPowerArmor())
+		return
+	EndIf
+
+	If (akBaseObject as Armor && hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
+		;Note("nippleblocker found")
+		hasNippleBlockers = false
+	endif
+EndEvent
+
 
 Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
 	; aeCombatState: The combat state we just entered, which will be one of the following:
@@ -1006,26 +1017,42 @@ EndFunction
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
 	float morphBonus = 0.0
 
-	if (SliderNames[idxSlider] == "Breasts")
-		; when player has (or has had) molecow disease, apply permanent breast size increase
+	; apply permanent breast size increase for various reasons (can stack)
+	if (SliderNames[idxSlider] == "DoubleMelon")
+		; player has (or has had) molecow disease
 		if (hasHadMoleCowDisease)
 			;TODO make buff configurable slider
 			morphBonus += 0.25
 			;Log("    applying molecow boost for breasts")		
 		endif
-		; when player has bloating suit equipped, apply permanent breast size increase
+		; player has bloating suit equipped
 		if (hasBloatingSuitEquipped)
 			;TODO make buff configurable slider
 			morphBonus += 0.1
 			;Log("    applying molecow boost for breasts")		
 		endif
-		; when player has nipple piercing equipped, apply permanent breast size increase
+		; player has nipple piercing equipped
 		if (hasNippleBlockers) ;TODO
 			;TODO make buff configurable slider
 			morphBonus += 0.1
 			;Log("    applying molecow boost for breasts")		
 		endif
 	endif
+
+	;TODO seems buggy when split
+	; ; when player has (or has had) molecow disease, apply permanent breast size increase
+	; if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
+	; 	;TODO make buff configurable slider
+	; 	morphBonus = 0.25
+	; ; when player has bloating suit equipped, apply permanent breast size increase
+	; elseif ((SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2") && hasBloatingSuitEquipped)
+	; 	;TODO make buff configurable slider
+	; 	morphBonus = 0.5
+	; ; when player has nipple piercing equipped, apply permanent breast size increase
+	; elseif (SliderNames[idxSlider] == "DoubleMelon" && hasNippleBlockers)
+	; 	;TODO make buff configurable slider
+	; 	morphBonus = 0.5
+	; endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
 EndFunction
@@ -1464,7 +1491,7 @@ Function BloatPop(Actor akTarget)
 	ParalyzeActor(akTarget)
 	
 	; add bloating ammo to actor's inventory
-	akTarget.AddItem(ThirstZapperBloatAmmo, 3, abSilent = true)
+	akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 	int currentPopState = 1
 	float multiplier = 0.1
@@ -1489,6 +1516,9 @@ Function BloatPop(Actor akTarget)
 		
 		BodyGen.UpdateMorphs(akTarget)
 		PlayMorphSound(akTarget, 5)
+
+		; add bloating ammo to actor's inventory
+		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 		; for the unequip state we also want to strip all clothes and armor
 		If (currentPopState == PopStripState)
@@ -1521,12 +1551,11 @@ Function BloatPop(Actor akTarget)
 	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
 	; add some more bloating ammo to actor's inventory when they've been allowed to pop
-	akTarget.AddItem(ThirstZapperBloatAmmo, 2, abSilent = true)
+	akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 	; reset all the morphs back to 0
 	; we need to do some calculations so we go back to the original NPC's morphs
 	float reset = (1.0 + totalPopMultiplier) * -1
-	; float reset = 0
 
 	; Note(totalPopMultiplier + "; " + reset)
 
@@ -1961,6 +1990,7 @@ EndFunction
 
 ;TODO okay, enige issue die ik nu nog zie is dat deze nooit lijkt af te gaan?
 ; gevolg is dat bij dismiss van companion de morphs behouden blijven tot UpdateCompanionList getriggerd wordt, die dan (correct) de companion verwijderd
+; heb je deze event geregistreerd you dummy...
 
 Event Actor.OnCompanionDismiss(Actor akSender)
 	Log("Actor.OnCompanionDismiss: " + akSender)
@@ -2333,7 +2363,9 @@ Function BloatSuitGiveAmmo()
 	endif
 
 	;TechnicalNote("Bloating Outfit gives ammo!")
-	LenARM_BloatSuitMilkSound.Play(PlayerRef)
+	if (CurrentRadsPerk > 0)
+		LenARM_BloatSuitMilkSound.Play(PlayerRef)
+	endif
 
 	; you won't get anything for the first perk, only from second perk onwards
 	if (CurrentRadsPerk == 1)
