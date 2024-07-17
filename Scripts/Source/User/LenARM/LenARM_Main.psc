@@ -88,6 +88,9 @@ int MaxRadiationMultiplier
 bool EnableRadsPerks
 int CurrentRadsPerk
 
+; HeliumBalloon shenenigens
+int carriedBalloons = 0
+
 bool SlidersEffectFemaleCompanions
 bool SlidersEffectMaleCompanions
 
@@ -754,6 +757,16 @@ Function TimerMorphTick()
 		return
 	endif
 
+	; get amount of carried balloons from HeliumBalloon.esp
+	int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
+	if (carriedBalloons != newCarriedBalloons) 
+		if (newCarriedBalloons >= 10 && (newCarriedBalloons / 10) > (carriedBalloons / 10))
+			Note("Your breasts bloat in the proximity of balloons!")
+			LenARM_FullGroanSound.Play(PlayerRef)
+		endif
+		carriedBalloons = newCarriedBalloons
+	endif
+
 	; when the companion morphs array has been filled, display a message once
 	; this message will get reset once the array has been cleared
 	if (!HasFilledOriginalCompanionMorphs && OriginalCompanionMorphs.Length >= 127)
@@ -1032,9 +1045,19 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 			;Log("    applying molecow boost for breasts")		
 		endif
 		; player has nipple piercing equipped
-		if (hasNippleBlockers) ;TODO
+		if (hasNippleBlockers)
 			;TODO make buff configurable slider
 			morphBonus += 0.1
+			;Log("    applying molecow boost for breasts")		
+		endif
+		; player carries many balloons
+		if (carriedBalloons >= 10)
+			;TODO make buff configurable slider
+			; for each 10 more balloons the buff becomes larger
+			float balloonBonus = 0.1 * ((carriedBalloons / 10)) ; - 1)
+			;TechnicalNote(balloonBonus)
+
+			morphBonus += balloonBonus
 			;Log("    applying molecow boost for breasts")		
 		endif
 	endif
