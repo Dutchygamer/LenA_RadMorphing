@@ -75,11 +75,17 @@ bool TutorialDisplayed_DroppedClothes = false
 bool TutorialDisplayed_MaxedOutMorphs = false
 bool TutorialDisplayed_Popped = false
 
+; does player have bloating suit equipped?
 bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
 
+; does player have (or has had) molecow disease?
 bool hasHadMoleCowDisease = false
+; does player have nipple blockers equipped?
 bool hasNippleBlockers = false
+
+; do we want to force a morphs update during next run even if there has been no rads changes?
+bool forceUpdate = false
 
 Actor:WornItem[] PoppingUnequippedItems
 
@@ -87,6 +93,8 @@ int MaxRadiationMultiplier
 
 bool EnableRadsPerks
 int CurrentRadsPerk
+
+int CurrentBalloonsPerk
 
 ; HeliumBalloon shenenigens
 int carriedBalloons = 0
@@ -160,6 +168,7 @@ Group Properties
 	Message Property LenARM_BloatingAgentMissingMessage Auto
 	Message Property LenARM_BloatingSuitMissingMessage Auto
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
+	Message Property LenARM_BalloonTriggerMessage Auto
 
 	Faction Property CurrentCompanionFaction Auto Const
 	Faction Property PlayerAllyFation Auto Const
@@ -168,6 +177,8 @@ Group Properties
 
 	Perk[] Property RadsPerkArray Auto
 	Perk Property RadsPerkFull Auto
+	
+	Perk[] Property BalloonsPerkArray Auto
 
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
@@ -248,6 +259,9 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		if (!hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
 			;Note("nippleblocker found")
 			hasNippleBlockers = true
+
+			; force update morphs on next run
+			forceUpdate = true
 		endif
 
 		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
@@ -278,6 +292,9 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 	If (akBaseObject as Armor && hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
 		;Note("nippleblocker found")
 		hasNippleBlockers = false
+
+		; force update morphs on next run
+		forceUpdate = true
 	endif
 EndEvent
 
@@ -473,10 +490,12 @@ Function Startup()
 
 		; recalculate the rad perks when enabed
 		if (EnableRadsPerks)			
-			ApplyRadsPerk()
+			ApplyRadsPerk()		
+			ApplyBalloonsPerk()
 		; else clear any existing perks
 		Else
 			ClearAllRadsPerks(PlayerRef)
+			ClearAllBalloonsPerks(PlayerRef)
 		endif
 
 		If (UpdateType == EUpdateTypeImmediately)
@@ -760,10 +779,22 @@ Function TimerMorphTick()
 	; get amount of carried balloons from HeliumBalloon.esp
 	int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
 	if (carriedBalloons != newCarriedBalloons) 
-		if (newCarriedBalloons >= 10 && (newCarriedBalloons / 10) > (carriedBalloons / 10))
-			Note("Your breasts bloat in the proximity of balloons!")
+		; we are interested in the carried balloons in intervals of 10
+		int currentCount = (carriedBalloons / 10)
+		int newCount = (newCarriedBalloons / 10)
+
+		; always force a morphs update when the carried balloon count changes
+		; this goes both ways (carrying both more or less balloons then currently)
+		if (currentCount != newCount)
+			forceUpdate = true
+		endif
+
+		; when we carry more balloons then before display a message
+		if (newCount > currentCount)
+			LenARM_BalloonTriggerMessage.Show()
 			LenARM_FullGroanSound.Play(PlayerRef)
 		endif
+
 		carriedBalloons = newCarriedBalloons
 	endif
 
@@ -779,7 +810,8 @@ Function TimerMorphTick()
 	float newRads = GetNewRads()
 
 	; if rads haven't changed, restart timer and do nothing
-	If (newRads == CurrentRads)
+	; skipped if have forceUpdate = true
+	If (!forceUpdate && newRads == CurrentRads)
 		StartTimer(UpdateDelay, ETimerMorphTick)
 		return
 	endif
@@ -825,9 +857,11 @@ Function TimerMorphTick()
 			float calculatedMorphPercentage = CalculateMorphPercentage(newRads, sliderSet)
 
 			; only try to apply the morphs if either
-			; -the new morph is larger then the slider's current morph
-			; -the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
-			If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!GetOnlyDoctorCanReset(sliderSet) && calculatedMorphPercentage != sliderSet.CurrentMorph))
+			; - the new morph is larger then the slider's current morph
+			; - the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
+			; - we want to force update the morphs
+			; all on one line as Papyrus doesn't understand newLines in if conditions apparently...
+			If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!GetOnlyDoctorCanReset(sliderSet) && calculatedMorphPercentage != sliderSet.CurrentMorph) || forceUpdate)
 				; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 				; both will get modified if we have additive morphs enabled for this sliderSet
 				float morphPercentage = calculatedMorphPercentage
@@ -850,7 +884,7 @@ Function TimerMorphTick()
 					changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 				; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
 				ElseIf (morphPercentage <= maxMorphPercentage)
-					; -sliderSet is doctor-only reset and the sliderset isn't maxed out
+					; - sliderSet is doctor-only reset and the sliderset isn't maxed out
 					if (GetOnlyDoctorCanReset(sliderSet) && !sliderSet.IsMaxedOut)
 						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
 						
@@ -861,7 +895,7 @@ Function TimerMorphTick()
 						else
 							sliderSet.IsMaxedOut = false
 						endif								
-					; -sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
+					; - sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
 					; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
 					elseif (!GetOnlyDoctorCanReset(sliderSet) && (!sliderSet.IsMaxedOut || radsDifference < 0))
 						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
@@ -948,10 +982,16 @@ Function TimerMorphTick()
 		endif
 	EndIf
 
+	; reset forceUpdate to false when it was true
+	if (forceUpdate)
+		forceUpdate = false
+	endif
+
 	; recalculate which radsPerk to apply when enabled
 	; do after we have updated everything else
 	if (EnableRadsPerks)
 		ApplyRadsPerk()
+		ApplyBalloonsPerk()
 	endif
 
 	; only restart the timer if we aren't shutting down, so it doesn't try to perform updates when the mod is in the process of stopping
@@ -959,7 +999,6 @@ Function TimerMorphTick()
 		StartTimer(UpdateDelay, ETimerMorphTick)
 	endif
 EndFunction
-
 
 ; ------------------------
 ; Slider set overrides
@@ -1034,48 +1073,25 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	if (SliderNames[idxSlider] == "DoubleMelon")
 		; player has (or has had) molecow disease
 		if (hasHadMoleCowDisease)
-			;TODO make buff configurable slider
-			morphBonus += 0.25
-			;Log("    applying molecow boost for breasts")		
+			morphBonus += 0.25	
+
+			; player also carries many balloons
+			if (carriedBalloons >= 10)
+				; for each 10 more balloons the buff becomes larger
+				float balloonBonus = 0.125 * (carriedBalloons / 10)
+
+				morphBonus += balloonBonus
+			endif
 		endif
 		; player has bloating suit equipped
 		if (hasBloatingSuitEquipped)
-			;TODO make buff configurable slider
-			morphBonus += 0.1
-			;Log("    applying molecow boost for breasts")		
+			morphBonus += 0.1	
 		endif
 		; player has nipple piercing equipped
 		if (hasNippleBlockers)
-			;TODO make buff configurable slider
 			morphBonus += 0.1
-			;Log("    applying molecow boost for breasts")		
-		endif
-		; player carries many balloons
-		if (carriedBalloons >= 10)
-			;TODO make buff configurable slider
-			; for each 10 more balloons the buff becomes larger
-			float balloonBonus = 0.1 * ((carriedBalloons / 10)) ; - 1)
-			;TechnicalNote(balloonBonus)
-
-			morphBonus += balloonBonus
-			;Log("    applying molecow boost for breasts")		
 		endif
 	endif
-
-	;TODO seems buggy when split
-	; ; when player has (or has had) molecow disease, apply permanent breast size increase
-	; if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
-	; 	;TODO make buff configurable slider
-	; 	morphBonus = 0.25
-	; ; when player has bloating suit equipped, apply permanent breast size increase
-	; elseif ((SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2") && hasBloatingSuitEquipped)
-	; 	;TODO make buff configurable slider
-	; 	morphBonus = 0.5
-	; ; when player has nipple piercing equipped, apply permanent breast size increase
-	; elseif (SliderNames[idxSlider] == "DoubleMelon" && hasNippleBlockers)
-	; 	;TODO make buff configurable slider
-	; 	morphBonus = 0.5
-	; endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
 EndFunction
@@ -1692,6 +1708,34 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 	return 0
 EndFunction
 
+
+; ------------------------
+; Check the total carried balloons, and apply the matching balloonsPerk to the player
+; ------------------------
+Function ApplyBalloonsPerk()
+	int currentCount = (carriedBalloons / 10) - 1
+
+	; when we have less then 10 balloons, clear all existing perks and don't apply a new one
+	if (currentCount < 1)
+		ClearAllBalloonsPerks(PlayerRef)
+		return
+	endif
+
+	; limit to 2 just in case (we have 3 perks, starting from 0)
+    If (currentCount > 2)
+        currentCount = 2
+    EndIf
+
+	; when we have enough balloons that we should have a difference in perk level, change perks
+	if (CurrentBalloonsPerk != currentCount)
+		ClearOldBalloonsPerks(PlayerRef, currentCount)
+		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
+		PlayerRef.AddPerk(BalloonsPerkArray[currentCount])		
+		
+		CurrentBalloonsPerk = currentCount
+	endif
+EndFunction
+
 ; ------------------------
 ; Loops through all possible radsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
 ; Does not apply the matching radsPerk, you must do that manually.
@@ -1720,6 +1764,27 @@ EndFunction
 
 Function ClearAllRadsPerks(Actor akTarget)
     ClearOldRadsPerks(akTarget, -1)
+EndFunction
+
+; ------------------------
+; Loops through all possible balloonsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
+; Does not apply the matching balloonsPerk, you must do that manually.
+; Use -1 to clear all balloonsPerks from an Actor.
+; ------------------------
+Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
+    int i = 0
+	; loop through the standard perks, remove when not matching new perk level
+    While (i <= 4)
+        If (i != newPerkLevel && akTarget.HasPerk(BalloonsPerkArray[i]))
+			; Log("Removing radsperk of level " + i)
+			akTarget.RemovePerk(BalloonsPerkArray[i])
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
+Function ClearAllBalloonsPerks(Actor akTarget)
+    ClearOldBalloonsPerks(akTarget, -1)
 EndFunction
 
 ; ------------------------
@@ -2372,11 +2437,17 @@ EndFunction
 Function BloatingSuitEquipped()
 	;TechnicalNote("Bloating Outfit equipped!")
 	hasBloatingSuitEquipped = true
+	
+	; force update morphs on next run
+	forceUpdate = true
 EndFunction
 
 Function BloatingSuitUnequipped()
 	;TechnicalNote("Bloating Outfit unequipped!")
 	hasBloatingSuitEquipped = false
+	
+	; force update morphs on next run
+	forceUpdate = true
 EndFunction
 
 Function BloatSuitGiveAmmo()
