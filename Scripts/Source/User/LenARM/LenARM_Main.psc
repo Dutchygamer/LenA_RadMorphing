@@ -776,26 +776,29 @@ Function TimerMorphTick()
 		return
 	endif
 
-	; get amount of carried balloons from HeliumBalloon.esp
-	int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
-	if (carriedBalloons != newCarriedBalloons) 
-		; we are interested in the carried balloons in intervals of 10
-		int currentCount = (carriedBalloons / 10)
-		int newCount = (newCarriedBalloons / 10)
+	; when player has (or has had) molecow disease check our carried balloons
+	if (hasHadMoleCowDisease)
+		; get amount of carried balloons from HeliumBalloon.esp
+		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
+		if (carriedBalloons != newCarriedBalloons) 
+			; we are interested in the carried balloons in intervals of 10
+			int currentCount = (carriedBalloons / 10)
+			int newCount = (newCarriedBalloons / 10)
 
-		; always force a morphs update when the carried balloon count changes
-		; this goes both ways (carrying both more or less balloons then currently)
-		if (currentCount != newCount)
-			forceUpdate = true
+			; always force a morphs update when the carried balloon count changes
+			; this goes both ways (carrying both more or less balloons then currently)
+			if (currentCount != newCount)
+				forceUpdate = true
+			endif
+
+			; when we carry more balloons then before display a message
+			if (newCount > currentCount)
+				LenARM_BalloonTriggerMessage.Show()
+				LenARM_FullGroanSound.Play(PlayerRef)
+			endif
+
+			carriedBalloons = newCarriedBalloons
 		endif
-
-		; when we carry more balloons then before display a message
-		if (newCount > currentCount)
-			LenARM_BalloonTriggerMessage.Show()
-			LenARM_FullGroanSound.Play(PlayerRef)
-		endif
-
-		carriedBalloons = newCarriedBalloons
 	endif
 
 	; when the companion morphs array has been filled, display a message once
@@ -1206,7 +1209,9 @@ Function CheckPopWarnings()
 		LenARM_FullGroanSound.Play(PlayerRef)
 	endif
 
-	if (!shouldPop)
+	; when the dice decides we should not pop, return unless when we have a forceUpdate
+	; we are already close to popping so any forced update of the morphs triggers the next pop warning
+	if (!shouldPop && !forceUpdate)
 		return
 	endif
 
@@ -1713,7 +1718,7 @@ EndFunction
 ; Check the total carried balloons, and apply the matching balloonsPerk to the player
 ; ------------------------
 Function ApplyBalloonsPerk()
-	int currentCount = (carriedBalloons / 10) - 1
+	int currentCount = (carriedBalloons / 10)
 
 	; when we have less then 10 balloons, clear all existing perks and don't apply a new one
 	if (currentCount < 1)
@@ -1721,18 +1726,20 @@ Function ApplyBalloonsPerk()
 		return
 	endif
 
-	; limit to 2 just in case (we have 3 perks, starting from 0)
-    If (currentCount > 2)
-        currentCount = 2
+	; limit to 3 just in case (we have 3 perks)
+    If (currentCount > 3)
+        currentCount = 3
     EndIf
 
+	; subtract 1 from our count as the Perks start from 0
+	int newBalloonsPerk = currentCount -1
 	; when we have enough balloons that we should have a difference in perk level, change perks
-	if (CurrentBalloonsPerk != currentCount)
-		ClearOldBalloonsPerks(PlayerRef, currentCount)
+	if (CurrentBalloonsPerk != newBalloonsPerk)
+		ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
-		PlayerRef.AddPerk(BalloonsPerkArray[currentCount])		
+		PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
 		
-		CurrentBalloonsPerk = currentCount
+		CurrentBalloonsPerk = newBalloonsPerk
 	endif
 EndFunction
 
@@ -1744,6 +1751,7 @@ EndFunction
 Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
     int i = 0
 	; loop through the standard perks, remove when not matching new perk level
+	;TODO kan je niet gewoon RadsPerkArray.Length doen?
     While (i <= 4)
         If (i != newPerkLevel && akTarget.HasPerk(RadsPerkArray[i]))
 			; Log("Removing radsperk of level " + i)
@@ -1772,9 +1780,10 @@ EndFunction
 ; Use -1 to clear all balloonsPerks from an Actor.
 ; ------------------------
 Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
-    int i = 0
+    int i = 0	
 	; loop through the standard perks, remove when not matching new perk level
-    While (i <= 4)
+	;TODO kan je niet gewoon BalloonsPerkArray.Length doen?
+    While (i <= 2)
         If (i != newPerkLevel && akTarget.HasPerk(BalloonsPerkArray[i]))
 			; Log("Removing radsperk of level " + i)
 			akTarget.RemovePerk(BalloonsPerkArray[i])
