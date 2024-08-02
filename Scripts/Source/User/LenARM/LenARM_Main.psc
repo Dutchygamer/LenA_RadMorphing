@@ -192,6 +192,7 @@ Group Properties
 	MagicEffect Property LenARM_MS19MoleratEffect Auto Const
 	
 	Form Property BloatNPCPopExplosion Auto
+	Form Property BloatGrenadeExplosion Auto
 	Form Property BloatingSuit Auto
 	
 	Ammo Property ThirstZapperBloatAmmo Auto Const
@@ -1530,8 +1531,12 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 EndFunction
 
 Function BloatPop(Actor akTarget)
-	PlayMorphSound(akTarget, 4)
+	; when we pop a non-essential hostile enemy, small chance that we pop in a more permanent way
+	float messyPopChance = 0.0 ;1.0 ;0.1
+	bool messyPop = (utility.RandomFloat() <= messyPopChance && aktarget.IsEssential() == false && akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true)
 
+	; paralyze actor first
+	PlayMorphSound(akTarget, 4)
 	ParalyzeActor(akTarget)
 	
 	; add bloating ammo to actor's inventory
@@ -1540,15 +1545,19 @@ Function BloatPop(Actor akTarget)
 	int currentPopState = 1
 	float multiplier = 0.1
 	float totalPopMultiplier = 0
-	; float nextMorphPercentage = multiplier * currentPopState
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	; float randomFloat = GetRandomDelay(2,3)
-	float randomFloat = GetRandomDelay(1,2)
+	float randomFloat = GetRandomDelay(1,2) ;(2,3)
 	Utility.Wait(randomFloat)
 
+	int popStatesToUse = PopStates
+	; messy pop makes actor bigger as warning for attent player
+	if (messyPop)
+		popStatesToUse *=2 ;+= 3
+	endif
+
 	; gradually increase the morphs and unequip the clothes
-	While (currentPopState < PopStates)	
+	While (currentPopState < popStatesToUse)	
 		; don't pop actor that is dead
 		if (akTarget.IsDead())
 			return
@@ -1559,7 +1568,13 @@ Function BloatPop(Actor akTarget)
 		totalPopMultiplier += multiplier
 		
 		BodyGen.UpdateMorphs(akTarget)
-		PlayMorphSound(akTarget, 5)
+		; play normal swell sound when bloating normally
+		if (currentPopState < PopStates)
+			PlayMorphSound(akTarget, 5)
+		; when we are bloating beyond normal play the full sound 
+		else
+			PlayMorphSound(akTarget, 4)
+		endif
 
 		; add bloating ammo to actor's inventory
 		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
@@ -1569,12 +1584,9 @@ Function BloatPop(Actor akTarget)
 			UnequipAllNPC(akTarget)
 		endif
 
-		Utility.Wait(0.7)
-		; Utility.Wait(0.3)
-		; Utility.Wait(1.0)
+		Utility.Wait(0.7) ;(0.3) ;(1.0)
 
 		currentPopState += 1
-		; nextMorphPercentage = multiplier * currentPopState
 	EndWhile
 
 	; don't pop actor that is dead
@@ -1583,31 +1595,45 @@ Function BloatPop(Actor akTarget)
 	endif
 
 	; apply the final morphs, and do the 'pop'
-	SetBloatMorphs(akTarget, multiplier, shouldPop = true)		
-	; SetBloatMorphs(akTarget, nextMorphPercentage, shouldPop = true)		
+	SetBloatMorphs(akTarget, multiplier, shouldPop = true)				
 	totalPopMultiplier += multiplier
 	
 	BodyGen.UpdateMorphs(akTarget)
+
 	LenARM_PrePopSound.PlayAndWait(akTarget)
-	LenARM_PopSound.Play(akTarget)
 	
-	; spread the joy to nearby NPCs
-	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+	; messy pop kills actor and places a grenade explosion
+	if (messyPop)
+		; spread the joy to nearby NPCs
+		akTarget.PlaceAtMe(BloatGrenadeExplosion)	
 
-	; add some more bloating ammo to actor's inventory when they've been allowed to pop
-	akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
+		; add some more bloating ammo to actor's inventory when they've been allowed to pop
+		akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, 1, abSilent = true)	
 
-	; reset all the morphs back to 0
-	; we need to do some calculations so we go back to the original NPC's morphs
-	float reset = (1.0 + totalPopMultiplier) * -1
+		; clear rad perks so we don't keep ambient noise
+		ClearAllRadsPerks(akTarget)
 
-	; Note(totalPopMultiplier + "; " + reset)
+		akTarget.Dismember( "Torso", true, true, true )
+		akTarget.Kill()
+	; normal pop plays the pop sound, keeps actor paralyzed for a bit and places a normal explosion
+	else
+		LenARM_PopSound.Play(akTarget)
+		; spread the joy to nearby NPCs
+		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
-	SetBloatMorphs(akTarget, reset, shouldPop = false)
-	BodyGen.UpdateMorphs(akTarget)
+		; add some more bloating ammo to actor's inventory when they've been allowed to pop
+		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
-	ClearAllRadsPerks(akTarget)
-	akTarget.EquipItem(PoppedPotion, abSilent = true)
+		; reset all the morphs back to 0
+		; we need to do some calculations so we go back to the original NPC's morphs
+		float reset = (1.0 + totalPopMultiplier) * -1
+
+		SetBloatMorphs(akTarget, reset, shouldPop = false)
+		BodyGen.UpdateMorphs(akTarget)
+
+		ClearAllRadsPerks(akTarget)
+		akTarget.EquipItem(PoppedPotion, abSilent = true)
+	endif
 EndFunction
 
 
