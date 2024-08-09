@@ -19,6 +19,10 @@ Scriptname LenARM:LenARM_Main extends Quest
 ;TODO de resterende wijzigingen van LenAnderson:
 ;https://github.com/LenAnderson/LenA_RadMorphing/compare/4cccf04..334a699
 
+;TODO nuke anders basically alle logica die je nu niet gebruikt om boel simpeler te maken
+; - sleep-based morphs
+; - companion morphs (is buggy in general)
+
 ; ------------------------
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
@@ -148,9 +152,11 @@ Group Properties
 	Sound Property LenARM_SwellSound Auto Const
 	Sound Property LenARM_PrePopSound Auto Const
 	Sound Property LenARM_PopSound Auto Const
+	Sound Property LenARM_PopMessySound Auto Const
 	Sound Property LenARM_PurgeFailSound Auto Const
 	Sound Property LenARM_FullGroanSound Auto Const
 	Sound Property LenARM_BloatSuitMilkSound Auto Const
+	Sound Property LenARM_BalloonTriggerSound Auto Const
 
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
@@ -795,7 +801,7 @@ Function TimerMorphTick()
 			; when we carry more balloons then before display a message
 			if (newCount > currentCount)
 				LenARM_BalloonTriggerMessage.Show()
-				LenARM_FullGroanSound.Play(PlayerRef)
+				LenARM_BalloonTriggerSound.Play(PlayerRef)
 			endif
 
 			carriedBalloons = newCarriedBalloons
@@ -1178,14 +1184,25 @@ bool Function ShouldPop(int popChance)
 	int random = Utility.RandomInt(1, 10)
 	int playerLuck = PlayerRef.GetValue(LuckAV) as int
 
+	; player's Luck stat can decrease chance of popping
 	; take player luck, subtract 1, divide by 3 while rounding down
 	; we do the luck - 1 so a luck of 1 doesn't always give a minimum boost of 1
 	; ie luck of 1 becomes 0, luck 3 becomes 1, luck of 10 becomes 3
-	int roundedLuck = (playerLuck-1) / 3
+	int luckMod = ((playerLuck-1) / 3) * -1
+	; molecow disease and nipple blockers increase chance of popping
+	int moleCowDiseaseMod = hasHadMoleCowDisease as int ;? 1 : 0
+	int nippleBlockersMod = hasNippleBlockers as int ;? 1 : 0
+	; bloating suit equipped decrease chance of popping
+	int bloatSuitMod = (hasBloatingSuitEquipped as int)*-1 ;? -1 : 0
 
-	; base pop chance is X/10, but X can be reduced by the player's Luck stat
-	; depending on X it technically can become 0 or less, especially with stat boosters
-	int modifiedPopChance = popChance - roundedLuck
+	Note("luck " + luckMod + "; molecow " + moleCowDiseaseMod + "; nipple " + nippleBlockersMod + "; suit " + bloatSuitMod)
+
+	; base pop chance is X/10, but X can be modified by above modifiers
+	; depending on X and modifiers it can become 0 or less, so cap it to a minimum of 1
+	int modifiedPopChance = popChance + luckMod + moleCowDiseaseMod + nippleBlockersMod + bloatSuitMod
+	if (modifiedPopChance < 1)
+		modifiedPopChance = 1
+	endif
 
 	; when the dice value is lower then (modified) pop chance, return true
 	; else return false
@@ -1451,10 +1468,6 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 		return
 	endif
 
-	;TODO obsolete, zit op magic effect nu
-	; dat of die andere sound effect hiernaartoe verplaatsen
-	;LenARM_FullGroanSound.Play(akTarget)
-	
 	; calculate the max bloatStage, limited to 6
 	int maxBloatStage = currentBloatStage + toAdd
 	if (maxBloatStage > 6)
@@ -1470,16 +1483,8 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 
 	; keep bloating the actor until the bloatStage is equal to expected result
 	while (nextBloatStage <= maxBloatStage)
-		; float nextMorphPercentage = morphPercentage * nextBloatStage
-		; Note(bloatStage + "; " + toAdd + "; " + morphPercentage)
-		;Note(nextBloatStage + "; " + morphPercentage)
-
 		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
-		; ApplyBloatStage(akTarget, nextBloatStage, nextMorphPercentage)
 		
-		; Utility.Wait(1.0)
-		; Utility.Wait(0.7)
-
 		nextBloatStage += 1
 	endwhile
 EndFunction
@@ -1532,8 +1537,8 @@ EndFunction
 
 Function BloatPop(Actor akTarget)
 	; when we pop a non-essential hostile enemy, small chance that we pop in a more permanent way
-	float messyPopChance = 0.0 ;1.0 ;0.1
-	bool messyPop = (utility.RandomFloat() <= messyPopChance && aktarget.IsEssential() == false && akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true)
+	float messyPopChance = 0.1
+	bool messyPop = (akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true && aktarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
 
 	; paralyze actor first
 	PlayMorphSound(akTarget, 4)
@@ -1553,7 +1558,7 @@ Function BloatPop(Actor akTarget)
 	int popStatesToUse = PopStates
 	; messy pop makes actor bigger as warning for attent player
 	if (messyPop)
-		popStatesToUse *=2 ;+= 3
+		popStatesToUse *= 2
 	endif
 
 	; gradually increase the morphs and unequip the clothes
@@ -1564,7 +1569,6 @@ Function BloatPop(Actor akTarget)
 		endif
 		
 		SetBloatMorphs(akTarget, multiplier, shouldPop = true)
-		; SetBloatMorphs(akTarget, nextMorphPercentage, shouldPop = true)
 		totalPopMultiplier += multiplier
 		
 		BodyGen.UpdateMorphs(akTarget)
@@ -1604,25 +1608,26 @@ Function BloatPop(Actor akTarget)
 	
 	; messy pop kills actor and places a grenade explosion
 	if (messyPop)
-		; spread the joy to nearby NPCs
-		akTarget.PlaceAtMe(BloatGrenadeExplosion)	
-
 		; add some more bloating ammo to actor's inventory when they've been allowed to pop
 		akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, 1, abSilent = true)	
 
 		; clear rad perks so we don't keep ambient noise
 		ClearAllRadsPerks(akTarget)
 
-		akTarget.Dismember( "Torso", true, true, true )
+		LenARM_PopMessySound.Play(akTarget)
+		; spread the joy to nearby NPCs
+		akTarget.PlaceAtMe(BloatGrenadeExplosion)	
+
+		akTarget.Dismember("Torso", true, true, true)
 		akTarget.Kill()
-	; normal pop plays the pop sound, keeps actor paralyzed for a bit and places a normal explosion
+	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
+		; add some more bloating ammo to actor's inventory when they've been allowed to pop
+		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
+
 		LenARM_PopSound.Play(akTarget)
 		; spread the joy to nearby NPCs
 		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
-
-		; add some more bloating ammo to actor's inventory when they've been allowed to pop
-		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 		; reset all the morphs back to 0
 		; we need to do some calculations so we go back to the original NPC's morphs
