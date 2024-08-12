@@ -425,6 +425,7 @@ Function Startup()
 
 		; start listening for equipping items
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
+		RegisterForRemoteEvent(PlayerRef, "OnItemUnequipped")
 
 		; start listening whether player is in combat or not
 		RegisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
@@ -785,6 +786,8 @@ Function TimerMorphTick()
 
 	; when player has (or has had) molecow disease check our carried balloons
 	if (hasHadMoleCowDisease)
+		;TODO je kan ook kijken of de ESP erin hangt
+		;Game.IsPluginInstalled("xxx.esp")
 		; get amount of carried balloons from HeliumBalloon.esp
 		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
 		if (carriedBalloons != newCarriedBalloons) 
@@ -1195,7 +1198,7 @@ bool Function ShouldPop(int popChance)
 	; bloating suit equipped decrease chance of popping
 	int bloatSuitMod = (hasBloatingSuitEquipped as int)*-1 ;? -1 : 0
 
-	Note("luck " + luckMod + "; molecow " + moleCowDiseaseMod + "; nipple " + nippleBlockersMod + "; suit " + bloatSuitMod)
+	;Note("luck " + luckMod + "; molecow " + moleCowDiseaseMod + "; nipple " + nippleBlockersMod + "; suit " + bloatSuitMod)
 
 	; base pop chance is X/10, but X can be modified by above modifiers
 	; depending on X and modifiers it can become 0 or less, so cap it to a minimum of 1
