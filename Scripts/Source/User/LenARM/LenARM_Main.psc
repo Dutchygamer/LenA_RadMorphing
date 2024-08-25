@@ -313,17 +313,17 @@ EndEvent
 
 ; [OBSOLETE]
 Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
-	; aeCombatState: The combat state we just entered, which will be one of the following:
-    ; 0: Not in combat
-    ; 1: In combat
-    ; 2: Searching
-	; leaving combat while we are in combat
-	if (aeCombatState == 0 && InCombat)
-		InCombat = false
-	; not in combat and entering combat
-	elseif (aeCombatState != 0 && !InCombat)
-		InCombat = true
-	endif
+	; ; aeCombatState: The combat state we just entered, which will be one of the following:
+    ; ; 0: Not in combat
+    ; ; 1: In combat
+    ; ; 2: Searching
+	; ; leaving combat while we are in combat
+	; if (aeCombatState == 0 && InCombat)
+	; 	InCombat = false
+	; ; not in combat and entering combat
+	; elseif (aeCombatState != 0 && !InCombat)
+	; 	InCombat = true
+	; endif
 EndEvent
 
 ; ------------------------
@@ -478,16 +478,7 @@ Function Startup()
 				if (sliderSet.BaseMorph > 0)
 					Log("reload sliderset " + idxSet)
 					SetMorphs(idxSet, sliderSet, sliderSet.BaseMorph)
-					SetCompanionMorphs(idxSet, sliderSet.BaseMorph, sliderSet.ApplyCompanion)
 				endif
-			endif
-
-			; store whether we have sliders which should effect companions of a specific sex
-			If (!SlidersEffectFemaleCompanions && (sliderSet.ApplyCompanion == EApplyCompanionFemale || sliderSet.ApplyCompanion == EApplyCompanionAll))
-				SlidersEffectFemaleCompanions = true
-			endif
-			If (!SlidersEffectFemaleCompanions && (sliderSet.ApplyCompanion == EApplyCompanionMale || sliderSet.ApplyCompanion == EApplyCompanionAll))
-				SlidersEffectMaleCompanions = true
 			endif
 
 			idxSet += 1
@@ -703,13 +694,13 @@ Function LoadSliderSets()
 			UnequipSlots.Remove(unequipSlotOffset + newSet.NumberOfUnequipSlots, oldSet.NumberOfUnequipSlots - newSet.NumberOfUnequipSlots)
 		EndIf
 		idxSet += 1
-	EndWhile	
-	StoreAllOriginalCompanionMorphs()
+	EndWhile
 EndFunction
 
 ; ------------------------
 ; Radiation detection and what not. Doesn't work with god mode (TGM), but works fine with invulnerability mode (TIM).
 ; ------------------------
+; [OBSOLETE]
 Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
 	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
 	TakeFakeRads = true
@@ -725,6 +716,7 @@ float Function GetNewRads()
 	return newRads / 1000
 EndFunction
 
+; [OBSOLETE]
 Function AddFakeRads()
 	Log("AddFakeRads")
 	If (TakeFakeRads)
@@ -819,13 +811,6 @@ Function TimerMorphTick()
 		endif
 	endif
 
-	; when the companion morphs array has been filled, display a message once
-	; this message will get reset once the array has been cleared
-	if (!HasFilledOriginalCompanionMorphs && OriginalCompanionMorphs.Length >= 127)
-		HasFilledOriginalCompanionMorphs = true
-		TechnicalNote("OriginalCompanionMorphs limit reached")
-	endif
-
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
@@ -843,11 +828,6 @@ Function TimerMorphTick()
 	Log("rads taken: " + (radsDifference * 1000))
 	
 	CurrentRads = newRads
-	; update companions list when not in combat
-	; being in combat means the game looses track of the current companions, giving all kind of wonky results
-	if (!InCombat)
-		UpdateCompanionList()
-	endif
 
 	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
 	if (!HasDoctorOnlySliders)
@@ -966,10 +946,6 @@ Function TimerMorphTick()
 		if (!maxedOutMorphs)
 			CalculateAndPlayMorphSound(PlayerRef, radsDifference)
 		endif
-		; when at least one of the sliderSets effects companions, play the morph sound for them as well
-		if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
-			ApplyAllCompanionMorphsWithSound(radsDifference)
-		endif
 		TriggerUnequipSlots()
 	endif
 
@@ -981,9 +957,6 @@ Function TimerMorphTick()
 			if (!IsStartingUp)
 				LenARM_MaxedOutMorphsMessage.Show()
 				PlayMorphSound(PlayerRef, 4)
-				if (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
-					PlayCompanionSound(4)
-				endif
 			endif
 			HasReachedMaxMorphs = true
 
@@ -1130,9 +1103,6 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage, bool 
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
 		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
 		
-		If (sliderSet.ApplyCompanion != EApplyCompanionNone && effectsCompanions)
-			SetCompanionMorphs(idxSlider, morphPercentage * sliderSet.TargetMorph, sliderSet.ApplyCompanion)
-		EndIf
 		idxSlider += 1
 	EndWhile
 EndFunction
@@ -1184,8 +1154,6 @@ Function RestoreOriginalMorphs()
 		i += 1
 	EndWhile
 	BodyGen.UpdateMorphs(PlayerRef)
-
-	RestoreAllOriginalCompanionMorphs()
 EndFunction
 
 ; ------------------------
@@ -1309,18 +1277,11 @@ Function Pop()
 	; reset rads in case player is in a high-rads zone
 	PlayerRef.EquipItem(ResetRadsPotion, abSilent = true)
 
-	; play the full sound for the companions and player
-	if (effectsCompanions)
-		PlayCompanionSound(4)
-	endif	
+	; play the full sound for player
 	PlayMorphSound(PlayerRef, 4)
-	; then paralyse companions and player and then knock them out
+	; then paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
-	if (PopShouldParalyze)		
-		if (effectsCompanions)
-			ParalyzeCompanions()
-		endif	
-		
+	if (PopShouldParalyze)
 		ParalyzeActor(PlayerRef)
 	endif
 	Utility.Wait(0.7)
@@ -1373,10 +1334,6 @@ Function Pop()
 
 		;TODO make configurabel
 		;ReEquipAll()
-
-		if (effectsCompanions)
-			UnparalyzeCompanions()
-		endif
 	endif
 EndFunction
 
@@ -1421,7 +1378,7 @@ Function UnparalyzeCompanions()
 EndFunction
 
 ; ------------------------
-; Increase all sliders by a percentage multiplied with the input for the player and companions, and play the sound with given id (default Swell sound)
+; Increase all sliders by a percentage multiplied with the input for the player, and play the sound with given id (default Swell sound)
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
 Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int soundId = 5)
@@ -1441,10 +1398,6 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int so
 	EndWhile
 	
 	if (shouldPop)
-		; first 'pop' the companions one by one
-		if (effectsCompanions)
-			ApplyAllCompanionMorphsAndPop()
-		endif
 		; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 		; for this situation we do want to wait for the sound effect to finish playing
 		BodyGen.UpdateMorphs(PlayerRef)
@@ -1452,11 +1405,6 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int so
 		LenARM_PopSound.Play(PlayerRef)
 		ResetMorphs()	
 	else
-		; first apply the morphs (with sound) for each of the companions
-		if (effectsCompanions)
-			PlayCompanionSound(soundId)
-		endif
-	
 		; then apply the morphs (with sound) to the player
 		BodyGen.UpdateMorphs(PlayerRef)
 		PlayMorphSound(PlayerRef, soundId)
@@ -2149,13 +2097,13 @@ EndFunction
 
 ; [OBSOLETE]
 Event Actor.OnCompanionDismiss(Actor akSender)
-	Log("Actor.OnCompanionDismiss: " + akSender)
-	int idxComp = CurrentCompanions.Find(akSender)
-	If (idxComp >= 0)
-		CurrentCompanionIds.Remove(idxComp)
-		CurrentCompanions.Remove(idxComp)
-		RestoreOriginalCompanionMorphs(akSender, idxComp)
-	EndIf
+	; Log("Actor.OnCompanionDismiss: " + akSender)
+	; int idxComp = CurrentCompanions.Find(akSender)
+	; If (idxComp >= 0)
+	; 	CurrentCompanionIds.Remove(idxComp)
+	; 	CurrentCompanions.Remove(idxComp)
+	; 	RestoreOriginalCompanionMorphs(akSender, idxComp)
+	; EndIf
 EndEvent
 
 float Function GetRandomDelay(int min = 2, int max = 6)
@@ -2675,21 +2623,23 @@ EndFunction
 
 ; [OBSOLETE]
 Function Debug_ResetCompanionMorphsArray()
-	; in case you have somehow fubar-ed the OriginalCompanionMorphs array
-	; first reset all companions' morphs
-	RestoreAllOriginalCompanionMorphs()
+	MessageBox("Obsolete function")
 
-	; flush the entire OriginalCompanionMorphs array
-	OriginalCompanionMorphs = new float[0]
+	; ; in case you have somehow fubar-ed the OriginalCompanionMorphs array
+	; ; first reset all companions' morphs
+	; RestoreAllOriginalCompanionMorphs()
 
-	; reset our check bool
-	HasFilledOriginalCompanionMorphs = false
+	; ; flush the entire OriginalCompanionMorphs array
+	; OriginalCompanionMorphs = new float[0]
 
-	; fill the OriginalCompanionMorphs array again with the companions morphs
-	StoreAllOriginalCompanionMorphs()
+	; ; reset our check bool
+	; HasFilledOriginalCompanionMorphs = false
 
-	; the correct morphs will get applied on the next trigger; this is a debug function after all	
-	MessageBox("Flushed and repopulated companion morphs array")
+	; ; fill the OriginalCompanionMorphs array again with the companions morphs
+	; StoreAllOriginalCompanionMorphs()
+
+	; ; the correct morphs will get applied on the next trigger; this is a debug function after all	
+	; MessageBox("Flushed and repopulated companion morphs array")
 EndFunction
 
 ; ------------------------
