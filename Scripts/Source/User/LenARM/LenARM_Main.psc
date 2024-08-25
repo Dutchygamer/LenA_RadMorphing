@@ -8,20 +8,8 @@
 ; With one companion this is already slightly noticable, but with two or more you will see multiple-second delays between morphs.
 Scriptname LenARM:LenARM_Main extends Quest
 
-;GENERIC TO FIX LIST
-;-see if the whole update process can be made faster / more efficient
-;  -work with integers instead of floats for easier calculations (might mean making new local variables, aka can be tricky)
-;-update companions again (see TODO: companions)
-
-;TODO wellicht bijhouden wat we unequippen, en dat weer automatisch equippen?
-;iig voor de companions
-
 ;TODO de resterende wijzigingen van LenAnderson:
 ;https://github.com/LenAnderson/LenA_RadMorphing/compare/4cccf04..334a699
-
-;TODO nuke anders basically alle logica die je nu niet gebruikt om boel simpeler te maken
-; - sleep-based morphs
-; - companion morphs (is buggy in general)
 
 ; ------------------------
 ; All the local variables the mod uses.
@@ -39,16 +27,24 @@ int[] UnequipSlots
 float[] OriginalMorphs
 
 ; flattened array[idxCompanion][idxSliderSet][idxSliderName]
+; [OBSOLETE]
 float[] OriginalCompanionMorphs
+; [OBSOLETE]
 bool HasFilledOriginalCompanionMorphs
 
+; [OBSOLETE]
 int[] CurrentCompanionIds
+; [OBSOLETE]
 Actor[] CurrentCompanions
 
+; [OBSOLETE]
 int UpdateType
 float UpdateDelay
+; [OBSOLETE]
 int RadsDetectionType
+; [OBSOLETE]
 float RandomRadsLower
+; [OBSOLETE]
 float RandomRadsUpper
 
 float LowRadsThreshold
@@ -56,9 +52,12 @@ float MediumRadsThreshold
 float HighRadsThreshold
 
 float CurrentRads
+; [OBSOLETE]
 float FakeRads
+; [OBSOLETE]
 bool TakeFakeRads
 
+; [OBSOLETE]
 bool HasDoctorOnlySliders
 float TotalRads
 
@@ -66,6 +65,7 @@ float TotalRads
 bool HasReachedMaxMorphs
 
 bool EnablePopping
+; [OBSOLETE]
 bool EnableCompanionPopping
 int PopStates
 bool PopShouldParalyze
@@ -93,6 +93,7 @@ bool forceUpdate = false
 
 Actor:WornItem[] PoppingUnequippedItems
 
+; [OBSOLETE]
 int MaxRadiationMultiplier
 
 bool EnableRadsPerks
@@ -103,9 +104,12 @@ int CurrentBalloonsPerk
 ; HeliumBalloon shenenigens
 int carriedBalloons = 0
 
+; [OBSOLETE]
 bool SlidersEffectFemaleCompanions
+; [OBSOLETE]
 bool SlidersEffectMaleCompanions
 
+; [OBSOLETE]
 bool InCombat
 FormList DD_FL_All
 
@@ -176,7 +180,9 @@ Group Properties
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
 
+	; [OBSOLETE]
 	Faction Property CurrentCompanionFaction Auto Const
+	; [OBSOLETE]
 	Faction Property PlayerAllyFation Auto Const
 
 	Potion Property GlowingOneBlood Auto Const
@@ -305,7 +311,7 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 	endif
 EndEvent
 
-
+; [OBSOLETE]
 Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
 	; aeCombatState: The combat state we just entered, which will be one of the following:
     ; 0: Not in combat
@@ -736,6 +742,7 @@ EndFunction
 ; ------------------------
 ; Sleep-based morphs
 ; ------------------------
+; [OBSOLETE]
 Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, ObjectReference akBed)
 	Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
 	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
@@ -744,6 +751,7 @@ Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, Ob
 	UpdateCompanionList()
 EndEvent
 
+; [OBSOLETE]
 Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 	Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
 	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
@@ -1372,6 +1380,7 @@ Function Pop()
 	endif
 EndFunction
 
+; [OBSOLETE]
 Function ParalyzeCompanions()
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
@@ -1391,6 +1400,7 @@ Function ParalyzeCompanions()
 	EndWhile
 EndFunction
 
+; [OBSOLETE]
 Function UnparalyzeCompanions()
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
@@ -1833,7 +1843,7 @@ EndFunction
 ; ------------------------
 ; All companion related logic, still WiP / broken
 ; ------------------------
-
+; [OBSOLETE]
 ; Function LogCompanionMorphs()
 ; 	int idx = 0
 ; 	While (idx < OriginalCompanionMorphs.Length)
@@ -1846,6 +1856,7 @@ EndFunction
 ; ------------------------
 ; Loops through all current companions, and restores the original morphs
 ; ------------------------
+; [OBSOLETE]
 Function RestoreAllOriginalCompanionMorphs()
 	Log("RestoreAllOriginalCompanionMorphs")
 	int idxComp = 0
@@ -1859,6 +1870,7 @@ EndFunction
 ; ------------------------
 ; Loop through all sliderSets, and restore the companion's original morphs for that sliderSet if they effected the companion
 ; ------------------------
+; [OBSOLETE]
 Function RestoreOriginalCompanionMorphs(Actor companion, int idxCompanion)
 	Log("RestoreOriginalCompanionMorphs: " + companion + "; " + idxCompanion)
 	int offsetIdx = SliderNames.Length * idxCompanion
@@ -1874,6 +1886,7 @@ EndFunction
 ; ------------------------
 ; Loops through all current companions, and store the original morphs
 ; ------------------------
+; [OBSOLETE]
 Function StoreAllOriginalCompanionMorphs()
 	Log("StoreAllOriginalCompanionMorphs")
 	OriginalCompanionMorphs = new float[0]
@@ -1889,6 +1902,7 @@ EndFunction
 ; ------------------------
 ; Loop through all sliderSets, and store the companion's original morphs for that sliderSet
 ; ------------------------
+; [OBSOLETE]
 Function StoreOriginalCompanionMorphs(Actor companion)
 	Log("StoreOriginalCompanionMorphs: " + companion)
 
@@ -1909,6 +1923,7 @@ Function StoreOriginalCompanionMorphs(Actor companion)
 	EndWhile
 EndFunction
 
+; [OBSOLETE]
 Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 	;Log("SetCompanionMorphs: " + idxSlider + "; " + morph + "; " + applyCompanion)
 	int idxComp = 0
@@ -1932,10 +1947,12 @@ Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
 	EndWhile
 EndFunction
 
+; [OBSOLETE]
 Function ApplyAllCompanionMorphs()
 	ApplyAllCompanionMorphsWithSound(0)
 EndFunction
 
+; [OBSOLETE]
 Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	; Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
@@ -1956,6 +1973,7 @@ Function ApplyAllCompanionMorphsWithSound(float radsDifference)
 	EndWhile
 EndFunction
 
+; [OBSOLETE]
 Function PlayCompanionSound(int soundId)
 	int idxComp = 0
 	While (idxComp < CurrentCompanions.Length)
@@ -1976,6 +1994,7 @@ Function PlayCompanionSound(int soundId)
 EndFunction
 
 ; this one will always be seperated due to the additional logic involved
+; [OBSOLETE]
 Function ApplyAllCompanionMorphsAndPop()
 	; Log("ApplyAllCompanionMorphs")
 	int idxComp = 0
@@ -2002,6 +2021,7 @@ EndFunction
 ; ------------------------
 ; Companion administration, storing and removing from various lists
 ; ------------------------
+; [OBSOLETE]
 Function UpdateCompanionList()
 	; Log("UpdateCompanionList")
 	Actor[] newComps = GetCompanions()
@@ -2033,6 +2053,8 @@ EndFunction
 ;altho weet ik nu al dat heel die OnDismiss sowieso niet af gaat...
 
 ;zou ook betekenen dat dat hele idee van twee arrays bijhouden om mismatches te voorkomen dus voor niets was als ie nog steeds hetzelfde resultaat doet...
+
+; [OBSOLETE]
 Actor[] Function GetCompanions()
 	; Log("GetCompanions")
 	Actor[] allCompanions = Game.GetPlayerFollowers() ; as Actor[]	
@@ -2055,6 +2077,7 @@ Actor[] Function GetCompanions()
 EndFunction
 
 ;TODO zou je Remove en Add kunnen mergen?
+; [OBSOLETE]
 Function RemoveDismissedCompanions(Actor[] newCompanions)
 	; Log("RemoveDismissedCompanions: " + newCompanions)
 
@@ -2096,6 +2119,7 @@ Function RemoveDismissedCompanions(Actor[] newCompanions)
 	EndWhile
 EndFunction
 
+; [OBSOLETE]
 Function AddNewCompanions(Actor[] newCompanions)
 	; Log("AddNewCompanions: " + newCompanions)
 	int idxNew = 0
@@ -2123,6 +2147,7 @@ EndFunction
 ; gevolg is dat bij dismiss van companion de morphs behouden blijven tot UpdateCompanionList getriggerd wordt, die dan (correct) de companion verwijderd
 ; heb je deze event geregistreerd you dummy...
 
+; [OBSOLETE]
 Event Actor.OnCompanionDismiss(Actor akSender)
 	Log("Actor.OnCompanionDismiss: " + akSender)
 	int idxComp = CurrentCompanions.Find(akSender)
@@ -2648,6 +2673,7 @@ Function Debug_ShowLowestSliderPercentage()
 	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
+; [OBSOLETE]
 Function Debug_ResetCompanionMorphsArray()
 	; in case you have somehow fubar-ed the OriginalCompanionMorphs array
 	; first reset all companions' morphs
@@ -2767,6 +2793,7 @@ Group EnumTimerId
 	int Property ETimerBloatSuit = 7 Auto Const
 EndGroup
 
+; [OBSOLETE]
 Group EnumApplyCompanion
 	int Property EApplyCompanionNone = 0 Auto Const
 	int Property EApplyCompanionFemale = 1 Auto Const
@@ -2774,16 +2801,19 @@ Group EnumApplyCompanion
 	int Property EApplyCompanionAll = 3 Auto Const
 EndGroup
 
+; [OBSOLETE], always Immediately
 Group EnumUpdateType
 	int Property EUpdateTypeImmediately = 0 Auto Const
 	int Property EUpdateTypeOnSleep = 1 Auto Const
 EndGroup
 
+; [OBSOLETE], always rads
 Group EnumRadsDetectionType
 	int Property ERadsDetectionTypeRads = 0 Auto Const
 	int Property ERadsDetectionTypeRandom = 1 Auto Const
 EndGroup
 
+; [OBSOLETE]
 Group EnumSex
 	int Property ESexMale = 0 Auto Const
 	int Property ESexFemale = 1 Auto Const
@@ -2862,9 +2892,12 @@ Struct SliderSet
 	string UnequipSlot
 	float ThresholdUnequip
 	bool OnlyDoctorCanReset
+	; [OBSOLETE], always true
 	bool IsAdditive
+	; [OBSOLETE], always true
 	bool HasAdditiveLimit
 	float AdditiveLimit
+	; [OBSOLETE]
 	int ApplyCompanion
 	bool ExcludeFromPopping
 	; END: MCM values
