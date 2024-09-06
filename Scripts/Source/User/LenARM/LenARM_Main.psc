@@ -111,6 +111,7 @@ bool SlidersEffectMaleCompanions
 
 ; [OBSOLETE]
 bool InCombat
+
 FormList DD_FL_All
 
 int RestartStackSize
@@ -784,36 +785,22 @@ Function TimerMorphTick()
 		return
 	endif
 
-	; when player has (or has had) molecow disease check our carried balloons
-	if (hasHadMoleCowDisease)
-		;TODO je kan ook kijken of de ESP erin hangt
-		;Game.IsPluginInstalled("xxx.esp")
-		; get amount of carried balloons from HeliumBalloon.esp
-		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
-		if (carriedBalloons != newCarriedBalloons) 
-			; we are interested in the carried balloons in intervals of 10
-			int currentCount = (carriedBalloons / 10)
-			int newCount = (newCarriedBalloons / 10)
+	; setup the raw morphs percentage
+	float rawMorphInput = 0
 
-			; always force a morphs update when the carried balloon count changes
-			; this goes both ways (carrying both more or less balloons then currently)
-			if (currentCount != newCount)
-				forceUpdate = true
-			endif
-
-			; when we carry more balloons then before display a message
-			if (newCount > currentCount)
-				LenARM_BalloonTriggerMessage.Show()
-				LenARM_BalloonTriggerSound.Play(PlayerRef)
-			endif
-
-			carriedBalloons = newCarriedBalloons
-		endif
-	endif
+	; modify raw morphs percentage by carried balloons
+	float balloonsMorph = CheckCarriedBalloons()
+	rawMorphInput += balloonsMorph
 
 	; get the player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
+
+	; modify raw morphs percentage by current rads
+	rawMorphInput += newRads
+
+	;TODO theorie is dat door rawMorphInput te gebruiken ipv newRads je dan morphs van beide kan optellen
+	; Note("total rads: " + newRads + " + balloons: " + balloonsMorph + " = raw morph input: " + rawMorphInput)
 
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
@@ -993,6 +980,51 @@ Function TimerMorphTick()
 		StartTimer(UpdateDelay, ETimerMorphTick)
 	endif
 EndFunction
+
+
+
+float Function CheckCarriedBalloons()
+	if (!hasHadMoleCowDisease)
+		return 0
+	; when player has (or has had) molecow disease check our carried balloons
+	else
+		;TODO je kan ook kijken of de ESP erin hangt
+		;Game.IsPluginInstalled("xxx.esp")
+		; get amount of carried balloons from HeliumBalloon.esp
+		; float result = 0
+
+		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
+		if (carriedBalloons != newCarriedBalloons) 
+			; we are interested in the carried balloons in intervals of 10
+			int currentCount = (carriedBalloons / 10)
+			int newCount = (newCarriedBalloons / 10)
+
+			;result = carriedBalloons / 10
+
+			; always force a morphs update when the carried balloon count changes
+			; this goes both ways (carrying both more or less balloons then currently)
+			if (currentCount != newCount)
+				forceUpdate = true
+			endif
+
+			; when we carry more balloons then before display a message
+			if (newCount > currentCount)
+				LenARM_BalloonTriggerMessage.Show()
+				LenARM_BalloonTriggerSound.Play(PlayerRef)
+			endif
+
+			carriedBalloons = newCarriedBalloons
+		endif
+		
+
+		;if (forceUpdate)
+		return carriedBalloons * 0.002
+		;else
+		;	return 0
+		;endif
+	endif
+EndFunction
+
 
 ; ------------------------
 ; Slider set overrides
@@ -2183,8 +2215,9 @@ Function UnequipSlots()
 							if (!TutorialDisplayed_DroppedClothes)
 								TutorialDisplayed_DroppedClothes = true
 								LenARM_Tutorial_DropClothesMessage.ShowAsHelpMessage("LenARM_Tutorial_DropClothesMessage", 8, 0, 1)
+							else
+								LenARM_DropClothesMessage.Show()
 							endif
-							LenARM_DropClothesMessage.Show()
 							LenARM_DropClothesSound.Play(PlayerRef)
 							found = true
 						EndIf
@@ -2837,7 +2870,9 @@ Struct SliderSet
 	; MCM values
 	string SliderName
 	float TargetMorph
+	; [OBSOLETE], always 0
 	float ThresholdMin
+	; [OBSOLETE], always 100
 	float ThresholdMax
 	string UnequipSlot
 	float ThresholdUnequip
