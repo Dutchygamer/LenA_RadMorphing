@@ -3,9 +3,6 @@
 ; You have the LenA_RadMorphing.esp enabled in your mod loader.
 ; The .esp triggers the quest on game load, which in return runs this script file as it were an actual quest.
 ; With the generic OnQuestInit() and OnQuestShutdown() entry points we do the remaining setup and start the actual logic.
-
-; Note that while the mod supports morphing companions, the Timer-based performance will drop the more companions and sliders you have.
-; With one companion this is already slightly noticable, but with two or more you will see multiple-second delays between morphs.
 Scriptname LenARM:LenARM_Main extends Quest
 
 ;TODO de resterende wijzigingen van LenAnderson:
@@ -25,17 +22,6 @@ int[] UnequipSlots
 
 ; flattened two-dimensional array[idxSliderSet][idxSliderName]
 float[] OriginalMorphs
-
-; flattened array[idxCompanion][idxSliderSet][idxSliderName]
-; [OBSOLETE]
-float[] OriginalCompanionMorphs
-; [OBSOLETE]
-bool HasFilledOriginalCompanionMorphs
-
-; [OBSOLETE]
-int[] CurrentCompanionIds
-; [OBSOLETE]
-Actor[] CurrentCompanions
 
 ; [OBSOLETE]
 int UpdateType
@@ -65,8 +51,6 @@ float TotalRads
 bool HasReachedMaxMorphs
 
 bool EnablePopping
-; [OBSOLETE]
-bool EnableCompanionPopping
 int PopStates
 bool PopShouldParalyze
 int PopStripState
@@ -103,14 +87,6 @@ int CurrentBalloonsPerk
 
 ; HeliumBalloon shenenigens
 int carriedBalloons = 0
-
-; [OBSOLETE]
-bool SlidersEffectFemaleCompanions
-; [OBSOLETE]
-bool SlidersEffectMaleCompanions
-
-; [OBSOLETE]
-bool InCombat
 
 FormList DD_FL_All
 
@@ -180,11 +156,6 @@ Group Properties
 	Message Property LenARM_BloatingSuitMissingMessage Auto
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
-
-	; [OBSOLETE]
-	Faction Property CurrentCompanionFaction Auto Const
-	; [OBSOLETE]
-	Faction Property PlayerAllyFation Auto Const
 
 	Potion Property GlowingOneBlood Auto Const
 
@@ -312,21 +283,6 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 	endif
 EndEvent
 
-; [OBSOLETE]
-Event Actor.OnCombatStateChanged(Actor akSender, Actor akTarget, int aeCombatState)
-	; ; aeCombatState: The combat state we just entered, which will be one of the following:
-    ; ; 0: Not in combat
-    ; ; 1: In combat
-    ; ; 2: Searching
-	; ; leaving combat while we are in combat
-	; if (aeCombatState == 0 && InCombat)
-	; 	InCombat = false
-	; ; not in combat and entering combat
-	; elseif (aeCombatState != 0 && !InCombat)
-	; 	InCombat = true
-	; endif
-EndEvent
-
 ; ------------------------
 ; Upon entering and exiting the doctor scenes, reset the morphs
 ; ------------------------
@@ -414,7 +370,6 @@ Function Startup()
 		HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
 
 		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
-		EnableCompanionPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableCompanionPopping:General")
 		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
 		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
 		PopStripState = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStripState:General")
@@ -434,9 +389,6 @@ Function Startup()
 		RegisterForRemoteEvent(PlayerRef, "OnItemEquipped")
 		RegisterForRemoteEvent(PlayerRef, "OnItemUnequipped")
 
-		; start listening whether player is in combat or not
-		RegisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
-
 		; start listening for doctor scene
 		RegisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnBegin")
 		RegisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnEnd")
@@ -455,13 +407,7 @@ Function Startup()
 			AddFakeRads()
 		EndIf
 
-		; set up companions
-		CurrentCompanionIds = new int[0]
-		CurrentCompanions = new Actor[0]
-
-		SlidersEffectFemaleCompanions = false
-		SlidersEffectMaleCompanions = false
-
+		; set up lists
 		PoppingUnequippedItems = new Actor:WornItem[0]
 
 		; reset unequip stack
@@ -491,7 +437,6 @@ Function Startup()
 			CurrentRadsPerk = 0
 		endif
 
-		ApplyAllCompanionMorphs()
 		BodyGen.UpdateMorphs(PlayerRef)
 
 		; recalculate the rad perks when enabed
@@ -632,7 +577,6 @@ Function LoadSliderSets()
 	EndIf
 	If (!OriginalMorphs)
 		OriginalMorphs = new float[0]
-		OriginalCompanionMorphs = new float[0]
 	EndIf
 	
 	; get slider sets
@@ -738,17 +682,11 @@ EndFunction
 ; [OBSOLETE]
 Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, ObjectReference akBed)
 	Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
-	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
-	Log("  followers on sleep start: " + allCompanions)
-	; update companions (companions cannot be found on sleep stop)
-	UpdateCompanionList()
 EndEvent
 
 ; [OBSOLETE]
 Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 	Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
-	Actor[] allCompanions = Game.GetPlayerFollowers() as Actor[]
-	Log("  followers on sleep stop: " + allCompanions)
 	; get rads
 	CurrentRads = GetNewRads()
 	If (CurrentRads > 0.0)
@@ -770,7 +708,6 @@ Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
 			idxSet += 1
 		EndWhile
 		BodyGen.UpdateMorphs(PlayerRef)
-		ApplyAllCompanionMorphs()
 		TriggerUnequipSlots()
 	EndIf
 EndEvent
@@ -1125,7 +1062,7 @@ EndFunction
 ; ------------------------
 ; Apply the given sliderSet's morphs to the matching BodyGen sliders
 ; ------------------------
-Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage, bool effectsCompanions = true)
+Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 	int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
 	int idxSlider = sliderNameOffset
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
@@ -1231,8 +1168,6 @@ Function CheckPopWarnings()
 	; 30% base chance to trigger
 	bool shouldPop = ShouldPop(3)
 
-	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
-
 	; when enabled, always play the dedicated sounds even if we don't trigger
 	if (PopUseFullSounds)
 		LenARM_FullGroanSound.Play(PlayerRef)
@@ -1247,15 +1182,15 @@ Function CheckPopWarnings()
 	if (PopWarnings == 0)
 		LenARM_PopWarning0Message.Show()
 		PopWarnings += 1
-		ExtendMorphs(0.25, effectsCompanions, shouldPop = false, soundId = 2)
+		ExtendMorphs(0.25, shouldPop = false, soundId = 2)
 	ElseIf (PopWarnings == 1)
 		LenARM_PopWarning1Message.Show()
 		PopWarnings += 1
-		ExtendMorphs(0.5, effectsCompanions, shouldPop = false, soundId = 3)
+		ExtendMorphs(0.5, shouldPop = false, soundId = 3)
 	ElseIf (PopWarnings == 2)
 		LenARM_PopWarning2Message.Show()
 		PopWarnings += 1
-		ExtendMorphs(0.75, effectsCompanions, shouldPop = false, soundId = 4)
+		ExtendMorphs(0.75, shouldPop = false, soundId = 4)
 	Else
 		; IsPopping = true
 		TryPop()
@@ -1294,7 +1229,6 @@ Function Pop()
 	endif
 
 	int currentPopState = 1
-	bool effectsCompanions = EnableCompanionPopping && (SlidersEffectFemaleCompanions || SlidersEffectMaleCompanions)
 
 	IsPopping = true
 
@@ -1325,11 +1259,11 @@ Function Pop()
 			return
 		endif
 
-		ExtendMorphs(currentPopState, effectsCompanions, shouldPop = false)
+		ExtendMorphs(currentPopState, shouldPop = false)
 
 		; for the unequip state we also want to strip all clothes and armor
 		If (currentPopState == PopStripState)
-			UnequipAll(effectsCompanions)
+			UnequipAll()
 		endif
 
 		;Utility.Wait(0.7)
@@ -1344,7 +1278,7 @@ Function Pop()
 	endif
 
 	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
-	ExtendMorphs(currentPopState, effectsCompanions, shouldPop = true)
+	ExtendMorphs(currentPopState, shouldPop = true)
 
 	; apply the debuffs on the player and reset the player's rads by ingesting the respective potions
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
@@ -1369,51 +1303,11 @@ Function Pop()
 	endif
 EndFunction
 
-; [OBSOLETE]
-Function ParalyzeCompanions()
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before playing morph sounds on the companion
-			float randomFloat = GetRandomDelay(2,3)
-
-			Utility.Wait(randomFloat)
-
-			ParalyzeActor(companion)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; [OBSOLETE]
-Function UnparalyzeCompanions()
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before playing morph sounds on the companion
-			float randomFloat = GetRandomDelay()
-
-			Utility.Wait(randomFloat)
-
-			UnParalyzeActor(companion)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
 ; ------------------------
 ; Increase all sliders by a percentage multiplied with the input for the player, and play the sound with given id (default Swell sound)
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
-Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int soundId = 5)
+Function ExtendMorphs(float step,  bool shouldPop, int soundId = 5)
 	Log("extending morphs with: " + step)
 
 	; calculate the new morphs multiplier
@@ -1424,7 +1318,7 @@ Function ExtendMorphs(float step, bool effectsCompanions, bool shouldPop, int so
 	While (idxSet < SliderSets.Length)
 		SliderSet sliderSet = SliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
-			SetMorphs(idxSet, sliderSet, multiplier, effectsCompanions)
+			SetMorphs(idxSet, sliderSet, multiplier)
 		EndIf
 		idxSet += 1
 	EndWhile
@@ -1453,7 +1347,7 @@ EndFunction
 
 ; ------------------------
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
-; Intended for use on non-player and non-companion NPCs.
+; Intended for use on NPCs.
 ; ------------------------
 Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 	; don't bloat actor that is dead
@@ -1820,324 +1714,6 @@ Function ClearAllBalloonsPerks(Actor akTarget)
     ClearOldBalloonsPerks(akTarget, -1)
 EndFunction
 
-; ------------------------
-; All companion related logic, still WiP / broken
-; ------------------------
-; [OBSOLETE]
-; Function LogCompanionMorphs()
-; 	int idx = 0
-; 	While (idx < OriginalCompanionMorphs.Length)
-; 		float companionMorphs = OriginalCompanionMorphs[idx]
-; 		Log(companionMorphs)
-; 		idx += 1
-; 	EndWhile
-; EndFunction
-
-; ------------------------
-; Loops through all current companions, and restores the original morphs
-; ------------------------
-; [OBSOLETE]
-Function RestoreAllOriginalCompanionMorphs()
-	Log("RestoreAllOriginalCompanionMorphs")
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		RestoreOriginalCompanionMorphs(companion, idxComp)
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; ------------------------
-; Loop through all sliderSets, and restore the companion's original morphs for that sliderSet if they effected the companion
-; ------------------------
-; [OBSOLETE]
-Function RestoreOriginalCompanionMorphs(Actor companion, int idxCompanion)
-	Log("RestoreOriginalCompanionMorphs: " + companion + "; " + idxCompanion)
-	int offsetIdx = SliderNames.Length * idxCompanion
-	int idxSlider = 0
-	int sex = companion.GetLeveledActorBase().GetSex()
-	While (idxSlider < SliderNames.Length)
-		BodyGen.SetMorph(companion, sex==ESexFemale, SliderNames[idxSlider], kwMorph, OriginalCompanionMorphs[offsetIdx + idxSlider])
-		idxSlider += 1
-	EndWhile
-	BodyGen.UpdateMorphs(companion)
-EndFunction
-
-; ------------------------
-; Loops through all current companions, and store the original morphs
-; ------------------------
-; [OBSOLETE]
-Function StoreAllOriginalCompanionMorphs()
-	Log("StoreAllOriginalCompanionMorphs")
-	OriginalCompanionMorphs = new float[0]
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		;Log("companion " + idxComp)
-		Actor companion = CurrentCompanions[idxComp]
-		StoreOriginalCompanionMorphs(companion)
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; ------------------------
-; Loop through all sliderSets, and store the companion's original morphs for that sliderSet
-; ------------------------
-; [OBSOLETE]
-Function StoreOriginalCompanionMorphs(Actor companion)
-	Log("StoreOriginalCompanionMorphs: " + companion)
-
-	; safety net so we don't try to keep on filling the companion morphs array when it is already filled
-	if (HasFilledOriginalCompanionMorphs)
-		Log("OriginalCompanionMorphs filled")
-		return
-	endif
-
-	int idxSlider = 0
-	While (idxSlider < SliderNames.Length)
-		; OriginalCompanionMorphs.Add(BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None))		
-		float companionMorph = BodyGen.GetMorph(companion, True, SliderNames[idxSlider], None)
-
-		;Log("  sliderset " + idxSlider + "; " + companionMorph)
-		OriginalCompanionMorphs.Add(companionMorph)
-		idxSlider += 1
-	EndWhile
-EndFunction
-
-; [OBSOLETE]
-Function SetCompanionMorphs(int idxSlider, float morph, int applyCompanion)
-	;Log("SetCompanionMorphs: " + idxSlider + "; " + morph + "; " + applyCompanion)
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		If (!companion.IsInPowerArmor())			
-			int sex = companion.GetLeveledActorBase().GetSex()
-			If (applyCompanion == EApplyCompanionAll || (sex == ESexFemale && applyCompanion == EApplyCompanionFemale) || (sex == ESexMale && applyCompanion == EApplyCompanionMale))
-				int offsetIdx = SliderNames.Length * idxComp
-				float companionMorphs = OriginalCompanionMorphs[offsetIdx + idxSlider]
-				float newMorphs = companionMorphs + morph
-				Log("    setting companion(" + companion + ") slider '" + SliderNames[idxSlider] + "' to " + (OriginalCompanionMorphs[offsetIdx + idxSlider] + morph) + " (base value is " + OriginalCompanionMorphs[offsetIdx + idxSlider] + ")")
-				BodyGen.SetMorph(companion, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorphs)
-			Else
-				; Log("    skipping companion slider:  sex=" + sex)
-			EndIf
-		Else
-			; Log("    skipping companion(" + companion + ") due to being in power armor")
-		EndIf
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; [OBSOLETE]
-Function ApplyAllCompanionMorphs()
-	ApplyAllCompanionMorphsWithSound(0)
-EndFunction
-
-; [OBSOLETE]
-Function ApplyAllCompanionMorphsWithSound(float radsDifference)
-	; Log("ApplyAllCompanionMorphs")
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before appying the morphs (and morph sounds) on the companion
-			float randomFloat = GetRandomDelay()
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			CalculateAndPlayMorphSound(CurrentCompanions[idxComp], radsDifference)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; [OBSOLETE]
-Function PlayCompanionSound(int soundId)
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before playing morph sounds on the companion
-			float randomFloat = GetRandomDelay()
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			PlayMorphSound(companion, soundId)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; this one will always be seperated due to the additional logic involved
-; [OBSOLETE]
-Function ApplyAllCompanionMorphsAndPop()
-	; Log("ApplyAllCompanionMorphs")
-	int idxComp = 0
-	While (idxComp < CurrentCompanions.Length)
-		Actor companion = CurrentCompanions[idxComp]
-		int sex = companion.GetLeveledActorBase().GetSex()
-
-		; only apply the morphs and play sounds if there are sliders which effect the companion's sex
-		If ((sex == ESexFemale && SlidersEffectFemaleCompanions) || (sex == ESexMale && SlidersEffectMaleCompanions))
-			; do a random delay before appying the morphs (and morph sounds) on the companion
-			float randomFloat = GetRandomDelay(2,3)
-
-			Utility.Wait(randomFloat)
-			BodyGen.UpdateMorphs(CurrentCompanions[idxComp])
-			LenARM_PrePopSound.PlayAndWait(companion)
-			LenARM_PopSound.Play(companion)
-
-			RestoreOriginalCompanionMorphs(companion, idxComp)
-		endif
-		idxComp += 1
-	EndWhile
-EndFunction
-
-; ------------------------
-; Companion administration, storing and removing from various lists
-; ------------------------
-; [OBSOLETE]
-Function UpdateCompanionList()
-	; Log("UpdateCompanionList")
-	Actor[] newComps = GetCompanions()
-	RemoveDismissedCompanions(newComps)
-	AddNewCompanions(newComps)
-	; Log("  CurrentCompanions: " + CurrentCompanions)
-EndFunction
-
-;TODO okay, nieuwe bug ontdekt met companions:
-;game besluit randomly dat Cait geen companion meer is, en dus worden haar morphs gereset
-;dis brak, maar das niet meest vervelende. Meer vervelend is dat op geen enkele plaats OriginalCompanionMorphs gecleared wordt indien dit gebeurd; 
-; op gegeven moment is die array vol en dan ben je fucked
-;jezus, dit gebeurt nog vaak ook. No wonder dat die array vol gegooid wordt
-;vreemde is: ik zie geen reden waarom Cait niet meer als companion moet worden gezien. Tis steeds zelfde id. 
-;Wat me wel opvalt is dat Cait veranderd van CompanionCrimeFactionHostilityScript naar een workshopnpcscript. Maar dat kan wellicht zijn dat ik dr gerecruit heb.
-;Zou die workshop extended shizzle nu in de weg zitten?
-;Tis wel iets wat ik moet nalopen: dit gebeurt vaker dan ik dacht. Zou ook de eerdere issue met Shannon dismissen waarbij morphs niet gereset werden verklaren
-
-;TODO lijkt in sommige gevallen active companions nog steeds te negeren, dunno why
-;vermoed dat het in Game.GetPlayerFollowers zit, gezien ie indien een companion er onterecht uit trapt, hij in de gehele loop niet komt
-;wiki zegt:
-;Actor array containing all actors that are either:
-;    Running an AI procedure that followers the player (e.g. Follow, Range).
-;    Running a package that is flagged to treat the actor as a player-follower (e.g. a Sandbox on a player companion).
-;dit kan verklaren waarom het lijkt dat zodra je in combat gaat hij de companion eruit gaat gooien
-;tis echter wel de juiste functie zo te zien. Vanilla scripts gebruiken die ook
-
-;de alternatieve vraag is: waarom trappen we companions eruit? in theorie zou dat met de Dismiss gedaan moeten worden.
-;altho weet ik nu al dat heel die OnDismiss sowieso niet af gaat...
-
-;zou ook betekenen dat dat hele idee van twee arrays bijhouden om mismatches te voorkomen dus voor niets was als ie nog steeds hetzelfde resultaat doet...
-
-; [OBSOLETE]
-Actor[] Function GetCompanions()
-	; Log("GetCompanions")
-	Actor[] allCompanions = Game.GetPlayerFollowers() ; as Actor[]	
-	;Log("  allCompanions: " + allCompanions)
-	Actor[] filteredCompanions = new Actor[0]
-	int idxFilterCompanions = 0
-	While (idxFilterCompanions < allCompanions.Length)
-		Actor companion = allCompanions[idxFilterCompanions]
-
-		;int compId = companion.GetFormId()
-		;Note("current companion " + compId)
-
-		;TODO waar zijn deze extra checks nog voor nodig? is dit voor dismissed companions?
-		If (companion.IsInFaction(CurrentCompanionFaction) || companion.IsInFaction(PlayerAllyFation))
-			filteredCompanions.Add(companion)
-		EndIf
-		idxFilterCompanions += 1
-	EndWhile
-	return filteredCompanions
-EndFunction
-
-;TODO zou je Remove en Add kunnen mergen?
-; [OBSOLETE]
-Function RemoveDismissedCompanions(Actor[] newCompanions)
-	; Log("RemoveDismissedCompanions: " + newCompanions)
-
-	; first convert the Actor array into an int array
-	; bit wasteful, but we don't have those nifty LINQ functions from C# so this is the next best thing
-	int[] newCompIds = new int[0]
-	int idxNew = 0
-
-	While (idxNew < newCompanions.Length)
-		Actor newComp = newCompanions[idxNew]
-		int newCompId = newComp.GetFormId()
-		newCompIds.Add(newCompId)
-		idxNew += 1
-	EndWhile
-
-	;Note("companionIds: " + newCompIds)
-
-	; then compare the new companion id array with the current companionId array
-	; do note that we traverse the current companionId array in reverse order, as removing an earlier entry means all later entries will get shuffled to fill the empty space
-	; if we thus start from the first entry, you will get nullpointers in no time
-	int idxOld = CurrentCompanions.Length - 1
-	While (idxOld >= 0)
-		int oldCompId = CurrentCompanionIds[idxOld]
-
-		; can't find the current companionId in the new companionIds array?
-		; remove it from both the current companionIds array and the currentCompanions array, and restore the companion's original morphs
-		If (newCompIds.Find(oldCompId) < 0)
-			Log("  removing companion " + oldCompId)
-			
-			Actor oldComp = CurrentCompanions[idxOld]
-			; first restore the morphs, then delete from arrays
-			; as restore morphs works with the array values, doing this the other way around means morphs won't get restored properly
-			RestoreOriginalCompanionMorphs(oldComp, idxOld)
-
-			CurrentCompanionIds.Remove(idxOld)
-			CurrentCompanions.Remove(idxOld)
-		EndIf
-		idxOld -= 1
-	EndWhile
-EndFunction
-
-; [OBSOLETE]
-Function AddNewCompanions(Actor[] newCompanions)
-	; Log("AddNewCompanions: " + newCompanions)
-	int idxNew = 0
-	While (idxNew < newCompanions.Length)
-		Actor newComp = newCompanions[idxNew]
-		int newCompId = newComp.GetFormId()
-		
-		;TODO hier kijken of companion geen robot is?
-		; is alleen haast niet te doen; er lijkt geen manier om Keywords van een Class te laden, wat de meest makkelijke manier zou zijn...
-
-		; can't find the new companionId in the current companionIds array?
-		; add it to the current companionIds array, the matching Actor to the currentCompanions array, register the dismiss event, and store the companion's original morphs
-		If (CurrentCompanionIds.Find(newCompId) < 0)
-			Log("  adding companion " + newCompId)
-			CurrentCompanionIds.Add(newCompId)
-			CurrentCompanions.Add(newComp)
-			RegisterForRemoteEvent(newComp, "OnCompanionDismiss")
-			StoreOriginalCompanionMorphs(newComp)
-		EndIf
-		idxNew += 1
-	EndWhile
-EndFunction
-
-;TODO okay, enige issue die ik nu nog zie is dat deze nooit lijkt af te gaan?
-; gevolg is dat bij dismiss van companion de morphs behouden blijven tot UpdateCompanionList getriggerd wordt, die dan (correct) de companion verwijderd
-; heb je deze event geregistreerd you dummy...
-
-; [OBSOLETE]
-Event Actor.OnCompanionDismiss(Actor akSender)
-	; Log("Actor.OnCompanionDismiss: " + akSender)
-	; int idxComp = CurrentCompanions.Find(akSender)
-	; If (idxComp >= 0)
-	; 	CurrentCompanionIds.Remove(idxComp)
-	; 	CurrentCompanions.Remove(idxComp)
-	; 	RestoreOriginalCompanionMorphs(akSender, idxComp)
-	; EndIf
-EndEvent
-
 float Function GetRandomDelay(int min = 2, int max = 6)
 	return (Utility.RandomInt(min,max) * 0.1) as float
 EndFunction
@@ -2157,7 +1733,6 @@ Function UnequipSlots()
 	If (UnequipStackSize <= 1)
 		bool found = false
 
-		bool[] compFound = new bool[CurrentCompanions.Length]
 		int idxSet = 0
 
 		; check if we are currently wearing a full-body suit (ie Hazmat suit)
@@ -2223,38 +1798,6 @@ Function UnequipSlots()
 						EndIf
 					EndIf
 
-					; do the same for the companions
-					int idxComp = 0
-					While (idxComp < CurrentCompanions.Length)
-						Actor companion = CurrentCompanions[idxComp]
-						int sex = companion.GetLeveledActorBase().GetSex()
-						If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
-							Actor:WornItem compItem = companion.GetWornItem(UnequipSlots[idxSlot])
-
-							; check if item in the slot is clothes / armor
-							bool compIsArmor = IsItemArmor(compItem)
-							; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
-							; for now this looks if the player is wearing a full-body suit, as having to do that check per companion would prolly kill performance
-							bool compCanUnequip = (compItem.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
-
-							; when item is an armor and we can unequip it, do so
-							If (compIsArmor && compCanUnequip)
-								Log("  unequipping companion(" + companion + ") slot " + UnequipSlots[idxSlot] + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
-
-								;TODO moet hier nog random delay in komen?
-
-								companion.UnequipItem(compItem.item, false, true)
-
-								; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
-								; play the strip sound if available
-								If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
-									LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
-									compFound[idxComp] = true
-								EndIf
-							EndIf
-						EndIf
-						idxComp += 1
-					EndWhile
 					idxSlot += 1
 				EndWhile
 			EndIf
@@ -2270,7 +1813,7 @@ Function TriggerUnequipSlots()
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
-Function UnequipAll(bool effectsCompanions=false)
+Function UnequipAll()
 	; don't bother unequipping if player is in power armor
 	If (PlayerRef.IsInPowerArmor())
 		return
@@ -2279,7 +1822,6 @@ Function UnequipAll(bool effectsCompanions=false)
 	Log("UnequipAll")
 
 	bool found = false
-	bool[] compFound = new bool[CurrentCompanions.Length]
 	int idxSlot = 0
 
 	; these are all the slots we want to unequip
@@ -2317,42 +1859,6 @@ Function UnequipAll(bool effectsCompanions=false)
 			EndIf
 		EndIf
 		
-		; do the same for the companions
-		if (effectsCompanions)
-			;TODO moet dit niet doet als companions niet poppen
-			int idxComp = 0
-			While (idxComp < CurrentCompanions.Length)
-				Actor companion = CurrentCompanions[idxComp]
-
-				;TODO voor nu werkt dit voor alle companions, ipv van een bepaalde sex
-				;int sex = companion.GetLeveledActorBase().GetSex()
-				;If (sliderSet.ApplyCompanion == EApplyCompanionAll || (sex == ESexFemale && sliderSet.ApplyCompanion == EApplyCompanionFemale) || (sex == ESexMale && sliderSet.ApplyCompanion == EApplyCompanionMale))
-
-				Actor:WornItem compItem = companion.GetWornItem(slot)
-
-				; check if item in the slot is not an actor or the pipboy
-				bool compIsArmor = IsItemArmor(compItem)
-
-				; when item is an armor and we can unequip it, do so
-				If (compIsArmor)
-					Log("  unequipping companion(" + companion + ") slot " + slot + " (" + compItem.item.GetName() + " / " + compItem.modelName + ")")
-
-					;TODO moet hier nog random delay in komen?
-
-					companion.UnequipItem(compItem.item, false, true)
-
-					; when the item is no longer equipped and we haven't already unequipped anything (goes across all sliders and slots),
-					; play the strip sound if available and display a notification in top-left
-					If (!compFound[idxComp] && !companion.IsEquipped(compItem.item))
-						;Note("It is too tight for me")
-						LenARM_DropClothesSound.Play(CurrentCompanions[idxComp])
-						compFound[idxComp] = true
-					EndIf
-				EndIf
-				idxComp += 1
-			EndWhile
-		endif
-
 		idxSlot += 1	
 	EndWhile
 	Log("FINISHED UnequipAll")
@@ -2567,7 +2073,7 @@ Function ForgetState(bool isCalledByUser=false)
 	ElseIf (isCalledByUser && ForgetStateCalledByUserCount < 1)
 		Log("  show warning")
 		CancelTimer(ETimerForgetStateCalledByUserTick)
-		MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body or your companion's body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
+		MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
 		ForgetStateCalledByUserCount = 1
 		StartTimer(0.1, ETimerForgetStateCalledByUserTick)
 	; on second button click (or called from system), start the proces
@@ -2591,10 +2097,6 @@ Function ForgetState(bool isCalledByUser=false)
 		UnequipSlots = none
 
 		OriginalMorphs = none
-		OriginalCompanionMorphs = none
-		
-		CurrentCompanionIds = none
-		CurrentCompanions = none
 		
 		CurrentRads = 0.0
 		FakeRads = 0
@@ -2657,22 +2159,6 @@ EndFunction
 ; [OBSOLETE]
 Function Debug_ResetCompanionMorphsArray()
 	MessageBox("Obsolete function")
-
-	; ; in case you have somehow fubar-ed the OriginalCompanionMorphs array
-	; ; first reset all companions' morphs
-	; RestoreAllOriginalCompanionMorphs()
-
-	; ; flush the entire OriginalCompanionMorphs array
-	; OriginalCompanionMorphs = new float[0]
-
-	; ; reset our check bool
-	; HasFilledOriginalCompanionMorphs = false
-
-	; ; fill the OriginalCompanionMorphs array again with the companions morphs
-	; StoreAllOriginalCompanionMorphs()
-
-	; ; the correct morphs will get applied on the next trigger; this is a debug function after all	
-	; MessageBox("Flushed and repopulated companion morphs array")
 EndFunction
 
 ; ------------------------
@@ -2824,7 +2310,6 @@ SliderSet Function SliderSet_Constructor(int idxSet)
 		sliderSet.IsAdditive = MCM.GetModSettingBool("LenA_RadMorphing", "bIsAdditive:Slider" + idxSet)
 		sliderSet.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
 		sliderSet.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
-		sliderSet.ApplyCompanion = MCM.GetModSettingInt("LenA_RadMorphing", "iApplyCompanion:Slider" + idxSet)
 		sliderSet.ExcludeFromPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bExcludeFromPopping:Slider" + idxSet)
 
 		string[] names = StringSplit(sliderSet.SliderName, "|")
@@ -2882,8 +2367,6 @@ Struct SliderSet
 	; [OBSOLETE], always true
 	bool HasAdditiveLimit
 	float AdditiveLimit
-	; [OBSOLETE]
-	int ApplyCompanion
 	bool ExcludeFromPopping
 	; END: MCM values
 
