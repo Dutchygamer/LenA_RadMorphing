@@ -215,7 +215,7 @@ Function PerformUpdateIfNecessary()
 EndFunction
 
 string Function GetVersion()
-	return "0.7.1.1"; Sat Oct 09 11:46:00 UTC+2 2021
+	return "DG 0.8.0.0"; 2024-09-06 10:10 UTC+2
 EndFunction
 
 ; ------------------------
@@ -2052,11 +2052,6 @@ Function Debug_ShowLowestSliderPercentage()
 
 	;TODO ik dump TotalRads hier ff als test in
 	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
-EndFunction
-
-; [OBSOLETE]
-Function Debug_ResetCompanionMorphsArray()
-	MessageBox("Obsolete function")
 EndFunction
 
 ; ------------------------
