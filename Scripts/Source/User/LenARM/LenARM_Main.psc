@@ -449,13 +449,8 @@ Function Startup()
 			ClearAllBalloonsPerks(PlayerRef)
 		endif
 
-		If (UpdateType == EUpdateTypeImmediately)
-			; start timer
-			TimerMorphTick()
-		ElseIf (UpdateType == EUpdateTypeOnSleep)
-			; listen for sleep events
-			RegisterForPlayerSleep()
-		EndIf
+		; start timer
+		TimerMorphTick()
 
 		BloatSuitGiveAmmo()
 
@@ -474,10 +469,7 @@ Function Shutdown(bool withRestore=true)
 		Log("Shutdown")
 		IsShuttingDown = true
 
-		; stop listening for sleep events
-		UnregisterForPlayerSleep()
-	
-		; stop timer
+		; stop timers
 		CancelTimer(ETimerMorphTick)
 		CancelTimer(ETimerBloatSuit)
 	
@@ -675,42 +667,6 @@ Function AddFakeRads()
 	; re-register event listener
 	RegisterForRadiationDamageEvent(PlayerRef)
 EndFunction
-
-; ------------------------
-; Sleep-based morphs
-; ------------------------
-; [OBSOLETE]
-Event OnPlayerSleepStart(float afSleepStartTime, float afDesiredSleepEndTime, ObjectReference akBed)
-	Log("OnPlayerSleepStart: afSleepStartTime=" + afSleepStartTime + ";  afDesiredSleepEndTime=" + afDesiredSleepEndTime + ";  akBed=" + akBed)
-EndEvent
-
-; [OBSOLETE]
-Event OnPlayerSleepStop(bool abInterrupted, ObjectReference akBed)
-	Log("OnPlayerSleepStop: abInterrupted=" + abInterrupted + ";  akBed=" + akBed)
-	; get rads
-	CurrentRads = GetNewRads()
-	If (CurrentRads > 0.0)
-		Log("  rads: " + CurrentRads)
-		int idxSet = 0
-		While (idxSet < SliderSets.Length)
-			SliderSet sliderSet = SliderSets[idxSet]
-			If (sliderSet.IsUsed)
-				Log("  SliderSet " + idxSet)
-				; calculate morph from CurrentRads
-				float newMorph = CalculateMorphPercentage(CurrentRads, sliderSet)
-				Log("    morph " + idxSet + ": " + sliderSet.CurrentMorph + " + " + newMorph)
-				; add morph to existing morph
-				float fullMorph = Math.Min(1.0, sliderSet.CurrentMorph + newMorph)
-				; apply morph
-				SetMorphs(idxSet, sliderSet, fullMorph)
-				sliderSet.CurrentMorph = fullMorph
-			EndIf
-			idxSet += 1
-		EndWhile
-		BodyGen.UpdateMorphs(PlayerRef)
-		TriggerUnequipSlots()
-	EndIf
-EndEvent
 
 ; ------------------------
 ; Timer-based morphs
