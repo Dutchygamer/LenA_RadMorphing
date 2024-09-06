@@ -114,16 +114,6 @@
 		"html": true
 	},
 	{
-		"text": "Apply to companions",
-		"help": "Applies this slider set to your companions (based on your rads).",
-		"type": "stepper",
-		"id": "iApplyCompanion:Slider{{idx}}",
-		"valueOptions": {
-			"sourceType": "ModSettingInt",
-			"options": ["None", "Female", "Male", "All"]
-		}
-	},
-	{
 		"text": "Exclude from popping",
 		"help": "Skip this sliderset when applying morphs when popping. Ignored if popping is not used.",
 		"type": "switcher",
