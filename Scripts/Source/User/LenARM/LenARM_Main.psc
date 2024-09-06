@@ -23,25 +23,13 @@ int[] UnequipSlots
 ; flattened two-dimensional array[idxSliderSet][idxSliderName]
 float[] OriginalMorphs
 
-; [OBSOLETE]
-int UpdateType
 float UpdateDelay
-; [OBSOLETE]
-int RadsDetectionType
-; [OBSOLETE]
-float RandomRadsLower
-; [OBSOLETE]
-float RandomRadsUpper
 
 float LowRadsThreshold
 float MediumRadsThreshold
 float HighRadsThreshold
 
 float CurrentRads
-; [OBSOLETE]
-float FakeRads
-; [OBSOLETE]
-bool TakeFakeRads
 
 ; [OBSOLETE]
 bool HasDoctorOnlySliders
@@ -315,8 +303,6 @@ Event OnTimer(int tid)
 		ShutdownRestoreMorphs()
 	ElseIf (tid == ETimerUnequipSlots)
 		UnequipSlots()
-	ElseIf (tid == ETimerFakeRads)
-		AddFakeRads()
 	ElseIf (tid == ETimerDelayPop)
 		TryPop()
 	ElseIf (tid == ETimerBloatSuit)
@@ -352,17 +338,9 @@ Function Startup()
 
 		LoadSliderSets()
 
-		; get update type from MCM
-		UpdateType = MCM.GetModSettingInt("LenA_RadMorphing", "iUpdateType:General")
-
 		; get duration from MCM
 		UpdateDelay = MCM.GetModSettingFloat("LenA_RadMorphing", "fUpdateDelay:General")
 		
-		; get radiation detection type from MCM
-		RadsDetectionType = MCM.GetModSettingInt("LenA_RadMorphing", "iRadiationDetection:General")
-		RandomRadsLower = MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsLower:General")
-		RandomRadsUpper = MCM.GetModSettingFloat("LenA_RadMorphing", "fRandomRadsUpper:General")
-
 		; get radiation threshold (currently used for morph sounds)
 		; the division by 1000 is needed as rads run from 0 to 1, while the MCM settings are in displayed rads for player's convenience
 		LowRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fLowRadsThreshold:General") / 1000.0
@@ -400,12 +378,6 @@ Function Startup()
 		RegisterForRemoteEvent(DLC03AcadiaDialogueAsterPostExamScene, "OnEnd")
 		RegisterForRemoteEvent(DLC04SettlementDoctor_EndScene, "OnBegin")
 		RegisterForRemoteEvent(DLC04SettlementDoctor_EndScene, "OnEnd")
-
-		If (RadsDetectionType == ERadsDetectionTypeRandom)
-			; start listening for rads damage
-			RegisterForRadiationDamageEvent(PlayerRef)
-			AddFakeRads()
-		EndIf
 
 		; set up lists
 		PoppingUnequippedItems = new Actor:WornItem[0]
@@ -637,35 +609,9 @@ EndFunction
 ; ------------------------
 ; Radiation detection and what not. Doesn't work with god mode (TGM), but works fine with invulnerability mode (TIM).
 ; ------------------------
-; [OBSOLETE]
-Event OnRadiationDamage(ObjectReference akTarget, bool abIngested)
-	Log("OnRadiationDamage: akTarget=" + akTarget + ";  abIngested=" + abIngested)
-	TakeFakeRads = true
-EndEvent
-
 float Function GetNewRads()
-	float newRads = 0.0
-	If (RadsDetectionType == ERadsDetectionTypeRads)
-		newRads = PlayerRef.GetValue(Rads)
-	ElseIf (RadsDetectionType == ERadsDetectionTypeRandom)
-		newRads = FakeRads
-	EndIf
+	float newRads = PlayerRef.GetValue(Rads)
 	return newRads / 1000
-EndFunction
-
-; [OBSOLETE]
-Function AddFakeRads()
-	Log("AddFakeRads")
-	If (TakeFakeRads)
-		; add fake rads
-		FakeRads += Utility.RandomFloat(RandomRadsLower, RandomRadsUpper)
-		Log("  FakeRads: " + FakeRads)
-		TakeFakeRads = false
-	EndIf
-	; restart timer
-	StartTimer(1.0, ETimerFakeRads)
-	; re-register event listener
-	RegisterForRadiationDamageEvent(PlayerRef)
 EndFunction
 
 ; ------------------------
@@ -1050,9 +996,7 @@ Function ResetMorphs()
 	; reset the pop warnings
 	PopWarnings = 0
 
-	; reset the fake rads
-	FakeRads = 0
-	TakeFakeRads = false
+	; reset the total rads
 	TotalRads = 0
 
 	; reset the rad perks
@@ -2055,8 +1999,6 @@ Function ForgetState(bool isCalledByUser=false)
 		OriginalMorphs = none
 		
 		CurrentRads = 0.0
-		FakeRads = 0
-		TakeFakeRads = false
 		HasReachedMaxMorphs = false
 		PopWarnings = 0
 
@@ -2213,32 +2155,11 @@ Group EnumTimerId
 	int Property ETimerForgetStateCalledByUserTick = 2 Auto Const
 	int Property ETimerShutdownRestoreMorphs = 3 Auto Const
 	int Property ETimerUnequipSlots = 4 Auto Const
-	int Property ETimerFakeRads = 5 Auto Const
+	; int Property ETimerFakeRads = 5 Auto Const
 	int Property ETimerDelayPop = 6 Auto Const
 	int Property ETimerBloatSuit = 7 Auto Const
 EndGroup
 
-; [OBSOLETE]
-Group EnumApplyCompanion
-	int Property EApplyCompanionNone = 0 Auto Const
-	int Property EApplyCompanionFemale = 1 Auto Const
-	int Property EApplyCompanionMale = 2 Auto Const
-	int Property EApplyCompanionAll = 3 Auto Const
-EndGroup
-
-; [OBSOLETE], always Immediately
-Group EnumUpdateType
-	int Property EUpdateTypeImmediately = 0 Auto Const
-	int Property EUpdateTypeOnSleep = 1 Auto Const
-EndGroup
-
-; [OBSOLETE], always rads
-Group EnumRadsDetectionType
-	int Property ERadsDetectionTypeRads = 0 Auto Const
-	int Property ERadsDetectionTypeRandom = 1 Auto Const
-EndGroup
-
-; [OBSOLETE]
 Group EnumSex
 	int Property ESexMale = 0 Auto Const
 	int Property ESexFemale = 1 Auto Const
