@@ -820,8 +820,6 @@ Function TimerMorphTick()
 	endif
 EndFunction
 
-
-
 float Function CheckCarriedBalloons()
 	if (!hasHadMoleCowDisease)
 		return 0
@@ -863,7 +861,6 @@ float Function CheckCarriedBalloons()
 		;endif
 	endif
 EndFunction
-
 
 ; ------------------------
 ; Slider set overrides
@@ -1249,7 +1246,7 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on NPCs.
 ; ------------------------
-Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
+Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
 		return
@@ -1270,13 +1267,13 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd = 1)
 
 	; keep bloating the actor until the bloatStage is equal to expected result
 	while (nextBloatStage <= maxBloatStage)
-		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage)
+		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated)
 		
 		nextBloatStage += 1
 	endwhile
 EndFunction
 
-Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage)
+Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated = false)
 	;TODO zoek na of je dit ergens kan standardizeren, echter heb ik er weinig hoop op
 	; de andere twee plekken zijn SetMorphs en SetCompanionMorphs en die doen dingen in die loop specifiek voor player en companions
 
@@ -1318,14 +1315,37 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	; pop the actor 
 	elseif (perkLevel == 5 && nextBloatStage > 5)		
 		Utility.Wait(randomFloat)
-		BloatPop(akTarget)
+		BloatPop(akTarget, isConcentrated)
 	endif
 EndFunction
 
-Function BloatPop(Actor akTarget)
+Function BloatPop(Actor akTarget, bool isConcentrated)
 	; when we pop a non-essential hostile enemy, small chance that we pop in a more permanent way
 	float messyPopChance = 0.1
+	; when hit by concentrated shot the permanent pop chance is much larger
+	if (isConcentrated)
+		messyPopChance = 0.5
+	endif
 	bool messyPop = (akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true && aktarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
+
+	; before we start expanding log the current breasts size
+	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
+	
+	; the bigger the breasts are, the more milk we will add at the end
+	; current settings' base morph is 0.5 
+	int milkToAdd = 1
+	if (npcMorph >= 0.55)
+		milkToAdd += 1
+	endif
+	if (npcMorph >= 0.65)
+		milkToAdd += 1
+	endif
+	if (npcMorph >= 0.85)
+		milkToAdd += 1
+	endif
+	if (npcMorph >= 1.1)
+		milkToAdd += 1
+	endif
 
 	; paralyze actor first
 	PlayMorphSound(akTarget, 4)
@@ -1394,9 +1414,14 @@ Function BloatPop(Actor akTarget)
 	LenARM_PrePopSound.PlayAndWait(akTarget)
 	
 	; messy pop kills actor and places a grenade explosion
-	if (messyPop)
-		; add some more bloating ammo to actor's inventory when they've been allowed to pop
-		akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, 1, abSilent = true)	
+	if (messyPop)		
+		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
+		; reduce by 2 (capped to min 1) to not give too many freebies
+		milkToAdd -= 2
+		if (milkToAdd < 1)
+			milkToAdd = 1
+		endif
+		akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, milkToAdd, abSilent = true)	
 
 		; clear rad perks so we don't keep ambient noise
 		ClearAllRadsPerks(akTarget)
@@ -1410,7 +1435,7 @@ Function BloatPop(Actor akTarget)
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
 		; add some more bloating ammo to actor's inventory when they've been allowed to pop
-		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
+		akTarget.AddItem(ThirstZapperBloatAmmo, milkToAdd, abSilent = true)
 
 		LenARM_PopSound.Play(akTarget)
 		; spread the joy to nearby NPCs

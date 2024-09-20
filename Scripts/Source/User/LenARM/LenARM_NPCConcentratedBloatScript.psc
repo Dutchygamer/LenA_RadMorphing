@@ -1,9 +1,8 @@
-ScriptName LenARM:LenARM_NPCBloatScript extends ActiveMagicEffect
+ScriptName LenARM:LenARM_NPCConcentratedBloatScript extends ActiveMagicEffect
 
 LenARM_Main Property LenARM_Main Auto
 actorValue property NPCBloatStage auto	
-actorValue property NPCBloatImmunity auto	
-int property StageToAdd = 1 auto
+actorValue property NPCBloatImmunity auto
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
     ; when in Power Armor, dead or immune to bloating don't morph
@@ -12,6 +11,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 	EndIf
     
 	int sex = akTarget.GetLeveledActorBase().GetSex()
+    int StageToAdd = 5
 
     ; for now only work on females
     if (sex == LenARM_Main.ESexFemale)     
@@ -22,21 +22,16 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         int expectedBloatStage = currentBloatStage + StageToAdd
         akTarget.SetValue(NPCBloatStage, expectedBloatStage)
 
-        LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, false)
+        LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, true)
 
         ; after popping, keep us paralyzed for a bit
-        if (expectedBloatStage > 5)
-            akTarget.SetValue(NPCBloatStage, 0)
+        akTarget.SetValue(NPCBloatStage, 0)
 
-            ; wait a bit before taking away our immunity
-            Utility.Wait(1)
-            akTarget.SetValue(NPCBloatImmunity, 0)
-            ; unparalyze the npc after a bit, but do leave them open for renewed bloating
-            Utility.Wait(9)
-            LenARM_Main.UnParalyzeActor(akTarget)
-        ; else take away our immunity directly
-        else
-            akTarget.SetValue(NPCBloatImmunity, 0)
-        endif
+        ; wait a bit before taking away our immunity
+        Utility.Wait(1)
+        akTarget.SetValue(NPCBloatImmunity, 0)
+        ; unparalyze the npc after a bit, but do leave them open for renewed bloating
+        Utility.Wait(9)
+        LenARM_Main.UnParalyzeActor(akTarget)
     endif
 EndEvent
