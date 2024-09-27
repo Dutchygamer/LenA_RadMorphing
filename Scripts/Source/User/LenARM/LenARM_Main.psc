@@ -1333,7 +1333,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	
 	; the bigger the breasts are, the more milk we will add at the end
 	; current settings' base morph is 0.5 
-	int milkToAdd = 1
+	int milkToAdd = 3
 	if (npcMorph >= 0.55)
 		milkToAdd += 1
 	endif
@@ -1416,8 +1416,8 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	; messy pop kills actor and places a grenade explosion
 	if (messyPop)		
 		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
-		; reduce by 2 (capped to min 1) to not give too many freebies
-		milkToAdd -= 2
+		; reduce by 3 (capped to min 1) to not give too many freebies
+		milkToAdd -= 3
 		if (milkToAdd < 1)
 			milkToAdd = 1
 		endif
