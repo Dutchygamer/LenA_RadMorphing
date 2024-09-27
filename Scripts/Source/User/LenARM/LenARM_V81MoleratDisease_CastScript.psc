@@ -10,11 +10,13 @@ float Property CastTimerInterval_Max = 30.0 const auto
 {how often should we cast the spell on the actor}
 
 message Property MessageToDisplay const auto mandatory
+message Property Tutorial_MessageToDisplay const auto mandatory
 
 EndGroup
 
 int castTimerId = 159763
 int equipDelayTimerId = 159764
+bool TutorialDisplayed_MilkSurge = false
 
 Event OnEffectStart(Actor akTarget, Actor akCaster) 
     float timer = Utility.RandomFloat(CastTimerInterval_Min, CastTimerInterval_Max)
@@ -42,7 +44,13 @@ Function CastSpellAndStartTimer()
 	if IsBoundGameObjectAvailable() ;is effect still running on a legit object?
 		actor actorRef = GetTargetActor()
 		SpellToCast.cast(actorRef, actorRef)
-		MessageToDisplay.show()
+        
+        if (!TutorialDisplayed_MilkSurge)
+            TutorialDisplayed_MilkSurge = true
+            Tutorial_MessageToDisplay.ShowAsHelpMessage("Tutorial_MessageToDisplay", 8, 0, 1)
+        else
+            MessageToDisplay.show()
+        endif
 	
         float timer = Utility.RandomFloat(CastTimerInterval_Min, CastTimerInterval_Max)
 		startTimer(timer, castTimerId)
