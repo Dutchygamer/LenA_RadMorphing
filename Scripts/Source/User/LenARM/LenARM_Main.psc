@@ -1340,7 +1340,10 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	if (npcMorph >= 0.65)
 		milkToAdd += 1
 	endif
-	if (npcMorph >= 0.85)
+	if (npcMorph >= 0.80)
+		milkToAdd += 1
+	endif
+	if (npcMorph >= 0.95)
 		milkToAdd += 1
 	endif
 	if (npcMorph >= 1.1)
