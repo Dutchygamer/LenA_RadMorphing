@@ -129,9 +129,11 @@ Group Properties
 
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
+	Message Property LenARM_MaxedOutMorphsWithPoppingMessage Auto
 	Message Property LenARM_PopWarning0Message Auto
 	Message Property LenARM_PopWarning1Message Auto
 	Message Property LenARM_PopWarning2Message Auto
+	Message Property LenARM_PopMessage Auto
 	Message Property LenARM_RadPurgeFailureMessage Auto
 	Message Property LenARM_RadPurgePopFailureMessage Auto
 	Message Property LenARM_RadPurgeSuccessMessage Auto
@@ -781,7 +783,11 @@ Function TimerMorphTick()
 		; also play a sound effect if we have it
 		if (!HasReachedMaxMorphs)
 			if (!IsStartingUp)
-				LenARM_MaxedOutMorphsMessage.Show()
+				if (EnablePopping)
+					LenARM_MaxedOutMorphsWithPoppingMessage.Show()
+				else
+					LenARM_MaxedOutMorphsMessage.Show()
+				endif
 				PlayMorphSound(PlayerRef, 4)
 			endif
 			HasReachedMaxMorphs = true
@@ -1129,6 +1135,7 @@ Function Pop()
 
 	IsPopping = true
 
+	LenARM_PopMessage.Show()
 	Log("pop!")
 
 	; force third person camera when we paralyze the player
