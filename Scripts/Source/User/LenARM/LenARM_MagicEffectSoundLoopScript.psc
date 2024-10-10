@@ -21,11 +21,19 @@ EndEvent
 
 
 Function PlaySoundAndStartTimer()
-	if IsBoundGameObjectAvailable() ; is effect still running on a legit object?
+	 ; is effect still running on a legit object?
+	if IsBoundGameObjectAvailable()
 		actor akTarget = self.GetTargetActor()
-		if (SoundLoopID) ; nullcheck in case the sound hasn't started yet
+
+		 ; nullcheck in case the sound hasn't started yet
+		if (SoundLoopID)
 			Sound.StopInstance(SoundLoopID)
 		endif
+		; when actor is dead, don't restart the sound nor the timer; we're done
+		if (akTarget.IsDead())
+			return
+		endif
+
 		SoundLoopID = SoundLoop.Play(akTarget)
 		startTimer(CastTimerInterval, castTimerId)
 	endif
