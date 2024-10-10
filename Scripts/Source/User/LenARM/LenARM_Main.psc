@@ -119,6 +119,7 @@ Group Properties
 	Sound Property LenARM_MorphSound_High Auto Const
 	Sound Property LenARM_FullSound Auto Const
 	Sound Property LenARM_SwellSound Auto Const
+	Sound Property LenARM_SwellPopSound Auto Const
 	Sound Property LenARM_PrePopSound Auto Const
 	Sound Property LenARM_PopSound Auto Const
 	Sound Property LenARM_PopMessySound Auto Const
@@ -1376,6 +1377,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	; messy pop makes actor bigger as warning for attent player
 	if (messyPop)
 		popStatesToUse *= 2
+		multiplier = 0.15
 	endif
 
 	; gradually increase the morphs and unequip the clothes
@@ -1392,9 +1394,9 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		; play normal swell sound when bloating normally
 		if (currentPopState < PopStates)
 			PlayMorphSound(akTarget, 5)
-		; when we are bloating beyond normal play the full sound 
+		; when we are bloating beyond normal play the alt swell sound 
 		else
-			PlayMorphSound(akTarget, 4)
+			PlayMorphSound(akTarget, 6)
 		endif
 
 		; add bloating ammo to actor's inventory
@@ -1978,6 +1980,7 @@ EndFunction
 ; 3 = MorphSound_High
 ; 4 = MorphSound_Full
 ; 5 = MorphSound_Swell
+; 6 = MorphSound_SwellPop
 ; ------------------------
 ;TODO wellicht omzetten naar losse consts en bovenin definieren en dan gebruiken
 Function PlayMorphSound(Actor akSender, int soundId)
@@ -1991,6 +1994,8 @@ Function PlayMorphSound(Actor akSender, int soundId)
 		LenARM_FullSound.Play(akSender)
 	elseif (soundId == 5)
 		LenARM_SwellSound.Play(akSender)
+	elseif (soundId == 6)
+		LenARM_SwellPopSound.Play(akSender)
 	endif
 EndFunction
 
