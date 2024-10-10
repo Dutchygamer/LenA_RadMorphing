@@ -29,7 +29,7 @@ Function Fragment_Entry_00(ObjectReference akTargetRef, Actor akActor)
 
 		LenARM_InjectSound.PlayAndWait(akTarget)
 
-        Utility.Wait(1.0)
+        ;Utility.Wait(1.0)
 
         BloatSpell.cast(akTarget)
     endif
