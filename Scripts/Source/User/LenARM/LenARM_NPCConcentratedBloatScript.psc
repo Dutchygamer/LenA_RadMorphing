@@ -11,7 +11,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 	EndIf
     
 	int sex = akTarget.GetLeveledActorBase().GetSex()
-    int StageToAdd = 5
+    int StageToAdd = 6
 
     ; for now only work on females
     if (sex == LenARM_Main.ESexFemale)     
