@@ -22,6 +22,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         int expectedBloatStage = currentBloatStage + StageToAdd
         akTarget.SetValue(NPCBloatStage, expectedBloatStage)
 
+        ; for concentrated we explicetly set `isConcentrated` to true
         LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, true)
 
         ; after popping, keep us paralyzed for a bit

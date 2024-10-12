@@ -24,19 +24,22 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 
         LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, false)
 
-        ; after popping, keep us paralyzed for a bit
-        if (expectedBloatStage > 5)
-            akTarget.SetValue(NPCBloatStage, 0)
+        ; if not dead by now (ie messy popped), do some additional actions
+        if (!akTarget.IsDead())
+            ; after popping, keep us paralyzed for a bit
+            if (expectedBloatStage > 5)
+                akTarget.SetValue(NPCBloatStage, 0)
 
-            ; wait a bit before taking away our immunity
-            Utility.Wait(1)
-            akTarget.SetValue(NPCBloatImmunity, 0)
-            ; unparalyze the npc after a bit, but do leave them open for renewed bloating
-            Utility.Wait(9)
-            LenARM_Main.UnParalyzeActor(akTarget)
-        ; else take away our immunity directly
-        else
-            akTarget.SetValue(NPCBloatImmunity, 0)
+                ; wait a bit before taking away our immunity
+                Utility.Wait(1)
+                akTarget.SetValue(NPCBloatImmunity, 0)
+                ; unparalyze the npc after a bit, but do leave them open for renewed bloating
+                Utility.Wait(9)
+                LenARM_Main.UnParalyzeActor(akTarget)
+            ; else take away our immunity directly
+            else
+                akTarget.SetValue(NPCBloatImmunity, 0)
+            endif
         endif
     endif
 EndEvent
