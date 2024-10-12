@@ -70,7 +70,6 @@ int MaxRadiationMultiplier
 
 bool EnableRadsPerks
 int CurrentRadsPerk
-
 int CurrentBalloonsPerk
 
 ; HeliumBalloon shenenigens
@@ -860,7 +859,6 @@ float Function CheckCarriedBalloons()
 			carriedBalloons = newCarriedBalloons
 		endif
 		
-
 		;if (forceUpdate)
 		return carriedBalloons * 0.002
 		;else
@@ -1041,17 +1039,24 @@ bool Function ShouldPop(int popChance)
 	; we do the luck - 1 so a luck of 1 doesn't always give a minimum boost of 1
 	; ie luck of 1 becomes 0, luck 3 becomes 1, luck of 10 becomes 3
 	int luckMod = ((playerLuck-1) / 3) * -1
-	; molecow disease and nipple blockers increase chance of popping
-	int moleCowDiseaseMod = hasHadMoleCowDisease as int ;? 1 : 0
-	int nippleBlockersMod = hasNippleBlockers as int ;? 1 : 0
-	; bloating suit equipped decrease chance of popping
-	int bloatSuitMod = (hasBloatingSuitEquipped as int)*-1 ;? -1 : 0
+	; molecow disease increase chance of popping (breasts are already pre-bloated)
+	int moleCowDiseaseMod = hasHadMoleCowDisease as int
+	; nipple blockers increase chance of popping (can't lactate easily to relief pressure)
+	int nippleBlockersMod = hasNippleBlockers as int
+	; carrying more then 30 balloons increase chance of popping (breasts are already pre-bloated)
+	int balloonsMod = 0
+	if ((carriedBalloons / 10) > 3)
+		balloonsMod = 1
+	endif
+
+	; bloating suit equipped decrease chance of popping (milkers provide relief)
+	int bloatSuitMod = (hasBloatingSuitEquipped as int)*-1
 
 	;Note("luck " + luckMod + "; molecow " + moleCowDiseaseMod + "; nipple " + nippleBlockersMod + "; suit " + bloatSuitMod)
 
 	; base pop chance is X/10, but X can be modified by above modifiers
 	; depending on X and modifiers it can become 0 or less, so cap it to a minimum of 1
-	int modifiedPopChance = popChance + luckMod + moleCowDiseaseMod + nippleBlockersMod + bloatSuitMod
+	int modifiedPopChance = popChance + luckMod + moleCowDiseaseMod + nippleBlockersMod + balloonsMod + bloatSuitMod
 	if (modifiedPopChance < 1)
 		modifiedPopChance = 1
 	endif
@@ -1403,7 +1408,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 		; for the unequip state we also want to strip all clothes and armor
-		If (currentPopState == PopStripState)
+		If (currentPopState == PopStripState || currentPopState == PopStates )
 			UnequipAllNPC(akTarget)
 		endif
 
@@ -1568,36 +1573,6 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 	return 0
 EndFunction
 
-
-; ------------------------
-; Check the total carried balloons, and apply the matching balloonsPerk to the player
-; ------------------------
-Function ApplyBalloonsPerk()
-	int currentCount = (carriedBalloons / 10)
-
-	; when we have less then 10 balloons, clear all existing perks and don't apply a new one
-	if (currentCount < 1)
-		ClearAllBalloonsPerks(PlayerRef)
-		return
-	endif
-
-	; limit to 3 just in case (we have 3 perks)
-    If (currentCount > 3)
-        currentCount = 3
-    EndIf
-
-	; subtract 1 from our count as the Perks start from 0
-	int newBalloonsPerk = currentCount -1
-	; when we have enough balloons that we should have a difference in perk level, change perks
-	if (CurrentBalloonsPerk != newBalloonsPerk)
-		ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
-		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
-		PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
-		
-		CurrentBalloonsPerk = newBalloonsPerk
-	endif
-EndFunction
-
 ; ------------------------
 ; Loops through all possible radsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
 ; Does not apply the matching radsPerk, you must do that manually.
@@ -1627,6 +1602,36 @@ EndFunction
 
 Function ClearAllRadsPerks(Actor akTarget)
     ClearOldRadsPerks(akTarget, -1)
+EndFunction
+
+
+; ------------------------
+; Check the total carried balloons, and apply the matching balloonsPerk to the player
+; ------------------------
+Function ApplyBalloonsPerk()
+	int currentCount = (carriedBalloons / 10)
+
+	; when we have less then 10 balloons, clear all existing perks and don't apply a new one
+	if (currentCount < 1)
+		ClearAllBalloonsPerks(PlayerRef)
+		return
+	endif
+
+	; limit to 3 just in case (we have 3 perks)
+    If (currentCount > 3)
+        currentCount = 3
+    EndIf
+
+	; subtract 1 from our count as the Perks start from 0
+	int newBalloonsPerk = currentCount -1
+	; when we have enough balloons that we should have a difference in perk level, change perks
+	if (CurrentBalloonsPerk != newBalloonsPerk)
+		ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
+		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
+		PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
+		
+		CurrentBalloonsPerk = newBalloonsPerk
+	endif
 EndFunction
 
 ; ------------------------
