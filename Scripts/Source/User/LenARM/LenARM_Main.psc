@@ -120,12 +120,14 @@ Group Properties
 	Sound Property LenARM_SwellSound Auto Const
 	Sound Property LenARM_SwellPopSound Auto Const
 	Sound Property LenARM_PrePopSound Auto Const
+	Sound Property LenARM_PrePopMessySound Auto Const
 	Sound Property LenARM_PopSound Auto Const
 	Sound Property LenARM_PopMessySound Auto Const
 	Sound Property LenARM_PurgeFailSound Auto Const
 	Sound Property LenARM_FullGroanSound Auto Const
 	Sound Property LenARM_BloatSuitMilkSound Auto Const
 	Sound Property LenARM_BalloonTriggerSound Auto Const
+	Sound Property LenARM_NPCPopComment Auto Const
 
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
@@ -147,8 +149,6 @@ Group Properties
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
 
-	Potion Property GlowingOneBlood Auto Const
-
 	Perk[] Property RadsPerkArray Auto
 	Perk Property RadsPerkFull Auto
 	
@@ -156,11 +156,13 @@ Group Properties
 
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
+	Potion Property GlowingOneBlood Auto Const
 	Potion Property PoppedPotion Auto Const	
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
 	Potion Property ResetRadsPotion Auto Const
 	Potion Property BloatSuitInjectAgent Auto Const
+	Potion Property BloatSuitPoppedNPCBuff Auto Const
 
 	Spell Property MoleCowMilkSpell Auto Const
 	MagicEffect Property LenARM_MS19MoleratEffect Auto Const
@@ -1427,11 +1429,11 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	totalPopMultiplier += multiplier
 	
 	BodyGen.UpdateMorphs(akTarget)
-
-	LenARM_PrePopSound.PlayAndWait(akTarget)
 	
 	; messy pop kills actor and places a grenade explosion
-	if (messyPop)		
+	if (messyPop)
+		LenARM_PrePopMessySound.PlayAndWait(akTarget)
+
 		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
 		; reduce by 3 (capped to min 1) to not give too many freebies
 		milkToAdd -= 3
@@ -1447,10 +1449,21 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		; spread the joy to nearby NPCs
 		akTarget.PlaceAtMe(BloatGrenadeExplosion)	
 
+		; dismember and kill actor
+		; sadly no way to give the XP to the player even if we tell the player is the killer
 		akTarget.Dismember("Torso", true, true, true)
 		akTarget.Kill()
+		LenARM_NPCPopComment.Play(PlayerRef)
+		
+		;LenARM_BloatingAgentInjectedMessage.Show()
+		; give player a temp buff if bloating suit is equipped
+		if (hasBloatingSuitEquipped)
+			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
+		LenARM_PrePopSound.PlayAndWait(akTarget)
+
 		; add some more bloating ammo to actor's inventory when they've been allowed to pop
 		akTarget.AddItem(ThirstZapperBloatAmmo, milkToAdd, abSilent = true)
 

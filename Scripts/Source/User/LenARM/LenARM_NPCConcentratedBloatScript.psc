@@ -25,14 +25,17 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         ; for concentrated we explicetly set `isConcentrated` to true
         LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, true)
 
-        ; after popping, keep us paralyzed for a bit
-        akTarget.SetValue(NPCBloatStage, 0)
+        ; if not dead by now (ie messy popped), do some additional actions
+        if (!akTarget.IsDead())
+            ; after popping, keep us paralyzed for a bit
+            akTarget.SetValue(NPCBloatStage, 0)
 
-        ; wait a bit before taking away our immunity
-        Utility.Wait(1)
-        akTarget.SetValue(NPCBloatImmunity, 0)
-        ; unparalyze the npc after a bit, but do leave them open for renewed bloating
-        Utility.Wait(9)
-        LenARM_Main.UnParalyzeActor(akTarget)
+            ; wait a bit before taking away our immunity
+            Utility.Wait(1)
+            akTarget.SetValue(NPCBloatImmunity, 0)
+            ; unparalyze the npc after a bit, but do leave them open for renewed bloating
+            Utility.Wait(9)
+            LenARM_Main.UnParalyzeActor(akTarget)
+        endif
     endif
 EndEvent
