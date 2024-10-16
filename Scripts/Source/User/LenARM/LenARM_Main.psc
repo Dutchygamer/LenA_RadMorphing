@@ -2197,7 +2197,7 @@ EndFunction
 
 ; write a line to the log
 Function Log(string msg)
-	Debug.Trace("[LenARM] " + msg)
+	; Debug.Trace("[LenARM] " + msg)
 EndFunction
 
 ; ------------------------
