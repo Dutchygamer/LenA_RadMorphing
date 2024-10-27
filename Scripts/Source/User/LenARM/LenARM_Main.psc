@@ -59,6 +59,7 @@ bool canGiveBloatingSuitAmmo = true
 bool hasHadMoleCowDisease = false
 ; does player have nipple blockers equipped?
 bool hasNippleBlockers = false
+bool hasMooMilkAddiction = false
 
 ; do we want to force a morphs update during next run even if there has been no rads changes?
 bool forceUpdate = false
@@ -166,6 +167,7 @@ Group Properties
 
 	Spell Property MoleCowMilkSpell Auto Const
 	MagicEffect Property LenARM_MS19MoleratEffect Auto Const
+	MagicEffect Property MooMilkAddictionEffect Auto Const
 	
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatGrenadeExplosion Auto
@@ -255,6 +257,15 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && MoleCowMilkTriggers.Find(akBaseObject) > -1)
 		LenARM_MoleCowMilkTriggerMessage.Show()
 		MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
+	endif
+	
+	; if player suffers from mooMilk addiction or gets rid of it, adjust the bool
+	if (hasMooMilkAddiction == false && PlayerRef.HasMagicEffect(MooMilkAddictionEffect))
+		hasMooMilkAddiction = true
+		Note("moomilk!")
+	elseif(hasMooMilkAddiction == true && PlayerRef.HasMagicEffect(MooMilkAddictionEffect) == false)
+		hasMooMilkAddiction = false
+		Note("no moomilk!")
 	endif
 EndEvent
 
@@ -960,6 +971,10 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasNippleBlockers)
 			morphBonus += 0.1
 		endif
+		; player has mooMilk addiction
+		if (hasMooMilkAddiction)
+			morphBonus += 0.2
+		endif
 	endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
@@ -1630,9 +1645,9 @@ Function ApplyBalloonsPerk()
 		return
 	endif
 
-	; limit to 3 just in case (we have 3 perks)
-    If (currentCount > 3)
-        currentCount = 3
+	; limit to 4 just in case (we have 4 perks)
+    If (currentCount > 4)
+        currentCount = 4
     EndIf
 
 	; subtract 1 from our count as the Perks start from 0
@@ -1656,7 +1671,7 @@ Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
     int i = 0	
 	; loop through the standard perks, remove when not matching new perk level
 	;TODO kan je niet gewoon BalloonsPerkArray.Length doen?
-    While (i <= 2)
+    While (i <= 3)
         If (i != newPerkLevel && akTarget.HasPerk(BalloonsPerkArray[i]))
 			; Log("Removing radsperk of level " + i)
 			akTarget.RemovePerk(BalloonsPerkArray[i])
