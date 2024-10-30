@@ -262,10 +262,10 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	; if player suffers from mooMilk addiction or gets rid of it, adjust the bool
 	if (hasMooMilkAddiction == false && PlayerRef.HasMagicEffect(MooMilkAddictionEffect))
 		hasMooMilkAddiction = true
-		Note("moomilk!")
+		;Note("moomilk!")
 	elseif(hasMooMilkAddiction == true && PlayerRef.HasMagicEffect(MooMilkAddictionEffect) == false)
 		hasMooMilkAddiction = false
-		Note("no moomilk!")
+		;Note("no moomilk!")
 	endif
 EndEvent
 
