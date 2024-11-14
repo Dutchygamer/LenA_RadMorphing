@@ -644,16 +644,15 @@ Function TimerMorphTick()
 	; setup the raw morphs percentage
 	float rawMorphInput = 0
 
-	; modify raw morphs percentage by carried balloons
-	float balloonsMorph = CheckCarriedBalloons()
-	rawMorphInput += balloonsMorph
-
-	; get the player's current Rads
+	; modify raw morphs percentage by player's current Rads
 	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
-
-	; modify raw morphs percentage by current rads
 	rawMorphInput += newRads
+
+	; modify raw morphs percentage by carried balloons
+	; each balloon counts as 5 rads
+	float balloonsMorph = CheckCarriedBalloons()
+	rawMorphInput += balloonsMorph
 
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
@@ -850,22 +849,15 @@ float Function CheckCarriedBalloons()
 	else
 		;TODO je kan ook kijken of de ESP erin hangt
 		;Game.IsPluginInstalled("xxx.esp")
-		; get amount of carried balloons from HeliumBalloon.esp
-		; float result = 0
 
+		; get amount of carried balloons from HeliumBalloon.esp
 		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
 		if (carriedBalloons != newCarriedBalloons) 
 			; we are interested in the carried balloons in intervals of 10
 			int currentCount = (carriedBalloons / 10)
 			int newCount = (newCarriedBalloons / 10)
 	
-			; always force a morphs update when the carried balloon count increases
-			; if (newCount > currentCount)
-			; if (newCarriedBalloons > carriedBalloons)
-			; 	forceUpdate = true
-			; endif
-
-			; when we carry more balloons then before display a message
+			; when we carry 10 more balloons then before display a message
 			if (newCount > currentCount)
 				LenARM_BalloonTriggerMessage.Show()
 				LenARM_BalloonTriggerSound.Play(PlayerRef)
@@ -874,13 +866,8 @@ float Function CheckCarriedBalloons()
 			carriedBalloons = newCarriedBalloons
 		endif
 		
-		; ; when we force an update return balloon count as a morphs modifiers
-		; if (forceUpdate)
-			; each balloon is 0.5% rads worth of morphs so 5% per each set of 10
-			return carriedBalloons * 0.005 ;0.002
-		; else
-		; 	return 0
-		; endif
+		; each balloon is 5% rads worth of morphs
+		return carriedBalloons * 0.005 ;0.002
 	endif
 EndFunction
 
