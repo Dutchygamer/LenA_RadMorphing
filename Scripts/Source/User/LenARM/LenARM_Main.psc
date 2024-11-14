@@ -29,11 +29,13 @@ float LowRadsThreshold
 float MediumRadsThreshold
 float HighRadsThreshold
 
+; TODO wat doe jij sowieso? we setten je een paar keer maar lezen je nooit uit
 float CurrentRads
+; aka current morph percentage based on rads + other modifiers
+float TotalRads
 
 ; [OBSOLETE]
 bool HasDoctorOnlySliders
-float TotalRads
 
 ; has the player reached the max on all sliderSets? this includes additive morphing if these are limited
 bool HasReachedMaxMorphs
@@ -653,26 +655,26 @@ Function TimerMorphTick()
 	; modify raw morphs percentage by current rads
 	rawMorphInput += newRads
 
-	;TODO theorie is dat door rawMorphInput te gebruiken ipv newRads je dan morphs van beide kan optellen
-	; Note("total rads: " + newRads + " + balloons: " + balloonsMorph + " = raw morph input: " + rawMorphInput)
-
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
-	If (!forceUpdate && newRads == CurrentRads)
+	If (!forceUpdate && rawMorphInput == CurrentRads)
 		StartTimer(UpdateDelay, ETimerMorphTick)
 		return
 	endif
 
 	; calculate the amount of rads taken
 	; the longer the timer interval, the larger this will be
-	float radsDifference = newRads - CurrentRads
-	Log("rads taken: " + (radsDifference * 1000))
+	float radsDifference = rawMorphInput - CurrentRads
 	
-	CurrentRads = newRads
+	; update our internal storage with the new morphs
+	CurrentRads = rawMorphInput
 
+	; MessageBox("total rads: " + newRads + " + balloons: " + balloonsMorph + " = raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference); + " vs CurrentRads: " + CurrentRads)
+
+	; TODO de else is de huidige waarheid gezien we alleen doctor only sliders ondersteunen nu
 	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
 	if (!HasDoctorOnlySliders)
-		TotalRads = newRads
+		TotalRads = rawMorphInput
 	; if we do have doctor-only reset sliders, only update TotalRads if it is an increase in rads
 	elseif (radsDifference > 0)
 		TotalRads += radsDifference
@@ -696,7 +698,7 @@ Function TimerMorphTick()
 
 		; only use sliderSets which have actual entries
 		If (sliderSet.NumberOfSliderNames > 0)
-			float calculatedMorphPercentage = CalculateMorphPercentage(newRads, sliderSet)
+			float calculatedMorphPercentage = CalculateMorphPercentage(rawMorphInput, sliderSet)
 
 			; only try to apply the morphs if either
 			; - the new morph is larger then the slider's current morph
@@ -736,7 +738,9 @@ Function TimerMorphTick()
 						; when the morphs are not maxed out, set this on the sliderSet
 						else
 							sliderSet.IsMaxedOut = false
-						endif								
+						endif	
+
+					; TODO gehele elseif is obsolete!							
 					; - sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
 					; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
 					elseif (!GetOnlyDoctorCanReset(sliderSet) && (!sliderSet.IsMaxedOut || radsDifference < 0))
@@ -854,14 +858,12 @@ float Function CheckCarriedBalloons()
 			; we are interested in the carried balloons in intervals of 10
 			int currentCount = (carriedBalloons / 10)
 			int newCount = (newCarriedBalloons / 10)
-
-			;result = carriedBalloons / 10
-
-			; always force a morphs update when the carried balloon count changes
-			; this goes both ways (carrying both more or less balloons then currently)
-			if (currentCount != newCount)
-				forceUpdate = true
-			endif
+	
+			; always force a morphs update when the carried balloon count increases
+			; if (newCount > currentCount)
+			; if (newCarriedBalloons > carriedBalloons)
+			; 	forceUpdate = true
+			; endif
 
 			; when we carry more balloons then before display a message
 			if (newCount > currentCount)
@@ -872,11 +874,13 @@ float Function CheckCarriedBalloons()
 			carriedBalloons = newCarriedBalloons
 		endif
 		
-		;if (forceUpdate)
-		return carriedBalloons * 0.002
-		;else
-		;	return 0
-		;endif
+		; ; when we force an update return balloon count as a morphs modifiers
+		; if (forceUpdate)
+			; each balloon is 0.5% rads worth of morphs so 5% per each set of 10
+			return carriedBalloons * 0.005 ;0.002
+		; else
+		; 	return 0
+		; endif
 	endif
 EndFunction
 
@@ -955,13 +959,13 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasHadMoleCowDisease)
 			morphBonus += 0.25	
 
-			; player also carries many balloons
-			if (carriedBalloons >= 10)
-				; for each 10 more balloons the buff becomes larger
-				float balloonBonus = 0.125 * (carriedBalloons / 10)
+			; ; player also carries many balloons
+			; if (carriedBalloons >= 10)
+			; 	; for each 10 more balloons the buff becomes larger
+			; 	float balloonBonus = 0.125 * (carriedBalloons / 10)
 
-				morphBonus += balloonBonus
-			endif
+			; 	; morphBonus += balloonBonus
+			; endif
 		endif
 		; player has bloating suit equipped
 		if (hasBloatingSuitEquipped)
@@ -976,6 +980,22 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 			morphBonus += 0.2
 		endif
 	endif
+
+
+	;TODO seems buggy when split
+	; ; when player has (or has had) molecow disease, apply permanent breast size increase
+	; if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
+	; 	;TODO make buff configurable slider
+	; 	morphBonus = 0.25
+	; ; when player has bloating suit equipped, apply permanent breast size increase
+	; elseif ((SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2") && hasBloatingSuitEquipped)
+	; 	;TODO make buff configurable slider
+	; 	morphBonus = 0.5
+	; ; when player has nipple piercing equipped, apply permanent breast size increase
+	; elseif (SliderNames[idxSlider] == "DoubleMelon" && hasNippleBlockers)
+	; 	;TODO make buff configurable slider
+	; 	morphBonus = 0.5
+	; endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
 EndFunction
@@ -1576,6 +1596,7 @@ Function ApplyRadsPerk()
 		ClearOldRadsPerks(PlayerRef, perkLevel)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
+			; TODO sound
 			PlayerRef.AddPerk(RadsPerkArray[perkLevel])		
 		Else
 			PlayerRef.AddPerk(RadsPerkFull)			
@@ -2197,7 +2218,8 @@ EndFunction
 ; show a big fat message box in the center of the page, which the player has to click away
 Function MessageBox(string msg)
 	Debug.MessageBox(msg)
-	Log(msg)
+	Debug.Trace("[LenARM] " + msg)
+	; Log(msg)
 EndFunction
 
 ; show a message in the top-left
