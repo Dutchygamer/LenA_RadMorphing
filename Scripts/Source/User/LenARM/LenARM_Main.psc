@@ -420,8 +420,9 @@ Function Startup()
 			idxSet += 1
 		EndWhile
 
-		; when we don't use sliders that are doctor-only reset, reset the totalRads and possible radperks
+		; when we don't use sliders that are doctor-only reset, reset the currentRads, totalRads and possible radperks
 		if (!HasDoctorOnlySliders)			
+			CurrentRads = 0
 			TotalRads = 0
 			CurrentRadsPerk = 0
 		endif
@@ -668,8 +669,6 @@ Function TimerMorphTick()
 	; update our internal storage with the new morphs
 	CurrentRads = rawMorphInput
 
-	; MessageBox("total rads: " + newRads + " + balloons: " + balloonsMorph + " = raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference); + " vs CurrentRads: " + CurrentRads)
-
 	; TODO de else is de huidige waarheid gezien we alleen doctor only sliders ondersteunen nu
 	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
 	if (!HasDoctorOnlySliders)
@@ -679,6 +678,9 @@ Function TimerMorphTick()
 		TotalRads += radsDifference
 	endif
 	
+	; TODO more debug shenenigens...
+	Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
+
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
 	bool changedMorphs = false
@@ -781,7 +783,7 @@ Function TimerMorphTick()
 		maxedOutMorphs = true
 	endif
 
-	Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
+	; Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
 
 	; when at least one of the sliderSets has applied morphs, perform the actual actions
 	If (changedMorphs)
@@ -946,13 +948,10 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasHadMoleCowDisease)
 			morphBonus += 0.25	
 
-			; ; player also carries many balloons
-			; if (carriedBalloons >= 10)
-			; 	; for each 10 more balloons the buff becomes larger
-			; 	float balloonBonus = 0.125 * (carriedBalloons / 10)
-
-			; 	; morphBonus += balloonBonus
-			; endif
+			; player also carries balloons
+			if (carriedBalloons > 0)
+				morphBonus += 0.2
+			endif
 		endif
 		; player has bloating suit equipped
 		if (hasBloatingSuitEquipped)
@@ -998,7 +997,7 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 		float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
 
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
-		Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
+		; Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
 		
 		idxSlider += 1
 	EndWhile
@@ -1022,7 +1021,9 @@ Function ResetMorphs()
 	; reset the pop warnings
 	PopWarnings = 0
 
-	; reset the total rads
+	; reset the current and total rads
+	; we need to reset both else they will start mismatching the next timerMorphTick and give wonky behaviour
+	CurrentRads = 0
 	TotalRads = 0
 
 	; reset the rad perks
@@ -1242,7 +1243,7 @@ EndFunction
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
 Function ExtendMorphs(float step,  bool shouldPop, int soundId = 5)
-	Log("extending morphs with: " + step)
+	; Log("extending morphs with: " + step)
 
 	; calculate the new morphs multiplier
 	float multiplier = CalculateExtendMorphs(step)
@@ -1566,7 +1567,8 @@ Function ApplyRadsPerk()
 	; calculate the perk level
 	int perkLevel = ((TotalRads * 1000) / 200) as int
 
-	;Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
+	; Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
+	; Log("radsperk; CurrentRads: " + (CurrentRads * 1000) + "; TotalRads: " + (TotalRads * 1000))
 
 	; limit to 4 just in case (we have 5 perks, starting from 0)
     If (perkLevel > 4)
@@ -1708,7 +1710,7 @@ Function UnequipSlots()
 		return
 	EndIf
 
-	Log("UnequipSlots (stack=" + UnequipStackSize + ")")
+	; Log("UnequipSlots (stack=" + UnequipStackSize + ")")
 	UnequipStackSize += 1
 	If (UnequipStackSize <= 1)
 		bool found = false
@@ -1738,7 +1740,7 @@ Function UnequipSlots()
 			hasFullBodyItem = true
 		EndIf
 
-		Log(hasFullBodyItem)
+		; Log(hasFullBodyItem)
 
 		; check for each sliderSet
 		While (idxSet < SliderSets.Length)
@@ -1785,11 +1787,11 @@ Function UnequipSlots()
 		EndWhile
 	EndIf
 	UnequipStackSize -= 1
-	Log("FINISHED UnequipSlots")
+	; Log("FINISHED UnequipSlots")
 EndFunction
 
 Function TriggerUnequipSlots()
-	Log("TriggerUnequipSlots")
+	; Log("TriggerUnequipSlots")
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
@@ -1799,7 +1801,7 @@ Function UnequipAll()
 		return
 	EndIf
 	
-	Log("UnequipAll")
+	; Log("UnequipAll")
 
 	bool found = false
 	int idxSlot = 0
@@ -1825,7 +1827,7 @@ Function UnequipAll()
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
-			Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+			; Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
 			;TODO make configurabel
 			PoppingUnequippedItems.Add(item);
@@ -1841,7 +1843,7 @@ Function UnequipAll()
 		
 		idxSlot += 1	
 	EndWhile
-	Log("FINISHED UnequipAll")
+	; Log("FINISHED UnequipAll")
 EndFunction
 
 Function UnequipAllNPC(Actor akTarget)
@@ -1873,7 +1875,7 @@ Function UnequipAllNPC(Actor akTarget)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
-			Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+			; Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
 			akTarget.UnequipItem(item.item, false, true)
 			
@@ -1933,18 +1935,18 @@ Function CalculateAndPlayMorphSound(Actor akSender, float radsDifference)
 
 	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
 	if (radsDifference <= LowRadsThreshold)
-		Log("  minimum rads taken")
+		; Log("  minimum rads taken")
 	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
 	elseif (radsDifference <= MediumRadsThreshold)
-		Log("  medium rads taken")
+		; Log("  medium rads taken")
 		PlayMorphSound(akSender, 1)
 	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
 	elseif (radsDifference <= HighRadsThreshold)
-		Log("  high rads taken")
+		; Log("  high rads taken")
 		PlayMorphSound(akSender, 2)
 	; everything above HighRadsThreshold rads taken
 	elseif (radsDifference > HighRadsThreshold)
-		Log("  very high rads taken")
+		; Log("  very high rads taken")
 		PlayMorphSound(akSender, 3)
 	endif
 EndFunction
@@ -2148,9 +2150,9 @@ Function ShowEquippedClothes()
 		Actor:WornItem item = PlayerRef.GetWornItem(slot)
 		If (item != None && item.item != None)
 			items.Add(slot + ": " + item.item.GetName())
-			Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+			; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
 		Else
-			Log("  Slot " + slot + " is empty")
+			; Log("  Slot " + slot + " is empty")
 		EndIf
 		slot += 1
 	EndWhile
@@ -2206,7 +2208,7 @@ EndFunction
 Function MessageBox(string msg)
 	Debug.MessageBox(msg)
 	Debug.Trace("[LenARM] " + msg)
-	; Log(msg)
+	Log(msg)
 EndFunction
 
 ; show a message in the top-left
@@ -2223,7 +2225,7 @@ EndFunction
 
 ; write a line to the log
 Function Log(string msg)
-	; Debug.Trace("[LenARM] " + msg)
+	Debug.Trace("[LenARM] " + msg)
 EndFunction
 
 ; ------------------------
