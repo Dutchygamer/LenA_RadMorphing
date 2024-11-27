@@ -679,7 +679,7 @@ Function TimerMorphTick()
 	endif
 	
 	; TODO more debug shenenigens...
-	Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
+	; Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
 
 	int idxSet = 0
 	; by default, assume we have no changed morphs for all sliderSets
