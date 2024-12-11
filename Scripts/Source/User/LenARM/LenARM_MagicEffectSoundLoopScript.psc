@@ -23,16 +23,9 @@ EndEvent
 Function PlaySoundAndStartTimer()
 	 ; is effect still running on a legit object?
 	if IsBoundGameObjectAvailable()
-
-		;TODO gooit steeds errors?
-		; [11/16/2024 - 11:51:01AM] error: Unable to call GetTargetActor - no native object bound to the script object, or object is of incorrect type
-		; stack:
-		; 	[Active effect 1 on  (0A00CFE6)].LenARM:LenARM_MagicEffectSoundLoopScript.GetTargetActor() - "<native>" Line ?
-		; 	[Active effect 1 on  (0A00CFE6)].LenARM:LenARM_MagicEffectSoundLoopScript.PlaySoundAndStartTimer() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_MagicEffectSoundLoopScript.psc" Line 26
-		; 	[Active effect 1 on  (0A00CFE6)].LenARM:LenARM_MagicEffectSoundLoopScript.OnTimer() - "D:\Program Files\Steam\steamapps\common\Fallout 4\Data\Scripts\Source\User\LenARM\LenARM_MagicEffectSoundLoopScript.psc" Line 44
 		actor akTarget = self.GetTargetActor()
 		
-		 ; nullcheck in case that for some reason we are not a legit object; we're done
+		; nullcheck in case that for some reason we are not a legit object; we're done
 		if (!akTarget)
 			return
 		endif
