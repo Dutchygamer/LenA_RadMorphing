@@ -180,6 +180,9 @@ Group Properties
 	
 	FormList Property MoleCowMilkTriggers Auto
 	FormList Property NippleBlockers Auto
+	FormList Property AutoAddToPlayerInventory Auto
+	
+	Quest Property MQ102 Auto
 EndGroup
 
 ; ------------------------
@@ -307,6 +310,30 @@ Event Scene.OnEnd(Scene akSender)
 		ResetMorphs()
 	EndIf
 EndEvent
+
+; ------------------------
+; On new game start give out some things
+; ------------------------
+Event Quest.OnStageSet(Quest akSender, int auiStageID, int auiItemID)
+	If (akSender == MQ102 && auiStageID == 6)
+		UnregisterForRemoteEvent(MQ102, "OnStageSet")
+		AddItemsToPlayerInventory()
+	EndIf
+EndEvent
+
+Function AddItemsToPlayerInventory()
+	TechnicalNote("AddItemsToPlayerInventory -> start")
+	int i = 0
+	While (i < AutoAddToPlayerInventory.GetSize())
+		Form AutoAddItem = AutoAddToPlayerInventory.GetAt(i)
+		If (PlayerRef.GetItemCount(AutoAddItem) == 0)
+			PlayerRef.AddItem(AutoAddItem, 1, False)
+			TechnicalNote("AddItemsToPlayerInventory -> " + AutoAddItem as string + " added")
+		EndIf
+		i += 1
+	EndWhile
+	TechnicalNote("AddItemsToPlayerInventory -> end")
+EndFunction
 
 ; ------------------------
 ; Setup the various times this mod can use
