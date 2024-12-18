@@ -221,6 +221,9 @@ Function PerformUpdateIfNecessary()
 		Version = GetVersion()
 		MessageBox("Rad Morphing Redux has been updated to version " + Version + ".")
 	Else
+		If (MQ102.IsStageDone(6))
+			AddItemsToPlayerInventory()
+		endif
 		Log("  no update")
 	EndIf
 EndFunction
@@ -322,17 +325,17 @@ Event Quest.OnStageSet(Quest akSender, int auiStageID, int auiItemID)
 EndEvent
 
 Function AddItemsToPlayerInventory()
-	TechnicalNote("AddItemsToPlayerInventory -> start")
+	Log("AddItemsToPlayerInventory -> start")
 	int i = 0
 	While (i < AutoAddToPlayerInventory.GetSize())
 		Form AutoAddItem = AutoAddToPlayerInventory.GetAt(i)
 		If (PlayerRef.GetItemCount(AutoAddItem) == 0)
 			PlayerRef.AddItem(AutoAddItem, 1, False)
-			TechnicalNote("AddItemsToPlayerInventory -> " + AutoAddItem as string + " added")
+			Log("AddItemsToPlayerInventory -> " + AutoAddItem as string + " added")
 		EndIf
 		i += 1
 	EndWhile
-	TechnicalNote("AddItemsToPlayerInventory -> end")
+	Log("AddItemsToPlayerInventory -> end")
 EndFunction
 
 ; ------------------------
@@ -422,6 +425,9 @@ Function Startup()
 		RegisterForRemoteEvent(DLC03AcadiaDialogueAsterPostExamScene, "OnEnd")
 		RegisterForRemoteEvent(DLC04SettlementDoctor_EndScene, "OnBegin")
 		RegisterForRemoteEvent(DLC04SettlementDoctor_EndScene, "OnEnd")
+		
+		; start listening for start game quest
+		RegisterForRemoteEvent(MQ102, "OnStageSet")
 
 		; set up lists
 		PoppingUnequippedItems = new Actor:WornItem[0]
@@ -493,13 +499,13 @@ Function Shutdown(bool withRestore=true)
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
 		
-		; stop listening for combat state changes
-		UnregisterForRemoteEvent(PlayerRef, "OnCombatStateChanged")
-	
 		; stop listening for doctor scene
 		;TODO moeten de andere scenes hier ook niet bij staan?
 		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnBegin")
 		UnregisterForRemoteEvent(DoctorMedicineScene03_AllDone, "OnEnd")
+		
+		; stop listening for main quest changes
+		UnregisterForRemoteEvent(MQ102, "OnStageSet")
 		
 		If (withRestore)
 			StartTimer(Math.Max(UpdateDelay + 0.5, 2.0), ETimerShutdownRestoreMorphs)
