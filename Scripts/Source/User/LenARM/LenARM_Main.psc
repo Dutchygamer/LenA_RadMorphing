@@ -1509,11 +1509,10 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		; sadly no way to give the XP to the player even if we tell the player is the killer
 		akTarget.Dismember("Torso", true, true, true)
 		akTarget.Kill()
-		LenARM_NPCPopComment.Play(PlayerRef)
 		
-		;LenARM_BloatingAgentInjectedMessage.Show()
 		; give player a temp buff if bloating suit is equipped
 		if (hasBloatingSuitEquipped)
+			LenARM_NPCPopComment.Play(PlayerRef)
 			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
