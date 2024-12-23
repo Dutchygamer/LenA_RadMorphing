@@ -828,8 +828,8 @@ Function TimerMorphTick()
 		TriggerUnequipSlots()
 	endif
 
-	; when we have reached max morphs and have taken positive rads, perform additional actions
-	If (maxedOutMorphs && radsDifference > 0)
+	; when we have reached max morphs and have either taken positive rads or have a force update, perform additional actions
+	If (maxedOutMorphs && (radsDifference > 0 || forceUpdate))
 		; when not yet displayed the max morphs, display the message and set the global variable that we have displayed the max morphs message
 		; also play a sound effect if we have it
 		if (!HasReachedMaxMorphs)
@@ -1101,9 +1101,9 @@ bool Function ShouldPop(int popChance)
 	int moleCowDiseaseMod = hasHadMoleCowDisease as int
 	; nipple blockers increase chance of popping (can't lactate easily to relief pressure)
 	int nippleBlockersMod = hasNippleBlockers as int
-	; carrying more then 30 balloons increase chance of popping (breasts are already pre-bloated)
+	; carrying balloons when having molecow disease increase chance of popping (breasts are even more pre-bloated)
 	int balloonsMod = 0
-	if ((carriedBalloons / 10) > 3)
+	if (hasHadMoleCowDisease && carriedBalloons > 0)
 		balloonsMod = 1
 	endif
 
