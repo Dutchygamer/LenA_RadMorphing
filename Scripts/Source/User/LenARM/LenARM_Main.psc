@@ -2091,6 +2091,43 @@ Function PlayMorphSound(Actor akSender, int soundId)
 	endif
 EndFunction
 
+
+float Function GetLowestSliderPercentage()
+	int idxSet = 0
+	float lowestPercentage = 0
+
+	; loop through the slidersets
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]
+		
+		; only check the slidersets that have actual sliders
+		If (sliderSet.NumberOfSliderNames > 0)
+			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
+			float sliderPercentage = sliderSet.CurrentMorph
+			If (GetIsAdditive(sliderSet))
+				sliderPercentage += sliderSet.BaseMorph
+			EndIf
+
+			; limit the percentage to 100% if we get irradiated when already at max
+			if (sliderPercentage > 1)
+				sliderPercentage = 1
+			endIf
+
+			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
+			if (lowestPercentage == 0)
+				lowestPercentage = sliderPercentage
+			else
+				lowestPercentage = Math.Min(sliderPercentage, lowestPercentage)
+			endif
+		endif
+
+		idxSet += 1
+	EndWhile	
+
+	return lowestPercentage
+EndFunction
+
+
 ; ------------------------
 ; Debug functions from the Debug MCM menu
 ; ------------------------
@@ -2151,36 +2188,7 @@ Function ForgetStateCounterReset()
 EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
-	int idxSet = 0
-	float lowestPercentage = 0
-
-	; loop through the slidersets
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]
-		
-		; only check the slidersets that have actual sliders
-		If (sliderSet.NumberOfSliderNames > 0)
-			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
-			float sliderPercentage = sliderSet.CurrentMorph
-			If (GetIsAdditive(sliderSet))
-				sliderPercentage += sliderSet.BaseMorph
-			EndIf
-
-			; limit the percentage to 100% if we get irradiated when already at max
-			if (sliderPercentage > 1)
-				sliderPercentage = 1
-			endIf
-
-			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
-			if (lowestPercentage == 0)
-				lowestPercentage = sliderPercentage
-			else
-				lowestPercentage = Math.Min(sliderPercentage, lowestPercentage)
-			endif
-		endif
-
-		idxSet += 1
-	EndWhile	
+	float lowestPercentage = GetLowestSliderPercentage()
 
 	;TODO ik dump TotalRads hier ff als test in
 	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
@@ -2217,6 +2225,10 @@ EndFunction
 
 Function GiveMorphDrugs()
 	PlayerRef.AddItem(ResetMorphsPotion, 1)
+EndFunction
+
+bool Function GetHasHadMoleCowDisease()
+	return hasHadMoleCowDisease
 EndFunction
 
 ; ------------------------
