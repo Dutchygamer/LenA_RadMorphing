@@ -1397,7 +1397,16 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	if (isConcentrated)
 		messyPopChance = 0.5
 	endif
-	bool messyPop = (akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true && aktarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
+
+	; since IsProtected is only on ActorBase make a quick cast
+	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
+
+	; only allow messy pops when:
+	; - target is not player
+	; - target is hostile to player
+	; - target is not protected or essential (game does some very weird things if we messy pop those)
+	; - random die roll is below our messyPopChance
+	bool messyPop = (akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true && actorBaseTarget.IsProtected() == false && actorBaseTarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
 
 	; before we start expanding log the current breasts size
 	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
