@@ -1497,6 +1497,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 	
 	; we need to do some calculations so we go back to the original NPC's morphs
 	float reset = (1.0 + totalPopMultiplier) * -1
+	SetBloatMorphs(akTarget, reset, shouldPop = false)
 
 	; messy pop kills actor and places a grenade explosion
 	if (messyPop)
@@ -1517,16 +1518,16 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		; spread the joy to nearby NPCs
 		akTarget.PlaceAtMe(BloatGrenadeExplosion)	
 
+		; reset all the morphs back to 0
+		; do this for messy bloatpopping too otherwise after respawning the NPC will still have the morphs
+		; SetBloatMorphs(akTarget, reset, shouldPop = false)
+		BodyGen.UpdateMorphs(akTarget)
+
 		; dismember and kill actor
 		; sadly no way to give the XP to the player even if we tell the player is the killer
 		akTarget.Dismember("Torso", true, true, true)
 		akTarget.Kill()
-		
-		; reset all the morphs back to 0
-		; do this for messy bloatpopping too otherwise after respawning the NPC will still have the morphs
-		SetBloatMorphs(akTarget, reset, shouldPop = false)
-		BodyGen.UpdateMorphs(akTarget)
-		
+				
 		; give player a temp buff if bloating suit is equipped
 		if (hasBloatingSuitEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
@@ -1544,7 +1545,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
 		; reset all the morphs back to 0
-		SetBloatMorphs(akTarget, reset, shouldPop = false)
+		; SetBloatMorphs(akTarget, reset, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 
 		ClearAllRadsPerks(akTarget)
