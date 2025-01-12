@@ -1520,7 +1520,6 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 
 		; reset all the morphs back to 0
 		; do this for messy bloatpopping too otherwise after respawning the NPC will still have the morphs
-		; SetBloatMorphs(akTarget, reset, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 
 		; dismember and kill actor
@@ -1545,7 +1544,6 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
 		; reset all the morphs back to 0
-		; SetBloatMorphs(akTarget, reset, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 
 		ClearAllRadsPerks(akTarget)
@@ -1702,10 +1700,9 @@ Function ApplyBalloonsPerk()
 		return
 	endif
 
-	;TODO dit moet 4 zijn maar hij pakt niet de laatste perk zonder een quest reboot
 	; limit to 4 just in case (we have 4 perks)
-    If (currentCount > 3)
-        currentCount = 3
+    If (currentCount > 4)
+        currentCount = 4
     EndIf
 
 	; subtract 1 from our count as the Perks start from 0
@@ -1729,8 +1726,7 @@ Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
     int i = 0	
 	; loop through the standard perks, remove when not matching new perk level
 	;TODO kan je niet gewoon BalloonsPerkArray.Length doen?
-	;TODO dit moet 3 zijn maar hij pakt niet de laatste perk zonder een quest reboot
-    While (i <= 2)
+    While (i <= 3)
         If (i != newPerkLevel && akTarget.HasPerk(BalloonsPerkArray[i]))
 			; Log("Removing radsperk of level " + i)
 			akTarget.RemovePerk(BalloonsPerkArray[i])
