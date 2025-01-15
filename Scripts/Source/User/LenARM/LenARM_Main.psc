@@ -888,15 +888,15 @@ float Function CheckCarriedBalloons()
 		; get amount of carried balloons from HeliumBalloon.esp
 		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
 		if (carriedBalloons != newCarriedBalloons) 
-			; we are interested in the carried balloons in intervals of 10
-			int currentCount = (carriedBalloons / 10)
-			int newCount = (newCarriedBalloons / 10)
+			; ; we are interested in the carried balloons in intervals of 10
+			; int currentCount = (carriedBalloons / 10)
+			; int newCount = (newCarriedBalloons / 10)
 	
-			; when we carry 10 more balloons then before display a message
-			if (newCount > currentCount)
-				LenARM_BalloonTriggerMessage.Show()
-				LenARM_BalloonTriggerSound.Play(PlayerRef)
-			endif
+			; ; when we carry 10 more balloons then before display a message
+			; if (newCount > currentCount)
+			; 	LenARM_BalloonTriggerMessage.Show()
+			; 	LenARM_BalloonTriggerSound.Play(PlayerRef)
+			; endif
 
 			carriedBalloons = newCarriedBalloons
 		endif
