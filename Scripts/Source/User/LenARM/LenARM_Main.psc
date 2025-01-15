@@ -29,10 +29,12 @@ float LowRadsThreshold
 float MediumRadsThreshold
 float HighRadsThreshold
 
-; TODO wat doe jij sowieso? we setten je een paar keer maar lezen je nooit uit
 float CurrentRads
+; bonus morphs from other sources that are not rads or balloons
+float BonusRads
 ; aka current morph percentage based on rads + other modifiers
 float TotalRads
+
 
 ; [OBSOLETE]
 bool HasDoctorOnlySliders
@@ -56,6 +58,8 @@ bool TutorialDisplayed_Popped = false
 ; does player have bloating suit equipped?
 bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
+
+bool hasKitanaMaskEquipped = false
 
 ; does player have (or has had) molecow disease?
 bool hasHadMoleCowDisease = false
@@ -687,6 +691,12 @@ Function TimerMorphTick()
 	; each balloon counts as 5 rads
 	float balloonsMorph = CheckCarriedBalloons()
 	rawMorphInput += balloonsMorph
+
+	; modify raw morphs percentage by bonus morphs if we have any
+	if (BonusRads != 0)
+		rawMorphInput += BonusRads
+		BonusRads = 0
+	endif
 
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
@@ -1531,7 +1541,14 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		if (hasBloatingSuitEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
 			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+		; bloat player if kitana mask is equipped
+		elseif (hasKitanaMaskEquipped)
+			LenARM_NPCPopComment.Play(PlayerRef)
+			; 100 rads worth of bloating
+			BonusRads = 0.1
+			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 		endif
+
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
 		LenARM_PrePopSound.PlayAndWait(akTarget)
@@ -2058,6 +2075,17 @@ Function BloatSuitGiveAmmo()
 
 	; bit longer timer as we don't switch perks often
 	StartTimer(5, ETimerBloatSuit)
+EndFunction
+
+
+Function KitanaMaskEquipped()
+	;TechnicalNote("Bloating Outfit equipped!")
+	hasKitanaMaskEquipped = true
+EndFunction
+
+Function KitanaMaskUnequipped()
+	;TechnicalNote("Bloating Outfit unequipped!")
+	hasKitanaMaskEquipped = false
 EndFunction
 
 
