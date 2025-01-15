@@ -27,9 +27,9 @@ Function Fragment_Entry_00(ObjectReference akTargetRef, Actor akActor)
     if (sex == 1)
         PlayerRef.RemoveItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
-		LenARM_InjectSound.PlayAndWait(akTarget)
+		LenARM_InjectSound.Play(akTarget)
 
-        ;Utility.Wait(1.0)
+        Utility.Wait(1.0)
 
         BloatSpell.cast(akTarget)
     endif
