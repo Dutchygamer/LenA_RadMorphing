@@ -17,6 +17,7 @@ EndEvent
 
 Event OnEffectFinish(Actor akTargetRef, Actor akCaster)
 	Sound.StopInstance(SoundLoopID)
+	CancelTimer(castTimerId)
 EndEvent
 
 
