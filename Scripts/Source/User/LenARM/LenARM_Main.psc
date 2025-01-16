@@ -1327,7 +1327,7 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on NPCs.
 ; ------------------------
-Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated)
+Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated, bool isMessy)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
 		return
@@ -1348,13 +1348,28 @@ Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd, bool isCon
 
 	; keep bloating the actor until the bloatStage is equal to expected result
 	while (nextBloatStage <= maxBloatStage)
-		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated)
+		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy)
 		
 		nextBloatStage += 1
 	endwhile
 EndFunction
 
-Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated = false)
+; public endpoints used in the Magic Effect scripts
+Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd)
+	; not isConcentrated, not isMessy
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, false)
+EndFunction
+Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd)
+	; isConcentrated, not isMessy
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, true, false)
+EndFunction
+Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
+	; not isConcentrated, isMessy
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, true)
+EndFunction
+
+
+Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isMessy)
 	;TODO zoek na of je dit ergens kan standardizeren, echter heb ik er weinig hoop op
 	; de andere twee plekken zijn SetMorphs en SetCompanionMorphs en die doen dingen in die loop specifiek voor player en companions
 
@@ -1396,16 +1411,19 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	; pop the actor 
 	elseif (perkLevel == 5 && nextBloatStage > 5)		
 		Utility.Wait(randomFloat)
-		BloatPop(akTarget, isConcentrated)
+		BloatPop(akTarget, isConcentrated, isMessy)
 	endif
 EndFunction
 
-Function BloatPop(Actor akTarget, bool isConcentrated)
-	; when we pop a non-essential hostile enemy, small chance that we pop in a more permanent way
+Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
+	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
-	; when hit by concentrated shot the permanent pop chance is much larger
+	; when hit by concentrated shot the permanent pop chance is 50%
 	if (isConcentrated)
 		messyPopChance = 0.5
+	; when forced for messy pop then the permanent pop chance is 100%
+	elseif (isMessy)
+		messyPopChance = 1
 	endif
 
 	; since IsProtected is only on ActorBase make a quick cast
@@ -1545,7 +1563,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated)
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
 			; 100 rads worth of bloating
-			BonusRads = 0.1
+			BonusRads += 0.1
 			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 		endif
 

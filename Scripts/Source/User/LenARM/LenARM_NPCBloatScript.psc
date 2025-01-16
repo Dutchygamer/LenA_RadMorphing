@@ -4,6 +4,8 @@ LenARM_Main Property LenARM_Main Auto
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
 int property StageToAdd = 1 auto
+bool property IsConcentrated = false auto
+bool property IsMessy = false auto
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
     ; when in Power Armor, dead or immune to bloating don't morph
@@ -12,6 +14,10 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 	EndIf
     
 	int sex = akTarget.GetLeveledActorBase().GetSex()
+    ; when concentrated or messy always overwrite stageToAdd to 6 (the max)
+    if (IsConcentrated || IsMessy)
+        StageToAdd = 6
+    endif
 
     ; for now only work on females
     if (sex == LenARM_Main.ESexFemale)     
@@ -22,7 +28,14 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         int expectedBloatStage = currentBloatStage + StageToAdd
         akTarget.SetValue(NPCBloatStage, expectedBloatStage)
 
-        LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, false)
+        ; depending on the params of this magic effect do a different type of bloating
+        if (IsConcentrated)
+            LenARM_Main.BloatActorConcentrated(akTarget, currentBloatStage, StageToAdd)
+        elseif (IsMessy)
+            LenARM_Main.BloatActorMessy(akTarget, currentBloatStage, StageToAdd)
+        else
+            LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd)
+        endif
 
         ; if not dead by now (ie messy popped), do some additional actions
         if (!akTarget.IsDead())

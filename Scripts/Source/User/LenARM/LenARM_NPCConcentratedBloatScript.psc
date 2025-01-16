@@ -1,3 +1,4 @@
+;TODO obsolete, LenARM_NPCBloatScript zou nu alle varianten moeten kunnen ondersteunen mits je maar de juiste params doorgeeft vanuit Magic Effect
 ScriptName LenARM:LenARM_NPCConcentratedBloatScript extends ActiveMagicEffect
 
 LenARM_Main Property LenARM_Main Auto
@@ -23,7 +24,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         akTarget.SetValue(NPCBloatStage, expectedBloatStage)
 
         ; for concentrated we explicetly set `isConcentrated` to true
-        LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd, true)
+        LenARM_Main.BloatActorConcentrated(akTarget, currentBloatStage, StageToAdd)
 
         ; if not dead by now (ie messy popped), do some additional actions
         if (!akTarget.IsDead())
