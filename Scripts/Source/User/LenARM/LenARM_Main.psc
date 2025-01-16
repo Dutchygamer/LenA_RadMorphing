@@ -29,10 +29,12 @@ float LowRadsThreshold
 float MediumRadsThreshold
 float HighRadsThreshold
 
+; all three xxxRads range from 0 (0%) to 1000 (100%)
+; the current update cycle's morphs difference 
 float CurrentRads
-; bonus morphs from other sources that are not rads or balloons
+; the current update cycle's bonus morphs from other sources that are not rads or balloons
 float BonusRads
-; aka current morph percentage based on rads + other modifiers
+; the total morphs
 float TotalRads
 
 
@@ -60,6 +62,7 @@ bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
 
 bool hasKitanaMaskEquipped = false
+int kitanaMaskMessyPoppedCount = 0
 
 ; does player have (or has had) molecow disease?
 bool hasHadMoleCowDisease = false
@@ -178,6 +181,7 @@ Group Properties
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatGrenadeExplosion Auto
 	Form Property BloatingSuit Auto
+	Form Property KitanaMask Auto
 	
 	Ammo Property ThirstZapperBloatAmmo Auto Const
 	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const	
@@ -296,6 +300,16 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 		; force update morphs on next run
 		forceUpdate = true
 	endif
+
+	;TODO dit kinda werkt, maar eenmalig; heb je 5 enemies popped dan kan je hem oneindig op / af zetten
+	if (akBaseObject as Armor && akBaseObject == KitanaMask)
+		if(kitanaMaskMessyPoppedCount < 5)
+			Note("pop 5 enemies!")
+			PlayerRef.EquipItem(KitanaMask)
+		Else
+			CancelTimer(ETimerKitanaMask)
+		endif
+	endif
 EndEvent
 
 ; ------------------------
@@ -358,6 +372,8 @@ Event OnTimer(int tid)
 		TryPop()
 	ElseIf (tid == ETimerBloatSuit)
 		BloatSuitGiveAmmo()
+	ElseIf (tid == ETimerKitanaMask)
+		KitanaMaskSelfMorph()
 	EndIf
 EndEvent
 
@@ -499,6 +515,7 @@ Function Shutdown(bool withRestore=true)
 		; stop timers
 		CancelTimer(ETimerMorphTick)
 		CancelTimer(ETimerBloatSuit)
+		CancelTimer(ETimerKitanaMask)
 	
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -1000,6 +1017,10 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasBloatingSuitEquipped)
 			morphBonus += 0.1	
 		endif
+		; player has kitana mask equipped
+		if (hasKitanaMaskEquipped)
+			morphBonus += 0.15
+		endif
 		; player has nipple piercing equipped
 		if (hasNippleBlockers)
 			morphBonus += 0.1
@@ -1364,15 +1385,14 @@ Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd
 	BloatActor_Internal(akTarget, currentBloatStage, toAdd, true, false)
 EndFunction
 Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
+	; pause self-bloat timer
+	CancelTimer(ETimerKitanaMask)
 	; not isConcentrated, isMessy
 	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, true)
 EndFunction
 
 
 Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isMessy)
-	;TODO zoek na of je dit ergens kan standardizeren, echter heb ik er weinig hoop op
-	; de andere twee plekken zijn SetMorphs en SetCompanionMorphs en die doen dingen in die loop specifiek voor player en companions
-
 	; perkLevel is equal to the bloat state 
 	int perkLevel = nextBloatStage
 
@@ -1564,9 +1584,14 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 			LenARM_NPCPopComment.Play(PlayerRef)
 			; 100 rads worth of bloating
 			BonusRads += 0.1
-			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
-		endif
+			kitanaMaskMessyPoppedCount += 1
 
+			; (re)start self-morph timer			
+			CancelTimer(ETimerKitanaMask)
+			;TODO debug waarde
+			StartTimer(30, ETimerKitanaMask)
+			; PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
 		LenARM_PrePopSound.PlayAndWait(akTarget)
@@ -2099,11 +2124,26 @@ EndFunction
 Function KitanaMaskEquipped()
 	;TechnicalNote("Bloating Outfit equipped!")
 	hasKitanaMaskEquipped = true
+	;kitanaMaskMessyPoppedCount = 0
+	;TODO debug waarde
+	StartTimer(10, ETimerKitanaMask)
 EndFunction
 
 Function KitanaMaskUnequipped()
 	;TechnicalNote("Bloating Outfit unequipped!")
 	hasKitanaMaskEquipped = false
+
+	; cancel timer is handled in OnItemUnequipped due to additional logic
+EndFunction
+
+Function KitanaMaskSelfMorph()
+	Note("pfft")
+	; 50 rads worth of bloating
+	BonusRads += 0.05
+	LenARM_FullGroanSound.Play(PlayerRef)
+	
+	;TODO debug waarde
+	StartTimer(10, ETimerKitanaMask)
 EndFunction
 
 
@@ -2340,6 +2380,7 @@ Group EnumTimerId
 	; int Property ETimerFakeRads = 5 Auto Const
 	int Property ETimerDelayPop = 6 Auto Const
 	int Property ETimerBloatSuit = 7 Auto Const
+	int Property ETimerKitanaMask = 8 Auto Const
 EndGroup
 
 Group EnumSex
