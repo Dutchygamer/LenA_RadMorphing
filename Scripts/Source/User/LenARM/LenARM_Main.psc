@@ -1101,6 +1101,9 @@ Function ResetMorphs()
 	CurrentRads = 0
 	TotalRads = 0
 
+	; reset any additional Bloating the player had
+	PlayerRef.SetValue(avBloating, 0)
+
 	; reset the rad perks
 	ClearAllRadsPerks(PlayerRef)
 
