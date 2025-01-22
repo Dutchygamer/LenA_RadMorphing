@@ -33,6 +33,7 @@ float HighRadsThreshold
 ; the current update cycle's morphs difference 
 float CurrentRads
 ; the current update cycle's bonus morphs from other sources that are not rads or balloons
+; [Obsolete]
 float BonusRads
 ; the total morphs
 float TotalRads
@@ -63,6 +64,11 @@ bool canGiveBloatingSuitAmmo = true
 
 bool hasKitanaMaskEquipped = false
 int kitanaMaskMessyPoppedCount = 0
+
+;TODO debug waarde
+int kitanaMaskSelfMorphTimer = 10
+;TODO debug waarde
+int kitanaMaskSelfMorphMessyTimer = 30
 
 ; does player have (or has had) molecow disease?
 bool hasHadMoleCowDisease = false
@@ -107,6 +113,7 @@ Group Properties
 	Keyword Property kwMorph Auto Const
 
 	ActorValue Property Rads Auto Const
+	ActorValue Property avBloating Auto Const
 
 	; Base Game
 	Scene Property DoctorMedicineScene03_AllDone Auto Const
@@ -303,7 +310,7 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 
 	;TODO dit kinda werkt, maar eenmalig; heb je 5 enemies popped dan kan je hem oneindig op / af zetten
 	if (akBaseObject as Armor && akBaseObject == KitanaMask)
-		if(kitanaMaskMessyPoppedCount < 5)
+		if (kitanaMaskMessyPoppedCount < 5)
 			Note("pop 5 enemies!")
 			PlayerRef.EquipItem(KitanaMask)
 		Else
@@ -683,7 +690,14 @@ EndFunction
 ; ------------------------
 float Function GetNewRads()
 	float newRads = PlayerRef.GetValue(Rads)
+	; divide rads by 1000 as 1 here equals 1000 displayed rads
 	return newRads / 1000
+EndFunction
+
+; ------------------------
+float Function GetNewBloating()
+	float newBloating = (PlayerRef.GetValue(avBloating) as float)
+	return newBloating
 EndFunction
 
 ; ------------------------
@@ -700,20 +714,17 @@ Function TimerMorphTick()
 	float rawMorphInput = 0
 
 	; modify raw morphs percentage by player's current Rads
-	; note that the rads run from 0 to 1, with 1 equaling 1000 displayed rads
 	float newRads = GetNewRads()
 	rawMorphInput += newRads
+
+	; modify raw morphs percentage by player's current Bloating
+	float newBloating = GetNewBloating()
+	rawMorphInput += newBloating
 
 	; modify raw morphs percentage by carried balloons
 	; each balloon counts as 5 rads
 	float balloonsMorph = CheckCarriedBalloons()
 	rawMorphInput += balloonsMorph
-
-	; modify raw morphs percentage by bonus morphs if we have any
-	if (BonusRads != 0)
-		rawMorphInput += BonusRads
-		BonusRads = 0
-	endif
 
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
@@ -1583,14 +1594,12 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
 			; 100 rads worth of bloating
-			BonusRads += 0.1
+			PlayerRef.ModValue(avBloating, 0.1)
 			kitanaMaskMessyPoppedCount += 1
 
 			; (re)start self-morph timer			
 			CancelTimer(ETimerKitanaMask)
-			;TODO debug waarde
-			StartTimer(30, ETimerKitanaMask)
-			; PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+			StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
 		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
@@ -1608,6 +1617,12 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 
 		ClearAllRadsPerks(akTarget)
 		akTarget.EquipItem(PoppedPotion, abSilent = true)
+		
+		; (re)start self-morph timer	
+		if (hasKitanaMaskEquipped)		
+			CancelTimer(ETimerKitanaMask)
+			StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+		endif
 	endif
 EndFunction
 
@@ -2125,8 +2140,7 @@ Function KitanaMaskEquipped()
 	;TechnicalNote("Bloating Outfit equipped!")
 	hasKitanaMaskEquipped = true
 	;kitanaMaskMessyPoppedCount = 0
-	;TODO debug waarde
-	StartTimer(10, ETimerKitanaMask)
+	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 EndFunction
 
 Function KitanaMaskUnequipped()
@@ -2139,11 +2153,10 @@ EndFunction
 Function KitanaMaskSelfMorph()
 	Note("pfft")
 	; 50 rads worth of bloating
-	BonusRads += 0.05
+	PlayerRef.ModValue(avBloating, 0.05)
 	LenARM_FullGroanSound.Play(PlayerRef)
 	
-	;TODO debug waarde
-	StartTimer(10, ETimerKitanaMask)
+	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 EndFunction
 
 
