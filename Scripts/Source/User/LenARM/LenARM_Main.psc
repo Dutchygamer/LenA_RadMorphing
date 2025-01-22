@@ -697,7 +697,8 @@ EndFunction
 ; ------------------------
 float Function GetNewBloating()
 	float newBloating = (PlayerRef.GetValue(avBloating) as float)
-	return newBloating
+	; divide bloating by 1000 as 1 here equals 1000 displayed 'rads'
+	return newBloating / 1000
 EndFunction
 
 ; ------------------------
@@ -1102,7 +1103,9 @@ Function ResetMorphs()
 	TotalRads = 0
 
 	; reset any additional Bloating the player had
-	PlayerRef.SetValue(avBloating, 0)
+	; works in the same way Doctor heals rads
+	int RadsToHeal = (PlayerRef.GetValue(avBloating) as int)
+	PlayerRef.RestoreValue(avBloating, RadsToHeal)
 
 	; reset the rad perks
 	ClearAllRadsPerks(PlayerRef)
@@ -1597,7 +1600,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
 			; 100 rads worth of bloating
-			PlayerRef.ModValue(avBloating, 0.1)
+			PlayerRef.DamageValue(avBloating, 100)
 			kitanaMaskMessyPoppedCount += 1
 
 			; (re)start self-morph timer			
@@ -2156,7 +2159,7 @@ EndFunction
 Function KitanaMaskSelfMorph()
 	Note("pfft")
 	; 50 rads worth of bloating
-	PlayerRef.ModValue(avBloating, 0.05)
+	PlayerRef.DamageValue(avBloating, 50)
 	LenARM_FullGroanSound.Play(PlayerRef)
 	
 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
