@@ -23,6 +23,10 @@ int[] UnequipSlots
 ; flattened two-dimensional array[idxSliderSet][idxSliderName]
 float[] OriginalMorphs
 
+;TODO
+; ; HUDFramework plugin
+; hudframework hud
+
 float UpdateDelay
 
 float LowRadsThreshold
@@ -163,6 +167,8 @@ Group Properties
 	Message Property LenARM_BloatingAgentInjectedMessage Auto
 	Message Property LenARM_BloatingAgentMissingMessage Auto
 	Message Property LenARM_BloatingSuitMissingMessage Auto
+	Message Property LenARM_BloatingMask_KillMessage Auto
+	Message Property LenARM_BloatingMask_PeriodicMessage Auto
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
 
@@ -1599,6 +1605,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 		; bloat player if kitana mask is equipped
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
+			LenARM_BloatingMask_KillMessage.Show()
 			; 100 rads worth of bloating
 			PlayerRef.DamageValue(avBloating, 100)
 			kitanaMaskMessyPoppedCount += 1
@@ -2157,7 +2164,7 @@ Function KitanaMaskUnequipped()
 EndFunction
 
 Function KitanaMaskSelfMorph()
-	Note("pfft")
+	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
 	LenARM_FullGroanSound.Play(PlayerRef)
@@ -2299,21 +2306,32 @@ EndFunction
 ; Debug function to check which slots the current equipped clothes / armor occupies
 ; ------------------------
 Function ShowEquippedClothes()
-	TechnicalNote("ShowEquippedClothes")
-	string[] items = new string[0]
-	int slot = 0
-	While (slot < 62)
-		Actor:WornItem item = PlayerRef.GetWornItem(slot)
-		If (item != None && item.item != None)
-			items.Add(slot + ": " + item.item.GetName())
-			; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
-		Else
-			; Log("  Slot " + slot + " is empty")
-		EndIf
-		slot += 1
-	EndWhile
+	;TODO
+	; ;TODO for now hijacked to activate HUDFramework plugin
+	; hud = hudframework.GetInstance()
+	; If (hud)
+	; 	MessageBox("HUDFramework is installed!")
+	; 	; hud.RegisterWidget(Self as ScriptObject, Self.DEF_WIDGETS_SURVIVAL1_identificator, Pdef_W_SUR1_x.GetValueInt() as float, Pdef_W_SUR1_y.GetValueInt() as float, True, True)
+	; Else
+	; 	MessageBox("HUDFramework is not installed!")
+	; EndIf
 
-	MessageBox(LL_FourPlay.StringJoin(items, "\n"))
+
+	; TechnicalNote("ShowEquippedClothes")
+	; string[] items = new string[0]
+	; int slot = 0
+	; While (slot < 62)
+	; 	Actor:WornItem item = PlayerRef.GetWornItem(slot)
+	; 	If (item != None && item.item != None)
+	; 		items.Add(slot + ": " + item.item.GetName())
+	; 		; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+	; 	Else
+	; 		; Log("  Slot " + slot + " is empty")
+	; 	EndIf
+	; 	slot += 1
+	; EndWhile
+
+	; MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
 Function GiveIrradiatedBlood()

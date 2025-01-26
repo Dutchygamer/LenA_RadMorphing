@@ -16,7 +16,7 @@ EndEvent
 
 Event OnUnequipped(Actor akActor)
     Actor PlayerActor = game.GetPlayer()
-    if akActor == PlayerActor
+    if (akActor == PlayerActor)
         LenARM_Main.KitanaMaskUnequipped()
         ;PlayerActor.EquipItem(BloatSuitUnequipDebuff, abSilent = true)
 		PlayerActor.RemovePerk(LenARM_MooMilkPerk)
