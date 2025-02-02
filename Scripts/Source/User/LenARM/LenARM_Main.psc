@@ -292,7 +292,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	if (hasMooMilkAddiction == false && PlayerRef.HasMagicEffect(MooMilkAddictionEffect))
 		hasMooMilkAddiction = true
 		;Note("moomilk!")
-	elseif(hasMooMilkAddiction == true && PlayerRef.HasMagicEffect(MooMilkAddictionEffect) == false)
+	elseif (hasMooMilkAddiction == true && PlayerRef.HasMagicEffect(MooMilkAddictionEffect) == false)
 		hasMooMilkAddiction = false
 		;Note("no moomilk!")
 	endif
@@ -315,12 +315,16 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 	endif
 
 	;TODO dit kinda werkt, maar eenmalig; heb je 5 enemies popped dan kan je hem oneindig op / af zetten
+	; when unequipping the Kitana mask check if player has messy popped 5 NPCs
 	if (akBaseObject as Armor && akBaseObject == KitanaMask)
+		; if not, re-equip the mask
 		if (kitanaMaskMessyPoppedCount < 5)
 			Note("pop 5 enemies!")
 			PlayerRef.EquipItem(KitanaMask)
+		; if so, continue with the unequip and reset the counter
 		Else
 			CancelTimer(ETimerKitanaMask)
+			kitanaMaskMessyPoppedCount = 0
 		endif
 	endif
 EndEvent
@@ -1390,12 +1394,17 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 		ParalyzeActor(akTarget)
 	endIf
 
-	; keep bloating the actor until the bloatStage is equal to expected result
-	while (nextBloatStage <= maxBloatStage)
-		ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy)
-		
-		nextBloatStage += 1
-	endwhile
+	; keep bloating the actor until the bloatStage is equal to expected result when not isMessy
+	if (!isMessy)
+		while (nextBloatStage <= maxBloatStage)
+			ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy)
+			
+			nextBloatStage += 1
+		endwhile
+	; immediately go to popping when isMessy
+	else
+		ApplyBloatStage(akTarget, maxBloatStage, morphPercentage, isConcentrated, isMessy)
+	endif
 EndFunction
 
 ; public endpoints used in the Magic Effect scripts
