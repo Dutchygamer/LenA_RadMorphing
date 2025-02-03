@@ -1394,15 +1394,18 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 		ParalyzeActor(akTarget)
 	endIf
 
-	; keep bloating the actor until the bloatStage is equal to expected result when not isMessy
+	; when not isMessy keep bloating the actor until the bloatStage is equal to expected result
 	if (!isMessy)
 		while (nextBloatStage <= maxBloatStage)
 			ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy)
 			
 			nextBloatStage += 1
 		endwhile
-	; immediately go to popping when isMessy
+	; when isMessy immediately bloat to max and go to popping
 	else
+		; morph percentage is one step bigger already
+		float maxMorphPercentage =  morphPercentage * maxBloatStage
+		ApplyBloatStage(akTarget, (maxBloatStage-1), maxMorphPercentage, isConcentrated, isMessy)
 		ApplyBloatStage(akTarget, maxBloatStage, morphPercentage, isConcentrated, isMessy)
 	endif
 EndFunction
@@ -1467,14 +1470,14 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	endif
 EndFunction
 
-Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
+Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
 	; when hit by concentrated shot the permanent pop chance is 50%
 	if (isConcentrated)
 		messyPopChance = 0.5
 	; when forced for messy pop then the permanent pop chance is 100%
-	elseif (isMessy)
+	elseif (isForcedMessy)
 		messyPopChance = 1
 	endif
 
@@ -1526,10 +1529,20 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 	Utility.Wait(randomFloat)
 
 	int popStatesToUse = PopStates
-	; messy pop makes actor bigger as warning for attent player
+	bool playAltMorphSound = false
+
 	if (messyPop)
-		popStatesToUse *= 2
-		multiplier = 0.15
+		; forced messy pop bloats actor at normal rate but much larger and immediately strips them
+		if (isForcedMessy)
+			popStatesToUse = PopStates
+			multiplier *= 3.5 ;2.5
+			playAltMorphSound = true
+			UnequipAllNPC(akTarget)
+		; 'normal 'messy pop bloats actor twice as long and larger as warning for attent player
+		else
+			popStatesToUse *= 2
+			multiplier *= 1.5
+		endif
 	endif
 
 	; gradually increase the morphs and unequip the clothes
@@ -1544,7 +1557,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 		
 		BodyGen.UpdateMorphs(akTarget)
 		; play normal swell sound when bloating normally
-		if (currentPopState < PopStates)
+		if (currentPopState < PopStates && !playAltMorphSound)
 			PlayMorphSound(akTarget, 5)
 		; when we are bloating beyond normal play the alt swell sound 
 		else
@@ -1555,7 +1568,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 		; for the unequip state we also want to strip all clothes and armor
-		If (currentPopState == PopStripState || currentPopState == PopStates )
+		If (!isForcedMessy && (currentPopState == PopStripState || currentPopState == PopStates))
 			UnequipAllNPC(akTarget)
 		endif
 
@@ -1580,7 +1593,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isMessy)
 	SetBloatMorphs(akTarget, reset, shouldPop = false)
 
 	; messy pop kills actor and places a grenade explosion
-	if (messyPop)
+	if (messyPop || isForcedMessy)
 		LenARM_PrePopMessySound.PlayAndWait(akTarget)
 
 		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
