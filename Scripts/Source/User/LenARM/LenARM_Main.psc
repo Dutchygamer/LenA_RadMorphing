@@ -24,8 +24,9 @@ int[] UnequipSlots
 float[] OriginalMorphs
 
 ;TODO
-; ; HUDFramework plugin
-; hudframework hud
+; HUDFramework plugin
+hudframework hud
+String Property BloatExposure_Widget = "KillCount.swf" AutoReadOnly
 
 float UpdateDelay
 
@@ -391,6 +392,8 @@ Event OnTimer(int tid)
 		BloatSuitGiveAmmo()
 	ElseIf (tid == ETimerKitanaMask)
 		KitanaMaskSelfMorph()
+	ElseIf (tid == ETimerHUD)
+		UpdateHUD()
 	EndIf
 EndEvent
 
@@ -2195,6 +2198,21 @@ Function KitanaMaskSelfMorph()
 EndFunction
 
 
+
+Function UpdateHUD()
+	int hudValue = (PlayerRef.GetValue(avBloating) as int)
+	
+	; Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget))
+	; Note("bloat: " + hudValue)
+
+	hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
+
+	; hud.SendMessage(Self.DEF_w_PA1_identifier, Self.command_stats_update, playerref.GetValue(PPowerArmorHeadCondition), playerref.GetValue(PPowerArmorTorsoCondition), playerref.GetValue(PPowerArmorRightArmCondition), playerref.GetValue(PPowerArmorLeftArmCondition), playerref.GetValue(PPowerArmorRightLegCondition), playerref.GetValue(PPowerArmorLeftLegCondition))
+
+	StartTimer(UpdateDelay, ETimerHUD)
+EndFunction
+
+
 ; ------------------------
 ; Play a sound depending on the given id
 ; 1 = MorphSound_Low
@@ -2318,42 +2336,64 @@ Function ForgetStateCounterReset()
 EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
-	float lowestPercentage = GetLowestSliderPercentage()
+	;TODO for now hijacked to activate HUDFramework plugin
+	hud = hudframework.GetInstance()
+	If (hud)
+		Note("HUDFramework is installed!")
+        ; Register the widget, setting its position to 10, 70 on the screen.
+        ; Load the widget automatically after registration, and auto-load it whenever the game loads.
+        hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
+	Else
+		Note("HUDFramework is not installed!")
+	EndIf
 
-	;TODO ik dump TotalRads hier ff als test in
-	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
+	; float lowestPercentage = GetLowestSliderPercentage()
+
+	; ;TODO ik dump TotalRads hier ff als test in
+	; MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
+
+; This function is called by HUDFramework when the widget is loaded.
+Function HUD_WidgetLoaded(string asWidget)
+    If (asWidget == BloatExposure_Widget)
+		; Note("Widget registered!")
+
+		float[] huh = hud.GetWidgetPosition(BloatExposure_Widget)
+		Note("Widget registered!" + huh[0] + "; " + huh[1])
+
+
+		; hud.SetWidgetScale(BloatExposure_Widget, 1, 1, False)
+		; hud.SetWidgetPosition(BloatExposure_Widget, 10, 70, False)
+		; hud.SetWidgetOpacity(BloatExposure_Widget, 1.0, False)
+
+		int hudValue = (PlayerRef.GetValue(avBloating) as int)
+
+        hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
+		
+		StartTimer(UpdateDelay, ETimerHUD)
+    EndIf
+EndFunction
+
 
 ; ------------------------
 ; Debug function to check which slots the current equipped clothes / armor occupies
 ; ------------------------
 Function ShowEquippedClothes()
-	;TODO
-	; ;TODO for now hijacked to activate HUDFramework plugin
-	; hud = hudframework.GetInstance()
-	; If (hud)
-	; 	MessageBox("HUDFramework is installed!")
-	; 	; hud.RegisterWidget(Self as ScriptObject, Self.DEF_WIDGETS_SURVIVAL1_identificator, Pdef_W_SUR1_x.GetValueInt() as float, Pdef_W_SUR1_y.GetValueInt() as float, True, True)
-	; Else
-	; 	MessageBox("HUDFramework is not installed!")
-	; EndIf
+	TechnicalNote("ShowEquippedClothes")
+	string[] items = new string[0]
+	int slot = 0
+	While (slot < 62)
+		Actor:WornItem item = PlayerRef.GetWornItem(slot)
+		If (item != None && item.item != None)
+			items.Add(slot + ": " + item.item.GetName())
+			; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+		Else
+			; Log("  Slot " + slot + " is empty")
+		EndIf
+		slot += 1
+	EndWhile
 
-
-	; TechnicalNote("ShowEquippedClothes")
-	; string[] items = new string[0]
-	; int slot = 0
-	; While (slot < 62)
-	; 	Actor:WornItem item = PlayerRef.GetWornItem(slot)
-	; 	If (item != None && item.item != None)
-	; 		items.Add(slot + ": " + item.item.GetName())
-	; 		; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
-	; 	Else
-	; 		; Log("  Slot " + slot + " is empty")
-	; 	EndIf
-	; 	slot += 1
-	; EndWhile
-
-	; MessageBox(LL_FourPlay.StringJoin(items, "\n"))
+	MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
 Function GiveIrradiatedBlood()
@@ -2440,6 +2480,11 @@ Group EnumTimerId
 	int Property ETimerDelayPop = 6 Auto Const
 	int Property ETimerBloatSuit = 7 Auto Const
 	int Property ETimerKitanaMask = 8 Auto Const
+	int Property ETimerHUD = 9 Auto Const
+EndGroup
+
+Group EnumWidgetCommands
+    int Property ECommand_UpdateBloat = 100 Auto Const
 EndGroup
 
 Group EnumSex
