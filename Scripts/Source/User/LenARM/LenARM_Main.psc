@@ -1622,6 +1622,10 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		; sadly no way to give the XP to the player even if we tell the player is the killer
 		akTarget.Dismember("Torso", true, true, true)
 		akTarget.Kill()
+
+		; unparalyze the actor
+		; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
+		UnParalyzeActor(akTarget)
 				
 		; give player a temp buff if bloating suit is equipped
 		if (hasBloatingSuitEquipped)
@@ -1635,7 +1639,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 			PlayerRef.DamageValue(avBloating, 100)
 			kitanaMaskMessyPoppedCount += 1
 
-			; (re)start self-morph timer			
+			; (re)start self-morph timer with a larger delay
 			CancelTimer(ETimerKitanaMask)
 			StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
 		endif
