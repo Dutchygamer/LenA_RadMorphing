@@ -724,6 +724,11 @@ Function TimerMorphTick()
 		return
 	endif
 
+	; by default, assume we have no changed morphs for all sliderSets
+	bool changedMorphs = false
+	; by default, assume we are not at our max morphs for all sliderSets
+	bool maxedOutMorphs = false
+
 	; setup the raw morphs percentage
 	float rawMorphInput = 0
 
@@ -751,6 +756,12 @@ Function TimerMorphTick()
 	; the longer the timer interval, the larger this will be
 	float radsDifference = rawMorphInput - CurrentRads
 	
+	; when already on max morphs and popping is enabled, then any large amount of additional morphs (50 rads worth) will force an update
+	; this is only relevant for CheckPopWarnings
+	if (maxedOutMorphs && EnablePopping && (radsDifference >= 0.05))
+		forceUpdate = true
+	endif
+
 	; update our internal storage with the new morphs
 	CurrentRads = rawMorphInput
 
@@ -767,10 +778,6 @@ Function TimerMorphTick()
 	; Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
 
 	int idxSet = 0
-	; by default, assume we have no changed morphs for all sliderSets
-	bool changedMorphs = false
-	; by default, assume we are not at our max morphs for all sliderSets
-	bool maxedOutMorphs = false
 
 	int morphableSliders = 0
 	int maxedOutSliders = 0
@@ -940,21 +947,11 @@ float Function CheckCarriedBalloons()
 		; get amount of carried balloons from HeliumBalloon.esp
 		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
 		if (carriedBalloons != newCarriedBalloons) 
-			; ; we are interested in the carried balloons in intervals of 10
-			; int currentCount = (carriedBalloons / 10)
-			; int newCount = (newCarriedBalloons / 10)
-	
-			; ; when we carry 10 more balloons then before display a message
-			; if (newCount > currentCount)
-			; 	LenARM_BalloonTriggerMessage.Show()
-			; 	LenARM_BalloonTriggerSound.Play(PlayerRef)
-			; endif
-
 			carriedBalloons = newCarriedBalloons
 		endif
 		
-		; each balloon is 5% rads worth of morphs
-		return carriedBalloons * 0.005 ;0.002
+		; each balloon is 5 rads worth of morphs
+		return carriedBalloons * 0.005
 	endif
 EndFunction
 
@@ -1057,19 +1054,38 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	endif
 
 
-	;TODO seems buggy when split
-	; ; when player has (or has had) molecow disease, apply permanent breast size increase
-	; if (SliderNames[idxSlider] == "Breasts" && hasHadMoleCowDisease)
-	; 	;TODO make buff configurable slider
-	; 	morphBonus = 0.25
-	; ; when player has bloating suit equipped, apply permanent breast size increase
-	; elseif ((SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2") && hasBloatingSuitEquipped)
-	; 	;TODO make buff configurable slider
-	; 	morphBonus = 0.5
-	; ; when player has nipple piercing equipped, apply permanent breast size increase
-	; elseif (SliderNames[idxSlider] == "DoubleMelon" && hasNippleBlockers)
-	; 	;TODO make buff configurable slider
-	; 	morphBonus = 0.5
+	;TODO alternative
+	; ; permanent breast size increase
+	; if (SliderNames[idxSlider] == "Breasts")
+	; 	; player has (or has had) molecow disease
+	; 	if (hasHadMoleCowDisease)
+	; 		;TODO make buff configurable slider
+	; 		morphBonus += 0.15
+	; 	endif
+	; 	; player also carries balloons
+	; 	if (carriedBalloons > 0)
+	; 		morphBonus += 0.1
+	; 	endif
+	; ; permanent nipple perkiness / areola increase
+	; elseif (SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2" || SliderNames[idxSlider] == "NippleAreola")
+	; 	; player has bloating suit equipped
+	; 	if (hasBloatingSuitEquipped)
+	; 		morphBonus += 0.5
+	; 	endif
+	; 	; player has kitana mask equipped
+	; 	if (hasKitanaMaskEquipped)
+	; 		morphBonus += 0.25
+	; 	endif
+	; ; permanent double melon increase
+	; elseif (SliderNames[idxSlider] == "DoubleMelon")
+	; 	; player has nipple piercing equipped
+	; 	if (hasNippleBlockers)
+	; 		morphBonus += 0.25
+	; 	endif
+	; 	; player has mooMilk addiction
+	; 	if (hasMooMilkAddiction)
+	; 		morphBonus += 0.5
+	; 	endif
 	; endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
