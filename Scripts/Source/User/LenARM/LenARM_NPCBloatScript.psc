@@ -20,7 +20,9 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
     endif
 
     ; for now only work on females
-    if (sex == LenARM_Main.ESexFemale)     
+    if (sex == LenARM_Main.ESexFemale)
+        RegisterForRemoteEvent(akCaster as ObjectReference, "OnUnload")
+        
         ; make ourselves immune to further bloating until we are done
         akTarget.SetValue(NPCBloatImmunity, 1)
 
@@ -56,3 +58,23 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         endif
     endif
 EndEvent
+
+; when unloading the actor reset a bunch of things so it doesn't get stuck when respawning
+Event ObjectReference.OnUnload(ObjectReference akSender)
+    self.Dispel()
+
+    Actor akTarget = (akSender as Actor)
+
+    ; don't stay paralyzed
+    LenARM_Main.UnParalyzeActor(akTarget)
+    ; clear overlays
+    LenARM_Main.ClearAllRadsPerks(akTarget)
+
+    ; (akSender as Actor).stopcombat()
+    ; akSender.SetValue(ParalysisAV, 0)
+    ; akSender.setValue(Aggression, iPrevAggression)
+    ; akSender.setValue(Game.GetConfidenceAV(), iPrevConfidence)
+    
+endEvent
+
+;TODO doe ook OnDeath?
