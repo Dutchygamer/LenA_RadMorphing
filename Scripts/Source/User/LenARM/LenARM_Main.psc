@@ -745,6 +745,13 @@ Function TimerMorphTick()
 	float balloonsMorph = CheckCarriedBalloons()
 	rawMorphInput += balloonsMorph
 
+	; recalculate which balloonsPerk to apply when enabled
+	; do after we have updated our balloons count but before we abort the function if there is no rads diff
+	; otherwise there are certain situations where changing amount of balloons doesn't trigger the perks to refresh
+	if (EnableRadsPerks)
+		ApplyBalloonsPerk()
+	endif
+
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
 	If (!forceUpdate && rawMorphInput == CurrentRads)
@@ -927,7 +934,6 @@ Function TimerMorphTick()
 	; do after we have updated everything else
 	if (EnableRadsPerks)
 		ApplyRadsPerk()
-		ApplyBalloonsPerk()
 	endif
 
 	; only restart the timer if we aren't shutting down, so it doesn't try to perform updates when the mod is in the process of stopping
@@ -1058,13 +1064,13 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	; ; permanent breast size increase
 	; if (SliderNames[idxSlider] == "Breasts")
 	; 	; player has (or has had) molecow disease
-	; 	if (hasHadMoleCowDisease)
-	; 		;TODO make buff configurable slider
+	; 	if (hasHadMoleCowDisease)			
 	; 		morphBonus += 0.15
-	; 	endif
-	; 	; player also carries balloons
-	; 	if (carriedBalloons > 0)
-	; 		morphBonus += 0.1
+
+	; 		; player also carries balloons
+	; 		if (carriedBalloons > 0)
+	; 			morphBonus += 0.1
+	; 		endif
 	; 	endif
 	; ; permanent nipple perkiness / areola increase
 	; elseif (SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2" || SliderNames[idxSlider] == "NippleAreola")
@@ -1085,6 +1091,11 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	; 	; player has mooMilk addiction
 	; 	if (hasMooMilkAddiction)
 	; 		morphBonus += 0.5
+	; 	endif
+	; 	;TODO unsure
+	; 	; player has kitana mask equipped
+	; 	if (hasKitanaMaskEquipped)
+	; 		morphBonus += 0.25
 	; 	endif
 	; endif
 
@@ -1554,7 +1565,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		; forced messy pop bloats actor at normal rate but much larger and immediately strips them
 		if (isForcedMessy)
 			popStatesToUse = PopStates
-			multiplier *= 3.5 ;2.5
+			multiplier *= 3.5
 			playAltMorphSound = true
 			UnequipAllNPC(akTarget)
 		; 'normal 'messy pop bloats actor twice as long and larger as warning for attent player
@@ -1830,6 +1841,9 @@ Function ApplyBalloonsPerk()
 	; when we have less then 10 balloons, clear all existing perks and don't apply a new one
 	if (currentCount < 1)
 		ClearAllBalloonsPerks(PlayerRef)
+	
+		; reset counter as well
+		CurrentBalloonsPerk = 0
 		return
 	endif
 
@@ -1838,15 +1852,15 @@ Function ApplyBalloonsPerk()
         currentCount = 4
     EndIf
 
-	; subtract 1 from our count as the Perks start from 0
-	int newBalloonsPerk = currentCount -1
 	; when we have enough balloons that we should have a difference in perk level, change perks
-	if (CurrentBalloonsPerk != newBalloonsPerk)
+	if (CurrentBalloonsPerk != currentCount)
+		; subtract 1 from our count as the Perks start from 0
+		int newBalloonsPerk = currentCount -1
 		ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
 		
-		CurrentBalloonsPerk = newBalloonsPerk
+		CurrentBalloonsPerk = currentCount
 	endif
 EndFunction
 
