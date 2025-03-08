@@ -168,11 +168,14 @@ Group Properties
 	Message Property LenARM_Tutorial_MaxedOutMorphsMessage Auto
 	Message Property LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage Auto
 	Message Property LenARM_Tutorial_PoppedMessage Auto
+	Message Property LenARM_Tutorial_BloatingMaskMessage Auto
 	Message Property LenARM_BloatingAgentInjectedMessage Auto
 	Message Property LenARM_BloatingAgentMissingMessage Auto
 	Message Property LenARM_BloatingSuitMissingMessage Auto
 	Message Property LenARM_BloatingMask_KillMessage Auto
 	Message Property LenARM_BloatingMask_PeriodicMessage Auto
+	Message Property LenARM_BloatingMask_UnsafeUnequipMessage Auto
+	Message Property LenARM_BloatingMask_SafeUnequipMessage Auto
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
 
@@ -1039,74 +1042,74 @@ EndFunction
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
 	float morphBonus = 0.0
 
-	; apply permanent breast size increase for various reasons (can stack)
-	if (SliderNames[idxSlider] == "DoubleMelon")
-		; player has (or has had) molecow disease
-		if (hasHadMoleCowDisease)
-			morphBonus += 0.25	
-
-			; player also carries balloons
-			if (carriedBalloons > 0)
-				morphBonus += 0.2
-			endif
-		endif
-		; player has bloating suit equipped
-		if (hasBloatingSuitEquipped)
-			morphBonus += 0.1	
-		endif
-		; player has kitana mask equipped
-		if (hasKitanaMaskEquipped)
-			morphBonus += 0.15
-		endif
-		; player has nipple piercing equipped
-		if (hasNippleBlockers)
-			morphBonus += 0.1
-		endif
-		; player has mooMilk addiction
-		if (hasMooMilkAddiction)
-			morphBonus += 0.2
-		endif
-	endif
-
-
-	;TODO alternative
-	; ; permanent breast size increase
-	; if (SliderNames[idxSlider] == "Breasts")
+	; ; apply permanent breast size increase for various reasons (can stack)
+	; if (SliderNames[idxSlider] == "DoubleMelon")
 	; 	; player has (or has had) molecow disease
-	; 	if (hasHadMoleCowDisease)			
-	; 		morphBonus += 0.15
+	; 	if (hasHadMoleCowDisease)
+	; 		morphBonus += 0.25	
 
 	; 		; player also carries balloons
 	; 		if (carriedBalloons > 0)
-	; 			morphBonus += 0.1
+	; 			morphBonus += 0.2
 	; 		endif
 	; 	endif
-	; ; permanent nipple perkiness / areola increase
-	; elseif (SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2" || SliderNames[idxSlider] == "NippleAreola")
 	; 	; player has bloating suit equipped
 	; 	if (hasBloatingSuitEquipped)
-	; 		morphBonus += 0.5
+	; 		morphBonus += 0.1	
 	; 	endif
 	; 	; player has kitana mask equipped
 	; 	if (hasKitanaMaskEquipped)
-	; 		morphBonus += 0.25
+	; 		morphBonus += 0.15
 	; 	endif
-	; ; permanent double melon increase
-	; elseif (SliderNames[idxSlider] == "DoubleMelon")
 	; 	; player has nipple piercing equipped
 	; 	if (hasNippleBlockers)
-	; 		morphBonus += 0.25
+	; 		morphBonus += 0.1
 	; 	endif
 	; 	; player has mooMilk addiction
 	; 	if (hasMooMilkAddiction)
-	; 		morphBonus += 0.5
-	; 	endif
-	; 	;TODO unsure
-	; 	; player has kitana mask equipped
-	; 	if (hasKitanaMaskEquipped)
-	; 		morphBonus += 0.25
+	; 		morphBonus += 0.2
 	; 	endif
 	; endif
+
+
+	;TODO alternative
+	; permanent breast size increase
+	if (SliderNames[idxSlider] == "Breasts")
+		; player has (or has had) molecow disease
+		if (hasHadMoleCowDisease)			
+			morphBonus += 0.15
+
+			; player also carries balloons
+			if (carriedBalloons > 0)
+				morphBonus += 0.1
+			endif
+		endif
+	; permanent nipple perkiness / areola increase
+	elseif (SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2" || SliderNames[idxSlider] == "NippleAreola")
+		; player has bloating suit equipped
+		if (hasBloatingSuitEquipped)
+			morphBonus += 0.5
+		endif
+		; player has kitana mask equipped
+		if (hasKitanaMaskEquipped)
+			morphBonus += 0.25
+		endif
+	; permanent double melon increase
+	elseif (SliderNames[idxSlider] == "DoubleMelon")
+		; player has nipple piercing equipped
+		if (hasNippleBlockers)
+			morphBonus += 0.25
+		endif
+		; player has mooMilk addiction
+		if (hasMooMilkAddiction)
+			morphBonus += 0.5
+		endif
+		;TODO unsure
+		; player has kitana mask equipped
+		if (hasKitanaMaskEquipped)
+			morphBonus += 0.25
+		endif
+	endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
 EndFunction
@@ -1524,12 +1527,13 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	; since IsProtected is only on ActorBase make a quick cast
 	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
 
+	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
 	; - target is not protected or essential (game does some very weird things if we messy pop those)
 	; - random die roll is below our messyPopChance
-	bool messyPop = (akTarget != PlayerRef && akTarget.IsHostileToActor(PlayerRef) == true && actorBaseTarget.IsProtected() == false && actorBaseTarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
+	bool messyPop = (akTarget != PlayerRef && isHostile && actorBaseTarget.IsProtected() == false && actorBaseTarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
 
 	; before we start expanding log the current breasts size
 	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
@@ -1633,7 +1637,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	SetBloatMorphs(akTarget, reset, shouldPop = false)
 
 	; messy pop kills actor and places a grenade explosion
-	if (messyPop || isForcedMessy)
+	if (messyPop || (isForcedMessy && !isHostile))
 		LenARM_PrePopMessySound.PlayAndWait(akTarget)
 
 		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
@@ -1671,14 +1675,17 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		; bloat player if kitana mask is equipped
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
-			LenARM_BloatingMask_KillMessage.Show()
 			; 100 rads worth of bloating
 			PlayerRef.DamageValue(avBloating, 100)
 			kitanaMaskMessyPoppedCount += 1
 
 			if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
-				TechnicalNote("You've proven yourself worthy!")
+				LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
+				; LenARM_BloatingMask_SafeUnequipMessage.Show()
+				; TechnicalNote("You've proven yourself worthy!")
 				kitanaMaskMessyPoppedRequirementMet = true
+			else
+				LenARM_BloatingMask_KillMessage.Show()
 			endif
 
 			; restart self-morph timer with a larger delay when requirements not yet met
@@ -2228,8 +2235,8 @@ EndFunction
 Function KitanaMaskEquipped()
 	hasKitanaMaskEquipped = true
 	if (TutorialDisplayed_KitanaMask == false)
-		; LenARM_Tutorial_PoppedMessage.ShowAsHelpMessage("LenARM_Tutorial_PoppedMessage", 8, 0, 1)
-		TechnicalNote("You've equipped a cursed mask that won't get off!")
+		LenARM_Tutorial_BloatingMaskMessage.ShowAsHelpMessage("LenARM_Tutorial_BloatingMaskMessage", 8, 0, 1)
+		; TechnicalNote("You've equipped a cursed mask that won't get off!")
 		TutorialDisplayed_KitanaMask = true
 	endif
 
@@ -2261,8 +2268,8 @@ Function KitanaMaskSelfMorph_Timer()
 EndFunction
 
 Function KitanaMaskSelfMorph_Unequip()
-	TechnicalNote("The mask mocks your attempts at getting rid of it! Pop " + kitanaMaskMessyPoppedRequirement + " enemies!")
-	; LenARM_BloatingMask_PeriodicMessage.Show()
+	LenARM_BloatingMask_UnsafeUnequipMessage.Show()
+	; TechnicalNote("The mask mocks your attempts at getting rid of it! Pop " + kitanaMaskMessyPoppedRequirement + " enemies!")
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
 	LenARM_FullGroanSound.Play(PlayerRef)
