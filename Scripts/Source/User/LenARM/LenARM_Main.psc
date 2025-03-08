@@ -62,6 +62,7 @@ bool IsPopping
 bool TutorialDisplayed_DroppedClothes = false
 bool TutorialDisplayed_MaxedOutMorphs = false
 bool TutorialDisplayed_Popped = false
+bool TutorialDisplayed_KitanaMask = false
 
 ; does player have bloating suit equipped?
 bool hasBloatingSuitEquipped = false
@@ -69,6 +70,8 @@ bool canGiveBloatingSuitAmmo = true
 
 bool hasKitanaMaskEquipped = false
 int kitanaMaskMessyPoppedCount = 0
+int kitanaMaskMessyPoppedRequirement = 10
+bool kitanaMaskMessyPoppedRequirementMet = false
 
 ;TODO debug waarde
 int kitanaMaskSelfMorphTimer = 10
@@ -292,10 +295,8 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 	; if player suffers from mooMilk addiction or gets rid of it, adjust the bool
 	if (hasMooMilkAddiction == false && PlayerRef.HasMagicEffect(MooMilkAddictionEffect))
 		hasMooMilkAddiction = true
-		;Note("moomilk!")
 	elseif (hasMooMilkAddiction == true && PlayerRef.HasMagicEffect(MooMilkAddictionEffect) == false)
 		hasMooMilkAddiction = false
-		;Note("no moomilk!")
 	endif
 EndEvent
 
@@ -315,17 +316,15 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 		forceUpdate = true
 	endif
 
-	;TODO dit kinda werkt, maar eenmalig; heb je 5 enemies popped dan kan je hem oneindig op / af zetten
 	; when unequipping the Kitana mask check if player has messy popped 5 NPCs
 	if (akBaseObject as Armor && akBaseObject == KitanaMask)
 		; if not, re-equip the mask
-		if (kitanaMaskMessyPoppedCount < 5)
-			Note("pop 5 enemies!")
+		if (kitanaMaskMessyPoppedRequirementMet == false)
+			KitanaMaskSelfMorph_Unequip()
 			PlayerRef.EquipItem(KitanaMask)
 		; if so, continue with the unequip and reset the counter
 		Else
 			CancelTimer(ETimerKitanaMask)
-			kitanaMaskMessyPoppedCount = 0
 		endif
 	endif
 EndEvent
@@ -391,7 +390,7 @@ Event OnTimer(int tid)
 	ElseIf (tid == ETimerBloatSuit)
 		BloatSuitGiveAmmo()
 	ElseIf (tid == ETimerKitanaMask)
-		KitanaMaskSelfMorph()
+		KitanaMaskSelfMorph_Timer()
 	ElseIf (tid == ETimerHUD)
 		UpdateHUD()
 	EndIf
@@ -715,6 +714,35 @@ float Function GetNewBloating()
 EndFunction
 
 ; ------------------------
+bool Function UpdateCarriedBalloons()
+	if (!hasHadMoleCowDisease)
+		return false
+	endif
+	; when player has (or has had) molecow disease check our carried balloons
+	;TODO je kan ook kijken of de ESP erin hangt
+	;Game.IsPluginInstalled("xxx.esp")
+
+	; get amount of carried balloons from HeliumBalloon.esp
+	int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
+	if (carriedBalloons != newCarriedBalloons) 
+		carriedBalloons = newCarriedBalloons
+		return true
+	endif
+	
+	return false
+EndFunction
+
+float Function CheckCarriedBalloons()
+	if (!hasHadMoleCowDisease)
+		return 0
+	; when player has (or has had) molecow disease check our carried balloons
+	else
+		; each balloon is 5 rads worth of morphs
+		return carriedBalloons * 0.005
+	endif
+EndFunction
+
+; ------------------------
 ; Timer-based morphs
 ; ------------------------
 Function TimerMorphTick()
@@ -740,15 +768,15 @@ Function TimerMorphTick()
 	float newBloating = GetNewBloating()
 	rawMorphInput += newBloating
 
-	; modify raw morphs percentage by carried balloons
-	; each balloon counts as 5 rads
+	bool hasCarriedBalloonsChanged = UpdateCarriedBalloons()
+	; modify raw morphs percentage by player's carried balloons
 	float balloonsMorph = CheckCarriedBalloons()
 	rawMorphInput += balloonsMorph
 
-	; recalculate which balloonsPerk to apply when enabled
-	; do after we have updated our balloons count but before we abort the function if there is no rads diff
+	; recalculate which balloonsPerk to apply when enabled and carried balloons amount has changed
+	; do after we have updated our balloons count but before we abort the function if there is no morphs diff
 	; otherwise there are certain situations where changing amount of balloons doesn't trigger the perks to refresh
-	if (EnableRadsPerks)
+	if (EnableRadsPerks && hasCarriedBalloonsChanged)
 		ApplyBalloonsPerk()
 	endif
 
@@ -939,25 +967,6 @@ Function TimerMorphTick()
 	; only restart the timer if we aren't shutting down, so it doesn't try to perform updates when the mod is in the process of stopping
 	If (!IsShuttingDown)
 		StartTimer(UpdateDelay, ETimerMorphTick)
-	endif
-EndFunction
-
-float Function CheckCarriedBalloons()
-	if (!hasHadMoleCowDisease)
-		return 0
-	; when player has (or has had) molecow disease check our carried balloons
-	else
-		;TODO je kan ook kijken of de ESP erin hangt
-		;Game.IsPluginInstalled("xxx.esp")
-
-		; get amount of carried balloons from HeliumBalloon.esp
-		int newCarriedBalloons = (Game.GetFormFromFile(0x027858, "HeliumBalloon.esp") as GlobalVariable).getValueInt()
-		if (carriedBalloons != newCarriedBalloons) 
-			carriedBalloons = newCarriedBalloons
-		endif
-		
-		; each balloon is 5 rads worth of morphs
-		return carriedBalloons * 0.005
 	endif
 EndFunction
 
@@ -1450,8 +1459,6 @@ Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd
 	BloatActor_Internal(akTarget, currentBloatStage, toAdd, true, false)
 EndFunction
 Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
-	; pause self-bloat timer
-	CancelTimer(ETimerKitanaMask)
 	; not isConcentrated, isMessy
 	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, true)
 EndFunction
@@ -1501,6 +1508,9 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 EndFunction
 
 Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
+	; pause self-bloat timer
+	CancelTimer(ETimerKitanaMask)
+
 	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
 	; when hit by concentrated shot the permanent pop chance is 50%
@@ -1666,9 +1676,15 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 			PlayerRef.DamageValue(avBloating, 100)
 			kitanaMaskMessyPoppedCount += 1
 
-			; (re)start self-morph timer with a larger delay
-			CancelTimer(ETimerKitanaMask)
-			StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
+			if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
+				TechnicalNote("You've proven yourself worthy!")
+				kitanaMaskMessyPoppedRequirementMet = true
+			endif
+
+			; restart self-morph timer with a larger delay when requirements not yet met
+			if (kitanaMaskMessyPoppedRequirementMet == false)
+				StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
+			endif
 		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
@@ -1687,10 +1703,11 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		ClearAllRadsPerks(akTarget)
 		akTarget.EquipItem(PoppedPotion, abSilent = true)
 		
-		; (re)start self-morph timer	
+		; restart self-morph timer when requirements not yet met
 		if (hasKitanaMaskEquipped)		
-			CancelTimer(ETimerKitanaMask)
-			StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+			if (kitanaMaskMessyPoppedRequirementMet == false)
+				StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+			endif
 		endif
 	endif
 EndFunction
@@ -2209,26 +2226,46 @@ EndFunction
 
 
 Function KitanaMaskEquipped()
-	;TechnicalNote("Bloating Outfit equipped!")
 	hasKitanaMaskEquipped = true
-	;kitanaMaskMessyPoppedCount = 0
-	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+	if (TutorialDisplayed_KitanaMask == false)
+		; LenARM_Tutorial_PoppedMessage.ShowAsHelpMessage("LenARM_Tutorial_PoppedMessage", 8, 0, 1)
+		TechnicalNote("You've equipped a cursed mask that won't get off!")
+		TutorialDisplayed_KitanaMask = true
+	endif
+
+	if (kitanaMaskMessyPoppedRequirementMet == false)
+		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+	endif
+	
+	; force update morphs on next run
+	forceUpdate = true
 EndFunction
 
 Function KitanaMaskUnequipped()
 	;TechnicalNote("Bloating Outfit unequipped!")
 	hasKitanaMaskEquipped = false
 
+	; force update morphs on next run
+	forceUpdate = true
+	
 	; cancel timer is handled in OnItemUnequipped due to additional logic
 EndFunction
 
-Function KitanaMaskSelfMorph()
+Function KitanaMaskSelfMorph_Timer()
 	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
 	LenARM_FullGroanSound.Play(PlayerRef)
 	
 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+EndFunction
+
+Function KitanaMaskSelfMorph_Unequip()
+	TechnicalNote("The mask mocks your attempts at getting rid of it! Pop " + kitanaMaskMessyPoppedRequirement + " enemies!")
+	; LenARM_BloatingMask_PeriodicMessage.Show()
+	; 50 rads worth of bloating
+	PlayerRef.DamageValue(avBloating, 50)
+	LenARM_FullGroanSound.Play(PlayerRef)
 EndFunction
 
 

@@ -50,9 +50,8 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 
         ; if not dead by now (ie messy popped), do some additional actions
         if (!akTarget.IsDead())
-
             if (IsConcentrated)
-                LenARM_Main.TechnicalNote("concentrated +1")
+                ; LenARM_Main.TechnicalNote("concentrated +1")
                 akTarget.SetValue(NPCConcentratedBloatCount, (concentratedBloatCount + 1))
             endif
 
