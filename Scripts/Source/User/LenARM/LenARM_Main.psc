@@ -1576,6 +1576,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	bool playAltMorphSound = false
 
 	if (messyPop)
+		;TODO (isForcedMessy && !isHostile) van maken (of whatever je er verderop van maakt)
 		; forced messy pop bloats actor at normal rate but much larger and immediately strips them
 		if (isForcedMessy)
 			popStatesToUse = PopStates
@@ -1636,6 +1637,8 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	float reset = (1.0 + totalPopMultiplier) * -1
 	SetBloatMorphs(akTarget, reset, shouldPop = false)
 
+	;TODO die isForcedMessy && !isHostile werkt niet; kan nog steeds die non-hostile prostitutes bij Raider Bar messy poppen
+
 	; messy pop kills actor and places a grenade explosion
 	if (messyPop || (isForcedMessy && !isHostile))
 		LenARM_PrePopMessySound.PlayAndWait(akTarget)
@@ -1675,6 +1678,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		; bloat player if kitana mask is equipped
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
+			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 			; 100 rads worth of bloating
 			PlayerRef.DamageValue(avBloating, 100)
 			kitanaMaskMessyPoppedCount += 1
