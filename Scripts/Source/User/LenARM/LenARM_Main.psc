@@ -1206,6 +1206,11 @@ bool Function ShouldPop(int popChance)
 	if (hasHadMoleCowDisease && carriedBalloons > 0)
 		balloonsMod = 1
 	endif
+	; kitana mask equipped increase chance of popping (breasts are already pre-bloated + cursed)
+	int kitanaMaskMod = 0
+	if (hasKitanaMaskEquipped)
+		kitanaMaskMod = 2
+	endif
 
 	; bloating suit equipped decrease chance of popping (milkers provide relief)
 	int bloatSuitMod = (hasBloatingSuitEquipped as int)*-1
@@ -1214,7 +1219,7 @@ bool Function ShouldPop(int popChance)
 
 	; base pop chance is X/10, but X can be modified by above modifiers
 	; depending on X and modifiers it can become 0 or less, so cap it to a minimum of 1
-	int modifiedPopChance = popChance + luckMod + moleCowDiseaseMod + nippleBlockersMod + balloonsMod + bloatSuitMod
+	int modifiedPopChance = popChance + luckMod + moleCowDiseaseMod + nippleBlockersMod + balloonsMod + kitanaMaskMod + bloatSuitMod
 	if (modifiedPopChance < 1)
 		modifiedPopChance = 1
 	endif
@@ -1467,7 +1472,7 @@ Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
 EndFunction
 
 
-Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isMessy)
+Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isForcedMessy)
 	; perkLevel is equal to the bloat state 
 	int perkLevel = nextBloatStage
 
@@ -1506,7 +1511,7 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	; pop the actor 
 	elseif (perkLevel == 5 && nextBloatStage > 5)		
 		Utility.Wait(randomFloat)
-		BloatPop(akTarget, isConcentrated, isMessy)
+		BloatPop(akTarget, isConcentrated, isForcedMessy)
 	endif
 EndFunction
 
@@ -1519,7 +1524,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	; when hit by concentrated shot the permanent pop chance is 50%
 	if (isConcentrated)
 		messyPopChance = 0.5
-	; when forced for messy pop then the permanent pop chance is 100%
+	; when forced to messy pop then the permanent pop chance is 100%
 	elseif (isForcedMessy)
 		messyPopChance = 1
 	endif
@@ -1528,6 +1533,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
 
 	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
+	bool canForcedMessy = isForcedMessy && isHostile
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
@@ -1576,14 +1582,13 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	bool playAltMorphSound = false
 
 	if (messyPop)
-		;TODO (isForcedMessy && !isHostile) van maken (of whatever je er verderop van maakt)
 		; forced messy pop bloats actor at normal rate but much larger and immediately strips them
-		if (isForcedMessy)
+		if (canForcedMessy)
 			popStatesToUse = PopStates
 			multiplier *= 3.5
 			playAltMorphSound = true
 			UnequipAllNPC(akTarget)
-		; 'normal 'messy pop bloats actor twice as long and larger as warning for attent player
+		; 'normal' messy pop bloats actor twice as long and larger as warning for attent player
 		else
 			popStatesToUse *= 2
 			multiplier *= 1.5
@@ -1613,7 +1618,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 		; for the unequip state we also want to strip all clothes and armor
-		If (!isForcedMessy && (currentPopState == PopStripState || currentPopState == PopStates))
+		If (!canForcedMessy && (currentPopState == PopStripState || currentPopState == PopStates))
 			UnequipAllNPC(akTarget)
 		endif
 
@@ -1637,16 +1642,15 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	float reset = (1.0 + totalPopMultiplier) * -1
 	SetBloatMorphs(akTarget, reset, shouldPop = false)
 
-	;TODO die isForcedMessy && !isHostile werkt niet; kan nog steeds die non-hostile prostitutes bij Raider Bar messy poppen
-
 	; messy pop kills actor and places a grenade explosion
-	if (messyPop || (isForcedMessy && !isHostile))
+	if (messyPop)
 		LenARM_PrePopMessySound.PlayAndWait(akTarget)
 
 		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
 		; reduce by 3 (capped to min 1) to not give too many freebies
+		; if forced messy then always only give 1 concentrated as a tradeoff
 		milkToAdd -= 3
-		if (milkToAdd < 1)
+		if (milkToAdd < 1 || canForcedMessy)
 			milkToAdd = 1
 		endif
 		akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, milkToAdd, abSilent = true)	
@@ -1679,23 +1683,8 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		elseif (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
 			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
-			; 100 rads worth of bloating
-			PlayerRef.DamageValue(avBloating, 100)
-			kitanaMaskMessyPoppedCount += 1
 
-			if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
-				LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
-				; LenARM_BloatingMask_SafeUnequipMessage.Show()
-				; TechnicalNote("You've proven yourself worthy!")
-				kitanaMaskMessyPoppedRequirementMet = true
-			else
-				LenARM_BloatingMask_KillMessage.Show()
-			endif
-
-			; restart self-morph timer with a larger delay when requirements not yet met
-			if (kitanaMaskMessyPoppedRequirementMet == false)
-				StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
-			endif
+			KitanaMaskSelfMorph_Kill()
 		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
@@ -1715,10 +1704,8 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		akTarget.EquipItem(PoppedPotion, abSilent = true)
 		
 		; restart self-morph timer when requirements not yet met
-		if (hasKitanaMaskEquipped)		
-			if (kitanaMaskMessyPoppedRequirementMet == false)
-				StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
-			endif
+		if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
+			StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 		endif
 	endif
 EndFunction
@@ -2266,17 +2253,38 @@ Function KitanaMaskSelfMorph_Timer()
 	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_FullGroanSound.Play(PlayerRef)
+	; LenARM_FullGroanSound.Play(PlayerRef)
+	LenARM_BalloonTriggerSound.Play(PlayerRef)
 	
 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 EndFunction
 
 Function KitanaMaskSelfMorph_Unequip()
 	LenARM_BloatingMask_UnsafeUnequipMessage.Show()
-	; TechnicalNote("The mask mocks your attempts at getting rid of it! Pop " + kitanaMaskMessyPoppedRequirement + " enemies!")
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_FullGroanSound.Play(PlayerRef)
+	; LenARM_FullGroanSound.Play(PlayerRef)
+	LenARM_BalloonTriggerSound.Play(PlayerRef)
+EndFunction
+
+Function KitanaMaskSelfMorph_Kill()
+	; 100 rads worth of bloating
+	PlayerRef.DamageValue(avBloating, 100)
+	; LenARM_FullGroanSound.Play(PlayerRef)
+	LenARM_BalloonTriggerSound.Play(PlayerRef)
+	kitanaMaskMessyPoppedCount += 1
+
+	if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
+		LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
+		kitanaMaskMessyPoppedRequirementMet = true
+	else
+		LenARM_BloatingMask_KillMessage.Show()
+	endif
+
+	; restart self-morph timer with a larger delay when requirements not yet met
+	if (kitanaMaskMessyPoppedRequirementMet == false)
+		StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
+	endif
 EndFunction
 
 
