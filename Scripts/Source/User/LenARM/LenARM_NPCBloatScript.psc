@@ -8,6 +8,8 @@ int property StageToAdd = 1 auto
 bool property IsConcentrated = false auto
 bool property IsMessy = false auto
 
+Actor victim
+
 Event OnEffectStart(Actor akTarget, Actor akCaster)
     ; when in Power Armor, dead or immune to bloating don't morph
 	If (akTarget.IsInPowerArmor() || akTarget.IsDead() || ((akTarget.getValue(NPCBloatImmunity) as bool) == true))
@@ -15,15 +17,16 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 	EndIf
     
 	int sex = akTarget.GetLeveledActorBase().GetSex()
-    ; when concentrated or messy always overwrite stageToAdd to 6 (the max)
-    if (IsConcentrated || IsMessy)
-        StageToAdd = 6
-    endif
+    victim = akTarget
 
     ; for now only work on females
     if (sex == LenARM_Main.ESexFemale)
-        RegisterForRemoteEvent(akCaster as ObjectReference, "OnUnload")
-        RegisterForRemoteEvent(akCaster, "OnDeath")
+        RegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
+        
+        ; when concentrated or messy always overwrite stageToAdd to 6 (the max)
+        if (IsConcentrated || IsMessy)
+            StageToAdd = 6
+        endif
         
         ; make ourselves immune to further bloating until we are done
         akTarget.SetValue(NPCBloatImmunity, 1)
@@ -69,29 +72,48 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             else
                 akTarget.SetValue(NPCBloatImmunity, 0)
             endif
-        endif
+            
+            ; disspell yourself when done with non-lethal bloating
+            self.Dispel()
+        ; if dead by now reset actor for respawn
+        else
+            ResetActor(akTarget)
+        endif        
     endif
 EndEvent
+
+; when done unregister remote events
+Event OnEffectFinish(Actor akTarget, Actor akCaster)
+	; LenARM_Main.TechnicalNote(""NPCBloatScript finished!")
+    UnRegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
+EndEvent
+
 
 ; when unloading the actor / actor dies reset a bunch of things so it doesn't get stuck when respawning
 Event ObjectReference.OnUnload(ObjectReference akSender)
     Actor akTarget = (akSender as Actor)
     ResetActor(akTarget)
 endEvent
-Event Actor.OnDeath(Actor akSender, Actor akKiller)
-    ResetActor(akSender)
-endEvent
+
+EVENT OnDying(ACTOR akKiller)
+	; LenARM_Main.TechnicalNote("DEAD")
+    ResetActor(victim)
+ENDEVENT
+
 
 Function ResetActor(Actor akTarget)
-    self.Dispel()
+	LenARM_Main.TechnicalNote("reset!")
+    ; LenARM_Main.TechnicalNote("reset!")
 
     ; don't stay paralyzed
     LenARM_Main.UnParalyzeActor(akTarget)
     ; clear overlays
     LenARM_Main.ClearAllRadsPerks(akTarget)    
-    ; reset concentratedd bloated counter
+    ; reset concentrated bloated counter
     akTarget.SetValue(NPCConcentratedBloatCount, 0)
+    ; reset bloating immunity
+    akTarget.SetValue(NPCBloatImmunity, 0)
 
-    RegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
-    RegisterForRemoteEvent(akTarget, "OnDeath")
+    ; disspell yourself when done with resetting
+    self.Dispel()
 EndFunction
