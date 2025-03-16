@@ -73,9 +73,7 @@ int kitanaMaskMessyPoppedCount = 0
 int kitanaMaskMessyPoppedRequirement = 10
 bool kitanaMaskMessyPoppedRequirementMet = false
 
-;TODO debug waarde
 int kitanaMaskSelfMorphTimer = 10
-;TODO debug waarde
 int kitanaMaskSelfMorphMessyTimer = 30
 
 ; does player have (or has had) molecow disease?
@@ -1444,6 +1442,11 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 	; when not isMessy keep bloating the actor until the bloatStage is equal to expected result
 	if (!isMessy)
 		while (nextBloatStage <= maxBloatStage)
+			; don't bloat actor that is dead
+			if (akTarget.IsDead())
+				return
+			endif
+
 			ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy)
 			
 			nextBloatStage += 1
