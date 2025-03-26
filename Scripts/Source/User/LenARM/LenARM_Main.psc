@@ -1792,8 +1792,12 @@ Function ApplyRadsPerk()
 		ClearOldRadsPerks(PlayerRef, perkLevel)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
-			; TODO sound
-			PlayerRef.AddPerk(RadsPerkArray[perkLevel])		
+			PlayerRef.AddPerk(RadsPerkArray[perkLevel])
+
+			if (HasTorsoEquipped(PlayerRef))
+				; TODO new sound
+				LenARM_BalloonTriggerSound.Play(PlayerRef)
+			endif
 		Else
 			PlayerRef.AddPerk(RadsPerkFull)			
 		endif
@@ -1816,6 +1820,40 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 	
 	; fallback in case we actor has no radsPerk
 	return 0
+EndFunction
+
+bool Function HasTorsoEquipped(Actor akTarget)
+	; in PA always return false
+	If (akTarget.IsInPowerArmor())
+		return false
+	EndIf
+
+	bool found = false
+	int idxSlot = 0
+
+	; these are all the slots we want to unequip
+	int[] allSlots = new int[0]	
+	allSlots.Add(3)  ; body
+	allSlots.Add(11) ; chest armor
+
+	; check for each slot
+	While (idxSlot < allSlots.Length && !found)
+		int slot = allSlots[idxSlot]
+		
+		Actor:WornItem item = akTarget.GetWornItem(slot)
+		
+		; check if item in the slot is not an actor or the pipboy
+		bool isArmor = IsItemArmor(item)
+
+		; when item is an armor and we can unequip it, do so
+		If (isArmor && !found)
+			found = true
+		EndIf
+		
+		idxSlot += 1	
+	EndWhile
+
+	return found
 EndFunction
 
 ; ------------------------
