@@ -1794,7 +1794,8 @@ Function ApplyRadsPerk()
 		if (perkLevel != 5)
 			PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
-			if (HasTorsoEquipped(PlayerRef))
+			;TODO niet doen van geen perk naar eerste perk
+			if (HasTorsoEquipped(PlayerRef) && CurrentRadsPerk != 0)
 				; TODO new sound
 				LenARM_BalloonTriggerSound.Play(PlayerRef)
 			endif
@@ -2270,6 +2271,11 @@ Function KitanaMaskEquipped()
 		LenARM_Tutorial_BloatingMaskMessage.ShowAsHelpMessage("LenARM_Tutorial_BloatingMaskMessage", 8, 0, 1)
 		; TechnicalNote("You've equipped a cursed mask that won't get off!")
 		TutorialDisplayed_KitanaMask = true
+
+		; 100 rads worth of bloating
+		PlayerRef.DamageValue(avBloating, 100)
+		; LenARM_FullGroanSound.Play(PlayerRef)
+		LenARM_BalloonTriggerSound.Play(PlayerRef)
 	endif
 
 	if (kitanaMaskMessyPoppedRequirementMet == false)
@@ -2327,7 +2333,6 @@ Function KitanaMaskSelfMorph_Kill()
 		StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
 	endif
 EndFunction
-
 
 
 Function UpdateHUD()
@@ -2611,7 +2616,7 @@ Group EnumTimerId
 	int Property ETimerDelayPop = 6 Auto Const
 	int Property ETimerBloatSuit = 7 Auto Const
 	int Property ETimerKitanaMask = 8 Auto Const
-	int Property ETimerHUD = 9 Auto Const
+	int Property ETimerHUD = 99 Auto Const
 EndGroup
 
 Group EnumWidgetCommands
