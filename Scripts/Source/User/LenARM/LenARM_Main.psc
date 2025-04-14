@@ -208,7 +208,8 @@ Group Properties
 	FormList Property NippleBlockers Auto
 	FormList Property AutoAddToPlayerInventory Auto
 	
-	Quest Property MQ102 Auto
+	Quest Property MQ102 Auto ; MQ Out of Time
+	Quest Property DN050 Auto ; SQ Quality Assurance
 EndGroup
 
 ; ------------------------
@@ -357,6 +358,9 @@ Event Quest.OnStageSet(Quest akSender, int auiStageID, int auiItemID)
 	If (akSender == MQ102 && auiStageID == 6)
 		UnregisterForRemoteEvent(MQ102, "OnStageSet")
 		AddItemsToPlayerInventory()
+	elseIf (akSender == DN050 && auiStageID == 30)
+		UnregisterForRemoteEvent(DN050, "OnStageSet")
+		DN050SelfMorph()
 	EndIf
 EndEvent
 
@@ -392,6 +396,8 @@ Event OnTimer(int tid)
 		BloatSuitGiveAmmo()
 	ElseIf (tid == ETimerKitanaMask)
 		KitanaMaskSelfMorph_Timer()
+	ElseIf (tid == ETimerDN050)
+		DN050SelfMorph()
 	ElseIf (tid == ETimerHUD)
 		UpdateHUD()
 	EndIf
@@ -468,6 +474,7 @@ Function Startup()
 		
 		; start listening for start game quest
 		RegisterForRemoteEvent(MQ102, "OnStageSet")
+		RegisterForRemoteEvent(DN050, "OnStageSet")
 
 		; set up lists
 		PoppingUnequippedItems = new Actor:WornItem[0]
@@ -536,6 +543,7 @@ Function Shutdown(bool withRestore=true)
 		CancelTimer(ETimerMorphTick)
 		CancelTimer(ETimerBloatSuit)
 		CancelTimer(ETimerKitanaMask)
+		CancelTimer(ETimerDN050)
 	
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -2335,6 +2343,23 @@ Function KitanaMaskSelfMorph_Kill()
 EndFunction
 
 
+
+Function DN050SelfMorph()
+	if (DN050.GetState() == 30)
+		Note("milk")
+		;LenARM_BloatingMask_PeriodicMessage.Show()
+		; 50 rads worth of bloating
+		PlayerRef.DamageValue(avBloating, 25)
+		; LenARM_FullGroanSound.Play(PlayerRef)
+		;LenARM_BalloonTriggerSound.Play(PlayerRef)
+		
+		StartTimer(kitanaMaskSelfMorphTimer, ETimerDN050)
+	endif
+EndFunction
+
+
+
+
 Function UpdateHUD()
 	int hudValue = (PlayerRef.GetValue(avBloating) as int)
 	
@@ -2472,21 +2497,23 @@ Function ForgetStateCounterReset()
 EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
-	;TODO for now hijacked to activate HUDFramework plugin
-	hud = hudframework.GetInstance()
-	If (hud)
-		Note("HUDFramework is installed!")
-        ; Register the widget, setting its position to 10, 70 on the screen.
-        ; Load the widget automatically after registration, and auto-load it whenever the game loads.
-        hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
-	Else
-		Note("HUDFramework is not installed!")
-	EndIf
+	Note("DN050 registered")
+	RegisterForRemoteEvent(DN050, "OnStageSet")
+	; ;TODO for now hijacked to activate HUDFramework plugin
+	; hud = hudframework.GetInstance()
+	; If (hud)
+	; 	Note("HUDFramework is installed!")
+    ;     ; Register the widget, setting its position to 10, 70 on the screen.
+    ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
+    ;     hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
+	; Else
+	; 	Note("HUDFramework is not installed!")
+	; EndIf
 
-	; float lowestPercentage = GetLowestSliderPercentage()
+	; ; float lowestPercentage = GetLowestSliderPercentage()
 
-	; ;TODO ik dump TotalRads hier ff als test in
-	; MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
+	; ; ;TODO ik dump TotalRads hier ff als test in
+	; ; MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
 ; This function is called by HUDFramework when the widget is loaded.
@@ -2616,6 +2643,7 @@ Group EnumTimerId
 	int Property ETimerDelayPop = 6 Auto Const
 	int Property ETimerBloatSuit = 7 Auto Const
 	int Property ETimerKitanaMask = 8 Auto Const
+	int Property ETimerDN050 = 9 Auto Const
 	int Property ETimerHUD = 99 Auto Const
 EndGroup
 
