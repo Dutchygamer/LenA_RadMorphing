@@ -360,6 +360,9 @@ Event Quest.OnStageSet(Quest akSender, int auiStageID, int auiItemID)
 		AddItemsToPlayerInventory()
 	elseIf (akSender == DN050 && auiStageID == 30)
 		UnregisterForRemoteEvent(DN050, "OnStageSet")
+		;LenARM_BloatingMask_PeriodicMessage.Show()
+		Note("Your breasts start bloating in anticipation!")
+		;StartTimer(20, ETimerDN050)
 		DN050SelfMorph()
 	EndIf
 EndEvent
@@ -2345,15 +2348,13 @@ EndFunction
 
 
 Function DN050SelfMorph()
-	if (DN050.GetState() == 30)
-		Note("milk")
-		;LenARM_BloatingMask_PeriodicMessage.Show()
+	if (DN050.GetStage() == 30)
 		; 50 rads worth of bloating
-		PlayerRef.DamageValue(avBloating, 25)
+		PlayerRef.DamageValue(avBloating, 20)
 		; LenARM_FullGroanSound.Play(PlayerRef)
-		;LenARM_BalloonTriggerSound.Play(PlayerRef)
+		LenARM_BalloonTriggerSound.Play(PlayerRef)
 		
-		StartTimer(kitanaMaskSelfMorphTimer, ETimerDN050)
+		StartTimer(5, ETimerDN050)
 	endif
 EndFunction
 
