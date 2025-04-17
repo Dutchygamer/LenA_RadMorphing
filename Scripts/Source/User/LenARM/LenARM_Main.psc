@@ -1806,7 +1806,9 @@ Function ApplyRadsPerk()
 			PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
 			;TODO niet doen van geen perk naar eerste perk
+			;TODO ook niet doen van max perk naar geen perk
 			if (HasTorsoEquipped(PlayerRef) && CurrentRadsPerk != 0)
+				Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
 				; TODO new sound
 				LenARM_BalloonTriggerSound.Play(PlayerRef)
 			endif
