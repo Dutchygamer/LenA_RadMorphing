@@ -1805,10 +1805,9 @@ Function ApplyRadsPerk()
 		if (perkLevel != 5)
 			PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
-			;TODO niet doen van geen perk naar eerste perk
-			;TODO ook niet doen van max perk naar geen perk
-			if (HasTorsoEquipped(PlayerRef) && CurrentRadsPerk != 0)
-				Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
+			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
+			if (HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
+				;Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
 				; TODO new sound
 				LenARM_BalloonTriggerSound.Play(PlayerRef)
 			endif
