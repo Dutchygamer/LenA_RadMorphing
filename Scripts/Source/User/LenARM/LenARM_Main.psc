@@ -176,11 +176,14 @@ Group Properties
 	Message Property LenARM_BloatingMask_SafeUnequipMessage Auto
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
+	Message Property LenARM_PoppingExpertPerkMessage Auto
 
 	Perk[] Property RadsPerkArray Auto
 	Perk Property RadsPerkFull Auto
 	
 	Perk[] Property BalloonsPerkArray Auto
+	
+	Perk Property PoppingExpertPerk Auto
 
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
@@ -191,6 +194,7 @@ Group Properties
 	Potion Property ResetRadsPotion Auto Const
 	Potion Property BloatSuitInjectAgent Auto Const
 	Potion Property BloatSuitPoppedNPCBuff Auto Const
+	Potion Property BloatMaskPoppedNPCBuff Auto Const
 
 	Spell Property MoleCowMilkSpell Auto Const
 	MagicEffect Property LenARM_MS19MoleratEffect Auto Const
@@ -1689,16 +1693,17 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 		; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
 		UnParalyzeActor(akTarget)
 				
-		; give player a temp buff if bloating suit is equipped
-		if (hasBloatingSuitEquipped)
+		; bloat player and give temp buff if kitana mask is equipped
+		; this takes priority over having the bloating suit equipped as well
+		if (hasKitanaMaskEquipped)
 			LenARM_NPCPopComment.Play(PlayerRef)
-			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
-		; bloat player if kitana mask is equipped
-		elseif (hasKitanaMaskEquipped)
-			LenARM_NPCPopComment.Play(PlayerRef)
-			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+			PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
 
 			KitanaMaskSelfMorph_Kill()
+		; give player a temp buff if bloating suit is equipped
+		elseif (hasBloatingSuitEquipped)
+			LenARM_NPCPopComment.Play(PlayerRef)
+			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 		endif
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
@@ -2340,6 +2345,12 @@ Function KitanaMaskSelfMorph_Kill()
 		LenARM_BloatingMask_KillMessage.Show()
 	endif
 
+	; when player has messy popped a certain amount of NPCs with the mask, give out a perk
+	if (kitanaMaskMessyPoppedCount >= 25 && PlayerRef.HasPerk(PoppingExpertPerk) == false)
+		PlayerRef.AddPerk(PoppingExpertPerk)
+		LenARM_PoppingExpertPerkMessage.ShowAsHelpMessage("LenARM_PoppingExpertPerkMessage", 8, 0, 1)
+	endif
+	
 	; restart self-morph timer with a larger delay when requirements not yet met
 	if (kitanaMaskMessyPoppedRequirementMet == false)
 		StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
