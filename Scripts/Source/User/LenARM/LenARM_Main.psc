@@ -2355,6 +2355,9 @@ Function KitanaMaskSelfMorph_Kill()
 	if (kitanaMaskMessyPoppedRequirementMet == false)
 		StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
 	endif
+	
+	; force update morphs on next run
+	forceUpdate = true
 EndFunction
 
 
