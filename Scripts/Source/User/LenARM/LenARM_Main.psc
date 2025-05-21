@@ -1435,7 +1435,7 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on NPCs.
 ; ------------------------
-Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated, bool isMessy)
+Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated, bool isMessy, bool isLegendary)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
 		return
@@ -1450,47 +1450,51 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 	float morphPercentage = 0.2
 
 	; when actor should get bloated to popping, always paralyze first
-	if (toAdd > 5)		
+	if (toAdd > 5 && !isLegendary)		
 		ParalyzeActor(akTarget)
 	endIf
 
 	; when not isMessy keep bloating the actor until the bloatStage is equal to expected result
-	if (!isMessy)
+	if (!isMessy && !isLegendary)
 		while (nextBloatStage <= maxBloatStage)
 			; don't bloat actor that is dead
 			if (akTarget.IsDead())
 				return
 			endif
 
-			ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy)
+			ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
 			
 			nextBloatStage += 1
 		endwhile
-	; when isMessy immediately bloat to max and go to popping
+	; when isMessy or isLegendary immediately bloat to max and go to popping
 	else
 		; morph percentage is one step bigger already
 		float maxMorphPercentage =  morphPercentage * maxBloatStage
-		ApplyBloatStage(akTarget, (maxBloatStage-1), maxMorphPercentage, isConcentrated, isMessy)
-		ApplyBloatStage(akTarget, maxBloatStage, morphPercentage, isConcentrated, isMessy)
+		ApplyBloatStage(akTarget, (maxBloatStage-1), maxMorphPercentage, isConcentrated, isMessy, isLegendary)
+		ApplyBloatStage(akTarget, maxBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
 	endif
 EndFunction
 
 ; public endpoints used in the Magic Effect scripts
 Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd)
 	; not isConcentrated, not isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, false, false)
 EndFunction
 Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd)
 	; isConcentrated, not isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, true, false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, true, false, false)
 EndFunction
 Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
 	; not isConcentrated, isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, true)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, true, false)
+EndFunction
+Function BloatActorLegendary(Actor akTarget, int currentBloatStage, int toAdd)
+	; not isConcentrated, isMessy
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, false, true)
 EndFunction
 
 
-Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isForcedMessy)
+Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isForcedMessy, bool isLegendary)
 	; perkLevel is equal to the bloat state 
 	int perkLevel = nextBloatStage
 
@@ -1529,11 +1533,11 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	; pop the actor 
 	elseif (perkLevel == 5 && nextBloatStage > 5)		
 		Utility.Wait(randomFloat)
-		BloatPop(akTarget, isConcentrated, isForcedMessy)
+		BloatPop(akTarget, isConcentrated, isForcedMessy, isLegendary)
 	endif
 EndFunction
 
-Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
+Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool isLegendary)
 	; pause self-bloat timer
 	CancelTimer(ETimerKitanaMask)
 
@@ -1543,7 +1547,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	if (isConcentrated)
 		messyPopChance = 0.5
 	; when forced to messy pop then the permanent pop chance is 100%
-	elseif (isForcedMessy)
+	elseif (isForcedMessy || isLegendary)
 		messyPopChance = 1
 	endif
 
@@ -1551,7 +1555,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
 
 	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
-	bool canForcedMessy = isForcedMessy && isHostile
+	bool canForcedMessy = (isForcedMessy || isLegendary) && isHostile
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
@@ -1583,7 +1587,9 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 
 	; paralyze actor first
 	PlayMorphSound(akTarget, 4)
-	ParalyzeActor(akTarget)
+	if(!isLegendary)
+		ParalyzeActor(akTarget)
+	endif
 	
 	; add bloating ammo to actor's inventory
 	akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
@@ -1605,7 +1611,9 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 			popStatesToUse = PopStates
 			multiplier *= 3.5
 			playAltMorphSound = true
-			UnequipAllNPC(akTarget)
+			if(!isLegendary)
+				UnequipAllNPC(akTarget)
+			endif
 		; 'normal' messy pop bloats actor twice as long and larger as warning for attent player
 		else
 			popStatesToUse *= 2
@@ -1691,7 +1699,9 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy)
 
 		; unparalyze the actor
 		; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
-		UnParalyzeActor(akTarget)
+		if(!isLegendary)
+			UnParalyzeActor(akTarget)
+		endif
 				
 		; bloat player and give temp buff if kitana mask is equipped
 		; this takes priority over having the bloating suit equipped as well

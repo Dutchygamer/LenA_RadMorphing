@@ -84,7 +84,7 @@ EndEvent
 
 ; when done unregister remote events
 Event OnEffectFinish(Actor akTarget, Actor akCaster)
-	; LenARM_Main.TechnicalNote(""NPCBloatScript finished!")
+	; LenARM_Main.TechnicalNote("NPCBloatScript finished!")
     UnRegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
 EndEvent
 
