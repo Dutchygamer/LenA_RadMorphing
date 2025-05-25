@@ -1449,7 +1449,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 	int nextBloatStage = currentBloatStage + 1
 	float morphPercentage = 0.2
 
-	; when actor should get bloated to popping, always paralyze first
+	; when actor should get bloated to popping, always paralyze first (unless legendary)
 	if (toAdd > 5 && !isLegendary)		
 		ParalyzeActor(akTarget)
 	endIf
@@ -1477,20 +1477,16 @@ EndFunction
 
 ; public endpoints used in the Magic Effect scripts
 Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd)
-	; not isConcentrated, not isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, false, false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = false, isMessy = false, isLegendary = false)
 EndFunction
 Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd)
-	; isConcentrated, not isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, true, false, false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = true, isMessy = false, isLegendary = false)
 EndFunction
 Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
-	; not isConcentrated, isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, true, false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = false, isMessy = true, isLegendary = false)
 EndFunction
 Function BloatActorLegendary(Actor akTarget, int currentBloatStage, int toAdd)
-	; not isConcentrated, isMessy
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, false, false, true)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = false, isMessy = false, isLegendary = true)
 EndFunction
 
 
@@ -1561,7 +1557,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 	; - target is hostile to player
 	; - target is not protected or essential (game does some very weird things if we messy pop those)
 	; - random die roll is below our messyPopChance
-	bool messyPop = (akTarget != PlayerRef && isHostile && actorBaseTarget.IsProtected() == false && actorBaseTarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
+	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && actorBaseTarget.IsProtected() == false && actorBaseTarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
 
 	; before we start expanding log the current breasts size
 	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
@@ -1587,7 +1583,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 
 	; paralyze actor first
 	PlayMorphSound(akTarget, 4)
-	if(!isLegendary)
+	if (!isLegendary)
 		ParalyzeActor(akTarget)
 	endif
 	
@@ -1605,14 +1601,23 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 	int popStatesToUse = PopStates
 	bool playAltMorphSound = false
 
-	if (messyPop)
-		; forced messy pop bloats actor at normal rate but much larger and immediately strips them
+	; when we should messy pop we change the amount of states and bloat multipliers
+	if (shouldMessyPop)
 		if (canForcedMessy)
-			popStatesToUse = PopStates
-			multiplier *= 3.5
 			playAltMorphSound = true
-			if(!isLegendary)
+
+			; forced messy pop bloats actor at normal rate but much larger and immediately strips them
+			if (!isLegendary)
+				popStatesToUse = PopStates
+				multiplier *= 3.5
 				UnequipAllNPC(akTarget)
+			; legendary pop bloats actor at shorter rate but even larger
+			else
+				popStatesToUse = (PopStates - 2)
+				if (popStatesToUse < 1)
+					popStatesToUse = 1
+				endif
+				multiplier *= 5.0
 			endif
 		; 'normal' messy pop bloats actor twice as long and larger as warning for attent player
 		else
@@ -1669,7 +1674,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 	SetBloatMorphs(akTarget, reset, shouldPop = false)
 
 	; messy pop kills actor and places a grenade explosion
-	if (messyPop)
+	if (shouldMessyPop)
 		LenARM_PrePopMessySound.PlayAndWait(akTarget)
 
 		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
