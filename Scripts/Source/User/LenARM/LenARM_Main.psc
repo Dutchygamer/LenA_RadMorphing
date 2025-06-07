@@ -1054,38 +1054,7 @@ EndFunction
 ; ------------------------
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
 	float morphBonus = 0.0
-
-	; ; apply permanent breast size increase for various reasons (can stack)
-	; if (SliderNames[idxSlider] == "DoubleMelon")
-	; 	; player has (or has had) molecow disease
-	; 	if (hasHadMoleCowDisease)
-	; 		morphBonus += 0.25	
-
-	; 		; player also carries balloons
-	; 		if (carriedBalloons > 0)
-	; 			morphBonus += 0.2
-	; 		endif
-	; 	endif
-	; 	; player has bloating suit equipped
-	; 	if (hasBloatingSuitEquipped)
-	; 		morphBonus += 0.1	
-	; 	endif
-	; 	; player has kitana mask equipped
-	; 	if (hasKitanaMaskEquipped)
-	; 		morphBonus += 0.15
-	; 	endif
-	; 	; player has nipple piercing equipped
-	; 	if (hasNippleBlockers)
-	; 		morphBonus += 0.1
-	; 	endif
-	; 	; player has mooMilk addiction
-	; 	if (hasMooMilkAddiction)
-	; 		morphBonus += 0.2
-	; 	endif
-	; endif
-
-
-	;TODO alternative
+	
 	; permanent breast size increase
 	if (SliderNames[idxSlider] == "Breasts")
 		; player has (or has had) molecow disease
@@ -1117,7 +1086,6 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasMooMilkAddiction)
 			morphBonus += 0.5
 		endif
-		;TODO unsure
 		; player has kitana mask equipped
 		if (hasKitanaMaskEquipped)
 			morphBonus += 0.25
