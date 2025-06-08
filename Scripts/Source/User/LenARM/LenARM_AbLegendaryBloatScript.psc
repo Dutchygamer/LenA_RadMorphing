@@ -127,7 +127,7 @@ ENDEVENT
 
 
 Function ResetActor(Actor akTarget)
-	LenARM_Main.TechnicalNote("reset!")
+	; LenARM_Main.TechnicalNote("reset!")
     
     ; clear overlays
     LenARM_Main.ClearAllRadsPerks(akTarget)

@@ -1643,72 +1643,92 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 
 	; messy pop kills actor and places a grenade explosion
 	if (shouldMessyPop)
-		LenARM_PrePopMessySound.PlayAndWait(akTarget)
-
-		; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
-		; reduce by 3 (capped to min 1) to not give too many freebies
-		; if forced messy then always only give 1 concentrated as a tradeoff
-		milkToAdd -= 3
-		if (milkToAdd < 1 || canForcedMessy)
-			milkToAdd = 1
-		endif
-		akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, milkToAdd, abSilent = true)	
-
-		; clear rad perks so we don't keep ambient noise
-		ClearAllRadsPerks(akTarget)
-
-		LenARM_PopMessySound.Play(akTarget)
-		; spread the joy to nearby NPCs
-		akTarget.PlaceAtMe(BloatGrenadeExplosion)	
-
-		; reset all the morphs back to 0
-		; do this for messy bloatpopping too otherwise after respawning the NPC will still have the morphs
-		BodyGen.UpdateMorphs(akTarget)
-
-		; dismember and kill actor
-		; sadly no way to give the XP to the player even if we tell the player is the killer
-		akTarget.Dismember("Torso", true, true, true)
-		akTarget.Kill()
-
-		; unparalyze the actor
-		; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
-		if(!isLegendary)
-			UnParalyzeActor(akTarget)
-		endif
-				
-		; bloat player and give temp buff if kitana mask is equipped
-		; this takes priority over having the bloating suit equipped as well
-		if (hasKitanaMaskEquipped)
-			LenARM_NPCPopComment.Play(PlayerRef)
-			PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
-
-			KitanaMaskSelfMorph_Kill()
-		; give player a temp buff if bloating suit is equipped
-		elseif (hasBloatingSuitEquipped)
-			LenARM_NPCPopComment.Play(PlayerRef)
-			PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
-		endif
+		BloatPop_HandleMessy(akTarget, milkToAdd, canForcedMessy, isLegendary)
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
-		LenARM_PrePopSound.PlayAndWait(akTarget)
+		BloatPop_HandleNormal(akTarget, milkToAdd)
+	endif
+EndFunction
 
-		; add some more bloating ammo to actor's inventory when they've been allowed to pop
-		akTarget.AddItem(ThirstZapperBloatAmmo, milkToAdd, abSilent = true)
+; messy pop kills actor and places a grenade explosion
+Function BloatPop_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy, bool isLegendary)
+	LenARM_PrePopMessySound.PlayAndWait(akTarget)
 
-		LenARM_PopSound.Play(akTarget)
-		; spread the joy to nearby NPCs
-		akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+	; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
+	; reduce by 3 (capped to min 1) to not give too many freebies
+	; if forced messy then always only give 1 concentrated as a tradeoff
+	milkToAdd -= 3
+	if (milkToAdd < 1 || canForcedMessy)
+		milkToAdd = 1
+	endif
+	akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, milkToAdd, abSilent = true)	
 
-		; reset all the morphs back to 0
-		BodyGen.UpdateMorphs(akTarget)
+	; clear rad perks so we don't keep ambient noise
+	ClearAllRadsPerks(akTarget)
 
-		ClearAllRadsPerks(akTarget)
-		akTarget.EquipItem(PoppedPotion, abSilent = true)
-		
-		; restart self-morph timer when requirements not yet met
-		if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
-			StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+	LenARM_PopMessySound.Play(akTarget)
+	; spread the joy to nearby NPCs
+	akTarget.PlaceAtMe(BloatGrenadeExplosion)	
+
+	; reset all the morphs back to 0
+	; do this for messy bloatpopping too otherwise after respawning the NPC will still have the morphs
+	BodyGen.UpdateMorphs(akTarget)
+
+	; dismember and kill actor
+	; sadly no way to give the XP to the player even if we tell the player is the killer
+	akTarget.Dismember("Torso", true, true, true)
+	akTarget.Kill()
+
+	; unparalyze the actor
+	; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
+	if(!isLegendary)
+		UnParalyzeActor(akTarget)
+	endif
+	
+	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
+
+	; bloat player and give temp buff if kitana mask is equipped and within range
+	; this takes priority over having the bloating suit equipped as well
+	if (hasKitanaMaskEquipped)
+		; always bloat player independent of distance
+		KitanaMaskSelfMorph_Kill()
+
+		if (distanceToPlayer < 384)
+			LenARM_NPCPopComment.Play(PlayerRef)
+			if (PlayerRef.HasPerk(PoppingExpertPerk))
+				;TODO andere perk
+				PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
+			else
+				PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
+			endif
 		endif
+	; give player a temp buff if bloating suit is equipped and within range
+	elseif (hasBloatingSuitEquipped && distanceToPlayer < 768)
+		LenARM_NPCPopComment.Play(PlayerRef)
+		PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+	endif
+EndFunction
+
+; normal pop keeps actor paralyzed for a bit and places a normal explosion
+Function BloatPop_HandleNormal(Actor akTarget, int milkToAdd)
+	LenARM_PrePopSound.PlayAndWait(akTarget)
+
+	; add some more bloating ammo to actor's inventory when they've been allowed to pop
+	akTarget.AddItem(ThirstZapperBloatAmmo, milkToAdd, abSilent = true)
+
+	LenARM_PopSound.Play(akTarget)
+	; spread the joy to nearby NPCs
+	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+
+	; reset all the morphs back to 0
+	BodyGen.UpdateMorphs(akTarget)
+
+	ClearAllRadsPerks(akTarget)
+	akTarget.EquipItem(PoppedPotion, abSilent = true)
+	
+	; restart self-morph timer when requirements not yet met
+	if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
+		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 	endif
 EndFunction
 

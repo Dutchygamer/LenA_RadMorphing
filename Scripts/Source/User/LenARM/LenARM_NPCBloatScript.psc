@@ -102,8 +102,7 @@ ENDEVENT
 
 
 Function ResetActor(Actor akTarget)
-	LenARM_Main.TechnicalNote("reset!")
-    ; LenARM_Main.TechnicalNote("reset!")
+	; LenARM_Main.TechnicalNote("reset!")
 
     ; don't stay paralyzed
     LenARM_Main.UnParalyzeActor(akTarget)
