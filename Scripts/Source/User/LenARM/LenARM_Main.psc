@@ -191,6 +191,7 @@ Group Properties
 	Potion Property PoppedPotion Auto Const	
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
+	; [OBSOLETE]
 	Potion Property ResetRadsPotion Auto Const
 	Potion Property BloatSuitInjectAgent Auto Const
 	Potion Property BloatSuitPoppedNPCBuff Auto Const
@@ -1295,7 +1296,7 @@ Function Pop()
 	Utility.Wait(0.5)
 
 	; reset rads in case player is in a high-rads zone
-	PlayerRef.EquipItem(ResetRadsPotion, abSilent = true)
+	RestorePlayerRads()
 
 	; play the full sound for player
 	PlayMorphSound(PlayerRef, 4)
@@ -1336,7 +1337,7 @@ Function Pop()
 
 	; apply the debuffs on the player and reset the player's rads by ingesting the respective potions
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
-	PlayerRef.EquipItem(ResetRadsPotion, abSilent = true)
+	RestorePlayerRads()
 
 	; unset the IsPopping flag before we undo the paralysing
 	IsPopping = false
@@ -1355,6 +1356,11 @@ Function Pop()
 		;TODO make configurabel
 		;ReEquipAll()
 	endif
+EndFunction
+
+Function RestorePlayerRads()
+	int RadsToHeal = (PlayerRef.GetValue(Rads) as int)
+	PlayerRef.RestoreValue(Rads, RadsToHeal)
 EndFunction
 
 ; ------------------------
@@ -1703,6 +1709,7 @@ Function BloatPop_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy
 			endif
 		endif
 	; give player a temp buff if bloating suit is equipped and within range
+	;TODO distance nog beetje kort?
 	elseif (hasBloatingSuitEquipped && distanceToPlayer < 768)
 		LenARM_NPCPopComment.Play(PlayerRef)
 		PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
@@ -2364,10 +2371,9 @@ Function KitanaMaskSelfMorph_Kill()
 EndFunction
 
 
-
 Function DN050SelfMorph()
 	if (DN050.GetStage() == 30)
-		; 50 rads worth of bloating
+		; 20 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 20)
 		; LenARM_FullGroanSound.Play(PlayerRef)
 		LenARM_BalloonTriggerSound.Play(PlayerRef)
@@ -2375,8 +2381,6 @@ Function DN050SelfMorph()
 		StartTimer(5, ETimerDN050)
 	endif
 EndFunction
-
-
 
 
 Function UpdateHUD()
