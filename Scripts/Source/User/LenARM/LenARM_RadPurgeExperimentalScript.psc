@@ -25,7 +25,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             LenARM_RadPurgePopFailureMessage.Show()
             LenARM_PurgeFailSound.Play(PlayerRef)
             Utility.Wait(1.0)
-            LenARM_Main.Pop()
+            LenARM_Main.TryPop()
         ; else only apply the popped debuffs on the player
         else
             LenARM_RadPurgeFailureMessage.Show()
