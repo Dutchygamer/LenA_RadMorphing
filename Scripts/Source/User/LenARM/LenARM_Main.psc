@@ -67,11 +67,14 @@ bool TutorialDisplayed_KitanaMask = false
 ; does player have bloating suit equipped?
 bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
+int bloatingSuitPopDetectRadius = 1024 ;768
 
+; does player have kitana mask equipped?
 bool hasKitanaMaskEquipped = false
 int kitanaMaskMessyPoppedCount = 0
 int kitanaMaskMessyPoppedRequirement = 10
 bool kitanaMaskMessyPoppedRequirementMet = false
+int kitanaMaskPopDetectRadius = 384
 
 int kitanaMaskSelfMorphTimer = 10
 int kitanaMaskSelfMorphMessyTimer = 30
@@ -299,7 +302,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
 	endif
 	
-	; if player suffers from mooMilk addiction or gets rid of it, adjust the bool
+	; if player suffers from mooMilk addiction or gets rid of it with meds, adjust the bool
 	if (hasMooMilkAddiction == false && PlayerRef.HasMagicEffect(MooMilkAddictionEffect))
 		hasMooMilkAddiction = true
 	elseif (hasMooMilkAddiction == true && PlayerRef.HasMagicEffect(MooMilkAddictionEffect) == false)
@@ -350,10 +353,18 @@ Event Scene.OnEnd(Scene akSender)
 
 	;TODO kzie dat LenAnderson hier nog meer doet, naast dat ie het anders heeft opgezet:
 	;https://github.com/LenAnderson/LenA_RadMorphing/compare/4cccf04..334a699#diff-cf41e4f3e45042dd90f3c9900096513df3b291d27c44417a55a129897c412ab1
+	; reset player morphs when doctor cures player rads
 	; as the base game uses different quests for Doctors then for the Doctors from the DLC, we must check each seperate quest sadly
 	If (DialogueGenericDoctors.DoctorJustCuredRads == 1 || DLC03CoA_DialogueNucleusArchemist.DoctorJustCuredRads == 1 || DLC03DialogueFarHarbor.DoctorJustCuredRads == 1 || DLC03AcadiaDialogue.DoctorJustCuredRads == 1 || DLC04SettlementDoctor.DoctorJustCuredRads == 1)
 		ResetMorphs()
 	EndIf
+
+	; reset player mooMilk addiction flag when flag was true and doctor cures player addictions
+	; as the base game uses different quests for Doctors then for the Doctors from the DLC, we must check each seperate quest sadly
+	If (hasMooMilkAddiction && (DialogueGenericDoctors.DoctorJustCuredAddict == 1 || DLC03CoA_DialogueNucleusArchemist.DoctorJustCuredAddict == 1 || DLC03DialogueFarHarbor.DoctorJustCuredAddict == 1 || DLC03AcadiaDialogue.DoctorJustCuredAddict == 1 || DLC04SettlementDoctor.DoctorJustCuredAddict == 1))
+		hasMooMilkAddiction = false
+	EndIf
+
 EndEvent
 
 ; ------------------------
@@ -1056,8 +1067,10 @@ EndFunction
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
 	float morphBonus = 0.0
 	
+	string matchingSlider = SliderNames[idxSlider]
+
 	; permanent breast size increase
-	if (SliderNames[idxSlider] == "Breasts")
+	if (matchingSlider == "Breasts")
 		; player has (or has had) molecow disease
 		if (hasHadMoleCowDisease)			
 			morphBonus += 0.15
@@ -1068,7 +1081,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 			endif
 		endif
 	; permanent nipple perkiness / areola increase
-	elseif (SliderNames[idxSlider] == "NipplePerkiness" || SliderNames[idxSlider] == "NipplePerk2" || SliderNames[idxSlider] == "NippleAreola")
+	elseif (matchingSlider == "NipplePerkiness" || matchingSlider == "NipplePerk2" || matchingSlider == "NippleAreola")
 		; player has bloating suit equipped
 		if (hasBloatingSuitEquipped)
 			morphBonus += 0.5
@@ -1078,7 +1091,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 			morphBonus += 0.25
 		endif
 	; permanent double melon increase
-	elseif (SliderNames[idxSlider] == "DoubleMelon")
+	elseif (matchingSlider == "DoubleMelon")
 		; player has nipple piercing equipped
 		if (hasNippleBlockers)
 			morphBonus += 0.25
@@ -1687,7 +1700,7 @@ Function BloatPop_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy
 
 	; unparalyze the actor
 	; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
-	if(!isLegendary)
+	if (!isLegendary)
 		UnParalyzeActor(akTarget)
 	endif
 	
@@ -1699,18 +1712,12 @@ Function BloatPop_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy
 		; always bloat player independent of distance
 		KitanaMaskSelfMorph_Kill()
 
-		if (distanceToPlayer < 384)
+		if (distanceToPlayer < kitanaMaskPopDetectRadius)
 			LenARM_NPCPopComment.Play(PlayerRef)
-			if (PlayerRef.HasPerk(PoppingExpertPerk))
-				;TODO andere perk
-				PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
-			else
-				PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
-			endif
+			PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
 		endif
 	; give player a temp buff if bloating suit is equipped and within range
-	;TODO distance nog beetje kort?
-	elseif (hasBloatingSuitEquipped && distanceToPlayer < 768)
+	elseif (hasBloatingSuitEquipped && distanceToPlayer < bloatingSuitPopDetectRadius)
 		LenARM_NPCPopComment.Play(PlayerRef)
 		PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 	endif
