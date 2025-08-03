@@ -1104,6 +1104,8 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasKitanaMaskEquipped)
 			morphBonus += 0.25
 		endif
+		; player has balloonsperks
+		morphBonus += (CurrentBalloonsPerk * 0.1)
 	endif
 
 	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
