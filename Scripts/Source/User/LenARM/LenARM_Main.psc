@@ -74,7 +74,7 @@ bool hasKitanaMaskEquipped = false
 int kitanaMaskMessyPoppedCount = 0
 int kitanaMaskMessyPoppedRequirement = 10
 bool kitanaMaskMessyPoppedRequirementMet = false
-int kitanaMaskPopDetectRadius = 384
+int kitanaMaskPopDetectRadius = 512 ;384
 
 int kitanaMaskSelfMorphTimer = 10
 int kitanaMaskSelfMorphMessyTimer = 30
@@ -143,6 +143,7 @@ Group Properties
 	Sound Property LenARM_MorphSound_Med Auto Const
 	Sound Property LenARM_MorphSound_High Auto Const
 	Sound Property LenARM_FullSound Auto Const
+	Sound Property LenARM_RadPerkSwitchSound Auto Const
 	Sound Property LenARM_SwellSound Auto Const
 	Sound Property LenARM_SwellPopSound Auto Const
 	Sound Property LenARM_PrePopSound Auto Const
@@ -1832,8 +1833,7 @@ Function ApplyRadsPerk()
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
 			if (HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
 				;Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
-				; TODO new sound
-				LenARM_BalloonTriggerSound.Play(PlayerRef)
+				LenARM_RadPerkSwitchSound.Play(PlayerRef)
 			endif
 		Else
 			PlayerRef.AddPerk(RadsPerkFull)			
