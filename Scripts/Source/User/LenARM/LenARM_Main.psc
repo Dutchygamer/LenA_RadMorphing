@@ -188,7 +188,7 @@ Group Properties
 	Perk[] Property BalloonsPerkArray Auto
 	
 	Perk Property PoppingExpertPerk Auto
-
+	
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
 	Potion Property GlowingOneBlood Auto Const
@@ -204,6 +204,7 @@ Group Properties
 	Spell Property MoleCowMilkSpell Auto Const
 	MagicEffect Property LenARM_MS19MoleratEffect Auto Const
 	MagicEffect Property MooMilkAddictionEffect Auto Const
+	MagicEffect Property MS19SurpressantEffect Auto
 	
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatGrenadeExplosion Auto
@@ -297,8 +298,12 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		hasHadMoleCowDisease = true
 	endif
 
-	; when ingesting consumable check if we're suffering from molecow disease and it is one of the triggers
-	if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && MoleCowMilkTriggers.Find(akBaseObject) > -1)
+	; when ingesting consumable check 
+	; - if we're suffering from molecow disease
+	; - we don't have the molecow disease surpressant active
+	; - it is one of the trigger consumables
+	; if so, trigger molecow disease effect
+	if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && !PlayerRef.HasMagicEffect(MS19SurpressantEffect) && MoleCowMilkTriggers.Find(akBaseObject) > -1)
 		LenARM_MoleCowMilkTriggerMessage.Show()
 		MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
 	endif

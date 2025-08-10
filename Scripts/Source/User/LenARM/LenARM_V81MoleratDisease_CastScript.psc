@@ -12,6 +12,8 @@ float Property CastTimerInterval_Max = 30.0 const auto
 message Property MessageToDisplay const auto mandatory
 message Property Tutorial_MessageToDisplay const auto mandatory
 
+MagicEffect Property MS19SurpressantEffect Auto
+
 EndGroup
 
 int castTimerId = 159763
@@ -29,11 +31,16 @@ Function TryCastSpellAndStartTimer()
         var isInVATS = (Game.IsMovementControlsEnabled()) == false
         var isInScene = actorRef.IsInScene()
         var isInTrade = Utility.IsInMenuMode()
+        var isSupressed = !actorRef.HasMagicEffect(MS19SurpressantEffect)
 
-        ; player should not be in VATS, not be in a conversation and not be trading
-        If (!isInVATS && !isInScene && !isInTrade)
+        ; if player has molecow disease surpressant active, restart the timer
+        ; this overrules everything else
+        if (isSupressed)
+            RestartCastTimer()
+        ; if player is not in VATS, not in a conversation and not trading cast the effect
+        elseIf (!isInVATS && !isInScene && !isInTrade)
             CastSpellAndStartTimer()
-        ; if so, put on the queue and retry after a second
+        ; otherwise put in the queue and retry after a second
         Else
             StartTimer(1, equipDelayTimerId)
         EndIf
@@ -52,9 +59,13 @@ Function CastSpellAndStartTimer()
             MessageToDisplay.show()
         endif
 	
-        float timer = Utility.RandomFloat(CastTimerInterval_Min, CastTimerInterval_Max)
-		startTimer(timer, castTimerId)
+        RestartCastTimer()
 	endif
+EndFunction
+
+Function RestartCastTimer()
+    float timer = Utility.RandomFloat(CastTimerInterval_Min, CastTimerInterval_Max)
+    startTimer(timer, castTimerId)
 EndFunction
 
 Event OnTimer(int aiTimerID)		
