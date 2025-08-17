@@ -31,14 +31,16 @@ Function TryCastSpellAndStartTimer()
         var isInVATS = (Game.IsMovementControlsEnabled()) == false
         var isInScene = actorRef.IsInScene()
         var isInTrade = Utility.IsInMenuMode()
-        var isSupressed = !actorRef.HasMagicEffect(MS19SurpressantEffect)
+        var isSuppressed = actorRef.HasMagicEffect(MS19SurpressantEffect)
 
         ; if player has molecow disease surpressant active, restart the timer
         ; this overrules everything else
-        if (isSupressed)
+        if (isSuppressed)
+	        Debug.Trace("[LenARM] Milk surge suppressed, restarting timer")
             RestartCastTimer()
         ; if player is not in VATS, not in a conversation and not trading cast the effect
         elseIf (!isInVATS && !isInScene && !isInTrade)
+	        Debug.Trace("[LenARM] Timer-based Milk surge triggered!")
             CastSpellAndStartTimer()
         ; otherwise put in the queue and retry after a second
         Else
