@@ -1433,10 +1433,7 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on NPCs.
 ; ------------------------
-
-;TODO maak van al die bools een enum die je doorgeeft?
-
-Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated, bool isMessy, bool isLegendary)
+Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, int bloatType)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
 		return
@@ -1461,23 +1458,23 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 	; Note(currentBloatStage + "; " + targetBloatStage)
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary)
-	if (toAdd > maxNPCBloatStages && !isLegendary)		
+	if (toAdd > maxNPCBloatStages && bloatType != EBloatTypeLegendary)
 		ParalyzeActor(akTarget)
 	endIf
 
-	; when not isMessy keep bloating the actor until the bloatStage is equal to target
-	if (!isMessy && !isLegendary)
+	; when bloatType is normal or concentrated keep bloating the actor until the bloatStage is equal to target
+	if (bloatType <= EBloatTypeConcentrated)
 		while (nextBloatStage <= targetBloatStage)
 			; don't bloat actor that is dead
 			if (akTarget.IsDead())
 				return
 			endif
 
-			ApplyBloatStage(akTarget, nextBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
+			ApplyActorBloatStage(akTarget, nextBloatStage, morphPercentage, bloatType)
 			
 			nextBloatStage += 1
 		endwhile
-	; when isMessy or isLegendary immediately bloat to max and go to popping
+	; when bloatType is messy or legendary immediately bloat to max and go to popping
 	else
 		; calculate the diff between current bloat stage and max and use that as our percentage
 		int bloatStageDiff = maxNPCBloatStages - currentBloatStage
@@ -1485,30 +1482,30 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 		; first bloat to max if we aren't at max yet
 		if (bloatStageDiff > 0)
 			float maxMorphPercentage = morphPercentage * bloatStageDiff			
-			ApplyBloatStage(akTarget, maxNPCBloatStages, maxMorphPercentage, isConcentrated, isMessy, isLegendary)
+			ApplyActorBloatStage(akTarget, maxNPCBloatStages, maxMorphPercentage, bloatType)
 		endif
 
 		; immediately bloat to pop afterwards
-		ApplyBloatStage(akTarget, popNPCBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
+		ApplyActorBloatStage(akTarget, popNPCBloatStage, morphPercentage, bloatType)
 	endif
 EndFunction
 
 ; public endpoints used in the Magic Effect scripts
 Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = false, isMessy = false, isLegendary = false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeNormal)
 EndFunction
 Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = true, isMessy = false, isLegendary = false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeConcentrated)
 EndFunction
 Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = false, isMessy = true, isLegendary = false)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeMessy)
 EndFunction
 Function BloatActorLegendary(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, isConcentrated = false, isMessy = false, isLegendary = true)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeLegendary)
 EndFunction
 
 
-Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, bool isConcentrated, bool isForcedMessy, bool isLegendary)
+Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, int bloatType)
 	; perkLevel is equal to the bloat state 
 	int perkLevel = nextBloatStage
 
@@ -1547,13 +1544,17 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	; pop the actor 
 	elseif (perkLevel == maxNPCBloatStages && nextBloatStage > maxNPCBloatStages)		
 		Utility.Wait(randomFloat)
-		BloatPop(akTarget, isConcentrated, isForcedMessy, isLegendary)
+		BloatPopActor(akTarget, bloatType)
 	endif
 EndFunction
 
-Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool isLegendary)
+Function BloatPopActor(Actor akTarget, int bloatType)
 	; pause self-bloat timer
 	CancelTimer(ETimerKitanaMask)
+
+	bool isConcentrated = bloatType == EBloatTypeConcentrated
+	bool isForcedMessy = bloatType == EBloatTypeMessy
+	bool isLegendary = bloatType == EBloatTypeLegendary
 
 	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
@@ -1646,8 +1647,13 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 
 	; gradually increase the morphs and unequip the clothes
 	While (currentPopState < popStatesToUse)	
-		; don't pop actor that is dead
+		; don't bloat actor that is dead
 		if (akTarget.IsDead())
+			;TODO hier moet kitana mask timer weer gestart worden	
+			; ; restart self-morph timer when requirements not yet met
+			; if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
+			; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+			; endif	
 			return
 		endif
 		
@@ -1678,6 +1684,11 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 
 	; don't pop actor that is dead
 	if (akTarget.IsDead())
+		;TODO hier moet kitana mask timer weer gestart worden		
+		; ; restart self-morph timer when requirements not yet met
+		; if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
+		; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+		; endif
 		return
 	endif
 
@@ -1693,15 +1704,15 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 
 	; messy pop kills actor and places a grenade explosion
 	if (shouldMessyPop)
-		BloatPop_HandleMessy(akTarget, milkToAdd, canForcedMessy, isLegendary)
+		BloatPopActor_HandleMessy(akTarget, milkToAdd, canForcedMessy, isLegendary)
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
-		BloatPop_HandleNormal(akTarget, milkToAdd)
+		BloatPopActor_HandleNormal(akTarget, milkToAdd)
 	endif
 EndFunction
 
 ; messy pop kills actor and places a grenade explosion
-Function BloatPop_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy, bool isLegendary)
+Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy, bool isLegendary)
 	LenARM_PrePopMessySound.PlayAndWait(akTarget)
 
 	; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
@@ -1755,7 +1766,7 @@ Function BloatPop_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy
 EndFunction
 
 ; normal pop keeps actor paralyzed for a bit and places a normal explosion
-Function BloatPop_HandleNormal(Actor akTarget, int milkToAdd)
+Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 	LenARM_PrePopSound.PlayAndWait(akTarget)
 
 	; add some more bloating ammo to actor's inventory when they've been allowed to pop
@@ -2719,6 +2730,15 @@ EndGroup
 Group Constants
 	int Property _NUMBER_OF_SLIDERSETS_ = 20 Auto Const
 EndGroup
+
+Group EnumNPCBloatType
+	int Property EBloatTypeNormal = 1 Auto Const
+	int Property EBloatTypeConcentrated = 2 Auto Const
+	int Property EBloatTypeMessy = 3 Auto Const
+	int Property EBloatTypeLegendary = 4 Auto Const
+EndGroup
+
+
 
 ; ------------------------
 ; MCM SliderSet functions / struct
