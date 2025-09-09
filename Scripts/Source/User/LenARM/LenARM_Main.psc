@@ -1433,38 +1433,41 @@ EndFunction
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on NPCs.
 ; ------------------------
+
+;TODO maak van al die bools een enum die je doorgeeft?
+
 Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, bool isConcentrated, bool isMessy, bool isLegendary)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
 		return
 	endif
 
-	; calculate the max bloatStage
+	; calculate the target bloatStage
 	; -1 means bloat to pop
-	int maxBloatStage = currentBloatStage
+	int targetBloatStage = currentBloatStage
 	if (toAdd == -1)
-		maxBloatStage = popNPCBloatStage
+		targetBloatStage = popNPCBloatStage
 	else
-		maxBloatStage += toAdd
+		targetBloatStage += toAdd
 	endif
 	; limit to our max
-	if (maxBloatStage > popNPCBloatStage)
-		maxBloatStage = popNPCBloatStage
+	if (targetBloatStage > popNPCBloatStage)
+		targetBloatStage = popNPCBloatStage
 	endif
 
 	int nextBloatStage = currentBloatStage + 1
 	float morphPercentage = 0.2
 
-	Note(currentBloatStage + "; " + maxBloatStage)
+	; Note(currentBloatStage + "; " + targetBloatStage)
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary)
-	if (toAdd > 5 && !isLegendary)		
+	if (toAdd > maxNPCBloatStages && !isLegendary)		
 		ParalyzeActor(akTarget)
 	endIf
 
-	; when not isMessy keep bloating the actor until the bloatStage is equal to expected result
+	; when not isMessy keep bloating the actor until the bloatStage is equal to target
 	if (!isMessy && !isLegendary)
-		while (nextBloatStage <= maxBloatStage)
+		while (nextBloatStage <= targetBloatStage)
 			; don't bloat actor that is dead
 			if (akTarget.IsDead())
 				return
@@ -1475,13 +1478,16 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 			nextBloatStage += 1
 		endwhile
 	; when isMessy or isLegendary immediately bloat to max and go to popping
-	; don't use maxBloatStage but use the global variables instead
 	else
-		;TODO jij moet 'berekenen' wat je max moet zijn ipv domweg percentage * 5 te doen
-		; pak verschil tussen currentBloatStage en maxNPCBloatStages doet dat * percentage?
-		float maxMorphPercentage = morphPercentage * maxNPCBloatStages
-		; bloat to max
-		ApplyBloatStage(akTarget, maxNPCBloatStages, maxMorphPercentage, isConcentrated, isMessy, isLegendary)
+		; calculate the diff between current bloat stage and max and use that as our percentage
+		int bloatStageDiff = maxNPCBloatStages - currentBloatStage
+		; Note("current: " + currentBloatStage + "; target: " + targetBloatStage + "; diff: " + bloatStageDiff)
+		; first bloat to max if we aren't at max yet
+		if (bloatStageDiff > 0)
+			float maxMorphPercentage = morphPercentage * bloatStageDiff			
+			ApplyBloatStage(akTarget, maxNPCBloatStages, maxMorphPercentage, isConcentrated, isMessy, isLegendary)
+		endif
+
 		; immediately bloat to pop afterwards
 		ApplyBloatStage(akTarget, popNPCBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
 	endif
