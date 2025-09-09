@@ -8,6 +8,10 @@ int property StageToAdd = 1 auto
 bool property IsConcentrated = false auto
 bool property IsMessy = false auto
 
+
+int maxNPCBloatStages = 5
+int popNPCBloatStage = -1
+
 Actor victim
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
@@ -23,15 +27,18 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
     if (sex == LenARM_Main.ESexFemale)
         RegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
         
-        ; when concentrated or messy always overwrite stageToAdd to 6 (the max)
+        ; when concentrated or messy always overwrite stageToAdd to -1 (which gets intrepeted as 'bloat to max')
         if (IsConcentrated || IsMessy)
-            StageToAdd = 6
+            StageToAdd = popNPCBloatStage
         endif
         
         ; make ourselves immune to further bloating until we are done
         akTarget.SetValue(NPCBloatImmunity, 1)
 
         int currentBloatStage = (akTarget.getValue(NPCBloatStage) as int)
+        if (currentBloatStage < 0)
+            currentBloatStage = 0
+        endif
         int expectedBloatStage = currentBloatStage + StageToAdd
         akTarget.SetValue(NPCBloatStage, expectedBloatStage)
         
@@ -59,7 +66,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             endif
 
             ; after popping, keep us paralyzed for a bit
-            if (expectedBloatStage > 5)
+            if (expectedBloatStage > maxNPCBloatStages || StageToAdd == popNPCBloatStage)
                 akTarget.SetValue(NPCBloatStage, 0)
 
                 ; wait a bit before taking away our immunity
@@ -77,7 +84,8 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             self.Dispel()
         ; if dead by now reset actor for respawn
         else
-            ResetActor(akTarget)
+            ; don't attempt to dispel here as we will be dispelled when actor finished dying
+            ResetActor(akTarget, false)
         endif        
     endif
 EndEvent
@@ -92,16 +100,18 @@ EndEvent
 ; when unloading the actor / actor dies reset a bunch of things so it doesn't get stuck when respawning
 Event ObjectReference.OnUnload(ObjectReference akSender)
     Actor akTarget = (akSender as Actor)
-    ResetActor(akTarget)
-endEvent
+    ; do to dispel here as we are unloaded and thus want to get rid of the magic effect
+    ResetActor(akTarget, true)
+EndEvent
 
-EVENT OnDying(ACTOR akKiller)
+Event OnDying(Actor akKiller)
 	; LenARM_Main.TechnicalNote("DEAD")
-    ResetActor(victim)
-ENDEVENT
+    ; don't attempt to dispel here as we will be dispelled when actor finished dying
+    ResetActor(victim, false)
+EndEvent
 
 
-Function ResetActor(Actor akTarget)
+Function ResetActor(Actor akTarget, bool shouldDispel)
 	; LenARM_Main.TechnicalNote("reset!")
 
     ; don't stay paralyzed
@@ -113,6 +123,8 @@ Function ResetActor(Actor akTarget)
     ; reset bloating immunity
     akTarget.SetValue(NPCBloatImmunity, 0)
 
-    ; disspell yourself when done with resetting
-    self.Dispel()
+    ; dispel yourself when done with resetting
+    if (shouldDispel)
+        self.Dispel()
+    endif
 EndFunction

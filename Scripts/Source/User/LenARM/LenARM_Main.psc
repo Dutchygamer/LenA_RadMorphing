@@ -79,6 +79,9 @@ int kitanaMaskPopDetectRadius = 512 ;384
 int kitanaMaskSelfMorphTimer = 10
 int kitanaMaskSelfMorphMessyTimer = 30
 
+int maxNPCBloatStages = 5
+int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
+
 ; does player have (or has had) molecow disease?
 bool hasHadMoleCowDisease = false
 ; does player have nipple blockers equipped?
@@ -1436,13 +1439,23 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 		return
 	endif
 
-	; calculate the max bloatStage, limited to 6
-	int maxBloatStage = currentBloatStage + toAdd
-	if (maxBloatStage > 6)
-		maxBloatStage = 6
+	; calculate the max bloatStage
+	; -1 means bloat to pop
+	int maxBloatStage = currentBloatStage
+	if (toAdd == -1)
+		maxBloatStage = popNPCBloatStage
+	else
+		maxBloatStage += toAdd
 	endif
+	; limit to our max
+	if (maxBloatStage > popNPCBloatStage)
+		maxBloatStage = popNPCBloatStage
+	endif
+
 	int nextBloatStage = currentBloatStage + 1
 	float morphPercentage = 0.2
+
+	Note(currentBloatStage + "; " + maxBloatStage)
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary)
 	if (toAdd > 5 && !isLegendary)		
@@ -1462,11 +1475,15 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, b
 			nextBloatStage += 1
 		endwhile
 	; when isMessy or isLegendary immediately bloat to max and go to popping
+	; don't use maxBloatStage but use the global variables instead
 	else
-		; morph percentage is one step bigger already
-		float maxMorphPercentage =  morphPercentage * maxBloatStage
-		ApplyBloatStage(akTarget, (maxBloatStage-1), maxMorphPercentage, isConcentrated, isMessy, isLegendary)
-		ApplyBloatStage(akTarget, maxBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
+		;TODO jij moet 'berekenen' wat je max moet zijn ipv domweg percentage * 5 te doen
+		; pak verschil tussen currentBloatStage en maxNPCBloatStages doet dat * percentage?
+		float maxMorphPercentage = morphPercentage * maxNPCBloatStages
+		; bloat to max
+		ApplyBloatStage(akTarget, maxNPCBloatStages, maxMorphPercentage, isConcentrated, isMessy, isLegendary)
+		; immediately bloat to pop afterwards
+		ApplyBloatStage(akTarget, popNPCBloatStage, morphPercentage, isConcentrated, isMessy, isLegendary)
 	endif
 EndFunction
 
@@ -1511,18 +1528,18 @@ Function ApplyBloatStage(Actor akTarget, int nextBloatStage, float morphPercenta
 	Utility.Wait(randomFloat)
 
 	; only apply initial morphs if we are not going to pop
-	if (nextBloatStage <= 5)
+	if (nextBloatStage <= maxNPCBloatStages)
 		SetBloatMorphs(akTarget, morphPercentage, shouldPop = false)
 		BodyGen.UpdateMorphs(akTarget)
 	endif
 
 	; play the matching sound
-	if (perkLevel < 5)
+	if (perkLevel < maxNPCBloatStages)
 		PlayMorphSound(akTarget, 3)
-	elseif (perkLevel == 5 && nextBloatStage == 5)
+	elseif (perkLevel == maxNPCBloatStages && nextBloatStage == maxNPCBloatStages)
 		PlayMorphSound(akTarget, 4)
 	; pop the actor 
-	elseif (perkLevel == 5 && nextBloatStage > 5)		
+	elseif (perkLevel == maxNPCBloatStages && nextBloatStage > maxNPCBloatStages)		
 		Utility.Wait(randomFloat)
 		BloatPop(akTarget, isConcentrated, isForcedMessy, isLegendary)
 	endif
@@ -1576,7 +1593,7 @@ Function BloatPop(Actor akTarget, bool isConcentrated, bool isForcedMessy, bool 
 		milkToAdd += 1
 	endif
 
-	; paralyze actor first
+	; paralyze actor first if not legendary
 	PlayMorphSound(akTarget, 4)
 	if (!isLegendary)
 		ParalyzeActor(akTarget)
