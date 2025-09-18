@@ -2416,6 +2416,7 @@ Function KitanaMaskSelfMorph_Kill()
 	if (kitanaMaskMessyPoppedCount >= 25 && PlayerRef.HasPerk(PoppingExpertPerk) == false)
 		PlayerRef.AddPerk(PoppingExpertPerk)
 		LenARM_PoppingExpertPerkMessage.ShowAsHelpMessage("LenARM_PoppingExpertPerkMessage", 8, 0, 1)
+		isPoppingExpert = true
 	endif
 	
 	; restart self-morph timer with a larger delay when requirements not yet met
