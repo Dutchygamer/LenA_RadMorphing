@@ -2449,12 +2449,21 @@ Function DN050SelfMorph()
 		StartTimer(5, ETimerDN050)
 	else
 		hasKitanaMaskPoppedNPC = false
+		;TODO of sloopt dit nu iets?
+		; ; force update morphs on next run when not yet maxed out
+		; if (!HasReachedMaxMorphs)
+		; 	forceUpdate = true
+		; endif
 	endif
 EndFunction
 
 Function ResetHasKitanaMaskPoppedNPC()
 	hasKitanaMaskPoppedNPC = false
-		forceUpdate = true
+	;TODO of sloopt dit nu iets?
+	; ; force update morphs on next run when not yet maxed out
+	; if (!HasReachedMaxMorphs)
+	; 	forceUpdate = true
+	; endif
 EndFunction
 
 
@@ -2595,8 +2604,14 @@ Function ForgetStateCounterReset()
 EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
-	Note("DN050 registered")
-	RegisterForRemoteEvent(DN050, "OnStageSet")
+
+	if (PlayerRef.HasPerk(PoppingExpertPerk))
+		Note("popping expert given!")
+		isPoppingExpert = true
+	endif
+
+	; Note("DN050 registered")
+	; RegisterForRemoteEvent(DN050, "OnStageSet")
 	; ;TODO for now hijacked to activate HUDFramework plugin
 	; hud = hudframework.GetInstance()
 	; If (hud)
@@ -2742,6 +2757,7 @@ Group EnumTimerId
 	int Property ETimerBloatSuit = 7 Auto Const
 	int Property ETimerKitanaMask = 8 Auto Const
 	int Property ETimerDN050 = 9 Auto Const
+	int Property ETimerNPCPopped = 10 Auto Const
 	int Property ETimerHUD = 99 Auto Const
 EndGroup
 
