@@ -1458,7 +1458,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 	; Note(currentBloatStage + "; " + targetBloatStage)
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary)
-	if (toAdd > maxNPCBloatStages && bloatType != EBloatTypeLegendary)
+	if (toAdd == -1 && bloatType != EBloatTypeLegendary)
 		ParalyzeActor(akTarget)
 	endIf
 
