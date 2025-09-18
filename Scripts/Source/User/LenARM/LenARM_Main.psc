@@ -2443,8 +2443,12 @@ Function DN050SelfMorph()
 		PlayerRef.DamageValue(avBloating, 20)
 		; LenARM_FullGroanSound.Play(PlayerRef)
 		LenARM_BalloonTriggerSound.Play(PlayerRef)
+		; give player puffy nipples for a bit
+		hasKitanaMaskPoppedNPC = true
 		
 		StartTimer(5, ETimerDN050)
+	else
+		hasKitanaMaskPoppedNPC = false
 	endif
 EndFunction
 
