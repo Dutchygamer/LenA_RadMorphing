@@ -86,7 +86,12 @@ int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
 bool hasHadMoleCowDisease = false
 ; does player have nipple blockers equipped?
 bool hasNippleBlockers = false
+; does player have moomilk addiction?
 bool hasMooMilkAddiction = false
+; does player have popping expert perk?
+bool isPoppingExpert = false
+; has player just popped an NPC with Kitana Mask
+bool hasKitanaMaskPoppedNPC = false
 
 ; do we want to force a morphs update during next run even if there has been no rads changes?
 bool forceUpdate = false
@@ -1081,7 +1086,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	; permanent breast size increase
 	if (matchingSlider == "Breasts")
 		; player has (or has had) molecow disease
-		if (hasHadMoleCowDisease)			
+		if (hasHadMoleCowDisease)
 			morphBonus += 0.15
 
 			; player also carries balloons
@@ -1089,20 +1094,24 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 				morphBonus += 0.1
 			endif
 		endif
-	; permanent nipple perkiness / areola increase
-	elseif (matchingSlider == "NipplePerkiness" || matchingSlider == "NipplePerk2" || matchingSlider == "NippleAreola")
+	; permanent nipple perkiness increase
+	elseif (matchingSlider == "NipplePerkiness" || matchingSlider == "NipplePerk2")
 		; player has bloating suit equipped
 		if (hasBloatingSuitEquipped)
+			morphBonus += 0.3
+		endif
+		; player has popped NPC with kitana mask
+		if (hasKitanaMaskPoppedNPC)
 			morphBonus += 0.5
 		endif
-		; player has kitana mask equipped
-		if (hasKitanaMaskEquipped)
+		; player has nipple piercing equipped
+		if (hasNippleBlockers)
 			morphBonus += 0.25
 		endif
 	; permanent double melon increase
 	elseif (matchingSlider == "DoubleMelon")
-		; player has nipple piercing equipped
-		if (hasNippleBlockers)
+		; player is popping expert
+		if (isPoppingExpert)
 			morphBonus += 0.25
 		endif
 		; player has mooMilk addiction
