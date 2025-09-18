@@ -431,6 +431,8 @@ Event OnTimer(int tid)
 		KitanaMaskSelfMorph_Timer()
 	ElseIf (tid == ETimerDN050)
 		DN050SelfMorph()
+	ElseIf (tid == ETimerNPCPopped)
+		ResetHasKitanaMaskPoppedNPC()
 	ElseIf (tid == ETimerHUD)
 		UpdateHUD()
 	EndIf
@@ -577,6 +579,7 @@ Function Shutdown(bool withRestore=true)
 		CancelTimer(ETimerBloatSuit)
 		CancelTimer(ETimerKitanaMask)
 		CancelTimer(ETimerDN050)
+		CancelTimer(ETimerNPCPopped)
 	
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
@@ -2405,6 +2408,11 @@ Function KitanaMaskSelfMorph_Kill()
 	LenARM_BalloonTriggerSound.Play(PlayerRef)
 	kitanaMaskMessyPoppedCount += 1
 
+	; give player puffy nipples for a bit
+	hasKitanaMaskPoppedNPC = true
+	CancelTimer(ETimerNPCPopped)
+	StartTimer(10, ETimerNPCPopped)
+
 	if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
 		LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
 		kitanaMaskMessyPoppedRequirementMet = true
@@ -2438,6 +2446,11 @@ Function DN050SelfMorph()
 		
 		StartTimer(5, ETimerDN050)
 	endif
+EndFunction
+
+Function ResetHasKitanaMaskPoppedNPC()
+	hasKitanaMaskPoppedNPC = false
+		forceUpdate = true
 EndFunction
 
 
