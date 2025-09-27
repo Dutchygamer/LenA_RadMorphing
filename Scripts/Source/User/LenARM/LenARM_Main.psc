@@ -2376,6 +2376,8 @@ Function KitanaMaskEquipped()
 		PlayerRef.DamageValue(avBloating, 100)
 		; LenARM_FullGroanSound.Play(PlayerRef)
 		LenARM_BalloonTriggerSound.Play(PlayerRef)
+		
+		KitanaMask_TriggerPuffyNipples()
 	endif
 
 	if (kitanaMaskMessyPoppedRequirementMet == false)
@@ -2403,7 +2405,12 @@ Function KitanaMaskSelfMorph_Timer()
 	; LenARM_FullGroanSound.Play(PlayerRef)
 	LenARM_BalloonTriggerSound.Play(PlayerRef)
 	
+	KitanaMask_TriggerPuffyNipples()
+	
 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+	
+	; force update morphs on next run
+	forceUpdate = true
 EndFunction
 
 Function KitanaMaskSelfMorph_Unequip()
@@ -2412,6 +2419,9 @@ Function KitanaMaskSelfMorph_Unequip()
 	PlayerRef.DamageValue(avBloating, 50)
 	; LenARM_FullGroanSound.Play(PlayerRef)
 	LenARM_BalloonTriggerSound.Play(PlayerRef)
+	
+	; force update morphs on next run
+	forceUpdate = true
 EndFunction
 
 Function KitanaMaskSelfMorph_Kill()
@@ -2421,10 +2431,7 @@ Function KitanaMaskSelfMorph_Kill()
 	LenARM_BalloonTriggerSound.Play(PlayerRef)
 	kitanaMaskMessyPoppedCount += 1
 
-	; give player puffy nipples for a bit
-	hasKitanaMaskPoppedNPC = true
-	CancelTimer(ETimerNPCPopped)
-	StartTimer(10, ETimerNPCPopped)
+	KitanaMask_TriggerPuffyNipples()
 
 	if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
 		LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
@@ -2447,6 +2454,13 @@ Function KitanaMaskSelfMorph_Kill()
 	
 	; force update morphs on next run
 	forceUpdate = true
+EndFunction
+
+Function KitanaMask_TriggerPuffyNipples(int timer = 10)
+	; give player puffy nipples for a bit
+	hasKitanaMaskPoppedNPC = true
+	CancelTimer(ETimerNPCPopped)
+	StartTimer(timer, ETimerNPCPopped)
 EndFunction
 
 
