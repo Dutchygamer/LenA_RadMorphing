@@ -189,6 +189,7 @@ Group Properties
 	Message Property LenARM_BloatingMask_UnsafeUnequipMessage Auto
 	Message Property LenARM_BloatingMask_SafeUnequipMessage Auto
 	Message Property LenARM_MoleCowMilkTriggerMessage Auto
+	Message Property LenARM_MoleCow_BalloonPopTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
 	Message Property LenARM_PoppingExpertPerkMessage Auto
 
@@ -229,6 +230,7 @@ Group Properties
 	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const	
 	
 	FormList Property MoleCowMilkTriggers Auto
+	FormList Property MoleCowBalloonTriggers Auto
 	FormList Property NippleBlockers Auto
 	FormList Property AutoAddToPlayerInventory Auto
 	
@@ -287,6 +289,7 @@ EndFunction
 ; On equipping / ingestion of an item, check if we must do something with it
 ; ------------------------
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
+	;TODO deze is alleen relevant voor het unequippen; hoeft niet alle andere dingen te blokkeren
 	If (PlayerRef.IsInPowerArmor())
 		return
 	EndIf
@@ -312,14 +315,17 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 		hasHadMoleCowDisease = true
 	endif
 
-	; when ingesting consumable check 
-	; - if we're suffering from molecow disease
-	; - we don't have the molecow disease surpressant active
-	; - it is one of the trigger consumables
-	; if so, trigger molecow disease effect
-	if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && !PlayerRef.HasMagicEffect(MS19SurpressantEffect) && MoleCowMilkTriggers.Find(akBaseObject) > -1)
-		LenARM_MoleCowMilkTriggerMessage.Show()
-		MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
+	; when ingesting a consumable and player is suffering from molecow disease without having the suppressant active, check if we need to do something
+	if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && !PlayerRef.HasMagicEffect(MS19SurpressantEffect))
+		; if consumable is a milk surge trigger, trigger the milk surge effect
+		if (MoleCowMilkTriggers.Find(akBaseObject) > -1)
+			LenARM_MoleCowMilkTriggerMessage.Show()
+			MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
+		; if 'consumable' is a balloon popping, trigger the milk surge effect with a different message
+		elseif (MoleCowBalloonTriggers.Find(akBaseObject) > -1)
+			LenARM_MoleCow_BalloonPopTriggerMessage.Show()
+			MoleCowMilkSpell.Cast(PlayerRef as ObjectReference, PlayerRef as ObjectReference)
+		endif
 	endif
 	
 	; if player suffers from mooMilk addiction or gets rid of it with meds, adjust the bool
@@ -2369,7 +2375,6 @@ Function KitanaMaskEquipped()
 	hasKitanaMaskEquipped = true
 	if (TutorialDisplayed_KitanaMask == false)
 		LenARM_Tutorial_BloatingMaskMessage.ShowAsHelpMessage("LenARM_Tutorial_BloatingMaskMessage", 8, 0, 1)
-		; TechnicalNote("You've equipped a cursed mask that won't get off!")
 		TutorialDisplayed_KitanaMask = true
 
 		; 100 rads worth of bloating
