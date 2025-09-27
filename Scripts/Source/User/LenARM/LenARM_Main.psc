@@ -65,11 +65,13 @@ bool TutorialDisplayed_Popped = false
 bool TutorialDisplayed_KitanaMask = false
 
 ; does player have bloating suit equipped?
+;TODO vervang jou door kijken of we LenARM_BloatingSuitPerk hebben
 bool hasBloatingSuitEquipped = false
 bool canGiveBloatingSuitAmmo = true
 int bloatingSuitPopDetectRadius = 1024 ;768
 
 ; does player have kitana mask equipped?
+;TODO vervang jou door kijken of we LenARM_KitanaMaskPerk hebben
 bool hasKitanaMaskEquipped = false
 int kitanaMaskMessyPoppedCount = 0
 int kitanaMaskMessyPoppedRequirement = 10
@@ -195,6 +197,10 @@ Group Properties
 	
 	Perk[] Property BalloonsPerkArray Auto
 	
+	;TODO in geval de lokale bool random wordt unset
+	; Perk Property LenARM_BloatSuitPerk Auto Const
+	; Perk Property LenARM_KitanaMaskPerk Auto Const
+
 	Perk Property PoppingExpertPerk Auto
 	
 	ActorValue Property ParalysisAV Auto Const
@@ -342,6 +348,7 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 
 	; when unequipping the Kitana mask check if player has messy popped 5 NPCs
 	if (akBaseObject as Armor && akBaseObject == KitanaMask)
+		; TechnicalNote("main script kitana mask unequipped!")
 		; if not, re-equip the mask
 		if (kitanaMaskMessyPoppedRequirementMet == false)
 			KitanaMaskSelfMorph_Unequip()
@@ -795,6 +802,11 @@ Function TimerMorphTick()
 	if (IsPopping || IsStartingUp || PlayerRef.IsInPowerArmor() || PlayerRef.IsDead())		
 		StartTimer(UpdateDelay, ETimerMorphTick)
 		return
+	endif
+
+	;TODO debug ding
+	if (PlayerRef.IsEquipped(KitanaMask) && !hasKitanaMaskEquipped)
+		Note("mask bugged out!")
 	endif
 
 	; by default, assume we have no changed morphs for all sliderSets
@@ -2353,6 +2365,7 @@ EndFunction
 
 
 Function KitanaMaskEquipped()
+	; TechnicalNote("mask equipped!")
 	hasKitanaMaskEquipped = true
 	if (TutorialDisplayed_KitanaMask == false)
 		LenARM_Tutorial_BloatingMaskMessage.ShowAsHelpMessage("LenARM_Tutorial_BloatingMaskMessage", 8, 0, 1)
@@ -2374,7 +2387,7 @@ Function KitanaMaskEquipped()
 EndFunction
 
 Function KitanaMaskUnequipped()
-	;TechnicalNote("Bloating Outfit unequipped!")
+	; TechnicalNote("mask unequipped!")
 	hasKitanaMaskEquipped = false
 
 	; force update morphs on next run
@@ -2743,6 +2756,7 @@ EndFunction
 Function Log(string msg)
 	Debug.Trace("[LenARM] " + msg)
 EndFunction
+
 
 ; ------------------------
 ; MCM selector enums
