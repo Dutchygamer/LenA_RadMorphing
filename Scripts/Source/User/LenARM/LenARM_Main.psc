@@ -163,9 +163,8 @@ Group Properties
 	Sound Property LenARM_PurgeFailSound Auto Const
 	Sound Property LenARM_FullGroanSound Auto Const
 	Sound Property LenARM_BloatSuitMilkSound Auto Const
-	Sound Property LenARM_BalloonTriggerSound Auto Const
 	Sound Property LenARM_NPCPopComment Auto Const
-	Sound Property LenARM_KitanaMaskMorphSound Auto Const
+	Sound Property LenARM_FXBloatHitSound_High Auto Const
 
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
@@ -2380,7 +2379,7 @@ Function KitanaMaskEquipped()
 
 		; 100 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 100)
-		LenARM_KitanaMaskMorphSound.Play(PlayerRef)
+		LenARM_FXBloatHitSound_High.Play(PlayerRef)
 		
 		KitanaMask_TriggerPuffyNipples()
 	endif
@@ -2407,7 +2406,7 @@ Function KitanaMaskSelfMorph_Timer()
 	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_KitanaMaskMorphSound.Play(PlayerRef)
+	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	
 	KitanaMask_TriggerPuffyNipples()
 	
@@ -2421,7 +2420,7 @@ Function KitanaMaskSelfMorph_Unequip()
 	LenARM_BloatingMask_UnsafeUnequipMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_KitanaMaskMorphSound.Play(PlayerRef)
+	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	
 	; force update morphs on next run
 	forceUpdate = true
@@ -2430,7 +2429,7 @@ EndFunction
 Function KitanaMaskSelfMorph_Kill()
 	; 100 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 100)
-	LenARM_KitanaMaskMorphSound.Play(PlayerRef)
+	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	kitanaMaskMessyPoppedCount += 1
 
 	KitanaMask_TriggerPuffyNipples()
@@ -2471,7 +2470,7 @@ Function DN050SelfMorph()
 		; 20 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 20)
 		; LenARM_FullGroanSound.Play(PlayerRef)
-		LenARM_BalloonTriggerSound.Play(PlayerRef)
+		LenARM_FXBloatHitSound_High.Play(PlayerRef)
 		; give player puffy nipples for a bit
 		hasKitanaMaskPoppedNPC = true
 		
