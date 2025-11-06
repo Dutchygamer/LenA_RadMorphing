@@ -73,8 +73,10 @@ int bloatingSuitPopDetectRadius = 1024 ;768
 ; does player have kitana mask equipped?
 ;TODO vervang jou door kijken of we LenARM_KitanaMaskPerk hebben
 bool hasKitanaMaskEquipped = false
+;TODO zou alleen deze om kunnen zetten naar AV...
 int kitanaMaskMessyPoppedCount = 0
-int kitanaMaskMessyPoppedRequirement = 10
+int poppingExpert1Requirement = 10
+int poppingExpert2Requirement = 25
 int kitanaMaskPopDetectRadius = 512 ;384
 
 int kitanaMaskSelfMorphTimer = 10
@@ -83,6 +85,7 @@ int kitanaMaskSelfMorphMessyTimer = 30
 int maxNPCBloatStages = 5
 int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
 
+;TODO zou deze om kunnen zetten naar AVs...
 ; does player have (or has had) molecow disease?
 bool hasHadMoleCowDisease = false
 ; does player have nipple blockers equipped?
@@ -107,6 +110,7 @@ int CurrentRadsPerk
 int CurrentBalloonsPerk
 
 ; HeliumBalloon shenenigens
+;TODO zou alleen deze om kunnen zetten naar AV...
 int carriedBalloons = 0
 
 FormList DD_FL_All
@@ -841,6 +845,12 @@ Function TimerMorphTick()
 	; otherwise there are certain situations where changing amount of balloons doesn't trigger the perks to refresh
 	if (EnableRadsPerks && hasCarriedBalloonsChanged)
 		ApplyBalloonsPerk()
+	endif
+
+	; check if player has gotten popping expert 2 perk while we haven't set the matching flag
+	; more in case player manually gives perk via console instead of doing it the normal way
+	if (PlayerRef.HasPerk(PoppingExpertPerk2) && isPoppingExpert == false)
+		isPoppingExpert = true
 	endif
 
 	; if rads haven't changed, restart timer and do nothing
@@ -2403,12 +2413,19 @@ Function KitanaMaskUnequipped()
 EndFunction
 
 Function KitanaMaskSelfMorph_Timer()
+	; escape in case the player has gotten the perk in the mean time
+	; do reset puffy nipples first
+	if (PlayerRef.HasPerk(PoppingExpertPerk1))
+		ResetHasKitanaMaskPoppedNPC()
+		return
+	endif
+
 	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
 	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	
-	;KitanaMask_TriggerPuffyNipples_NoTimer()
+	; skip puffy nipples as we already have that when we get here
 	
 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 	
@@ -2422,7 +2439,7 @@ Function KitanaMaskSelfMorph_Unequip()
 	PlayerRef.DamageValue(avBloating, 50)
 	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	
-	;KitanaMask_TriggerPuffyNipples_NoTimer()
+	; skip puffy nipples as we already have that when we get here
 
 	; force update morphs on next run
 	forceUpdate = true
@@ -2434,26 +2451,28 @@ Function KitanaMaskSelfMorph_Kill()
 	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	kitanaMaskMessyPoppedCount += 1
 
-	bool kitanaMaskMessyPoppedRequirementMet = (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
-
-	if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
+	; when player has popped enough NPCs to safely unequip mask, give out perk and display special message
+	if (kitanaMaskMessyPoppedCount >= poppingExpert1Requirement && (PlayerRef.HasPerk(PoppingExpertPerk1) == false))
 		PlayerRef.AddPerk(PoppingExpertPerk1)
 		LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
+	; otherwise display the standard message
 	else
 		LenARM_BloatingMask_KillMessage.Show()
 	endif
 
 	; when player has messy popped a certain amount of NPCs with the mask, give out a perk
-	if (kitanaMaskMessyPoppedCount >= 25 && PlayerRef.HasPerk(PoppingExpertPerk2) == false)
+	if (kitanaMaskMessyPoppedCount >= poppingExpert2Requirement && PlayerRef.HasPerk(PoppingExpertPerk2) == false)
 		PlayerRef.AddPerk(PoppingExpertPerk2)
 		LenARM_PoppingExpertPerkMessage.ShowAsHelpMessage("LenARM_PoppingExpertPerkMessage", 8, 0, 1)
 		isPoppingExpert = true
 	endif
 	
 	; restart self-morph timer with a larger delay when requirements not yet met
-	if (kitanaMaskMessyPoppedRequirementMet == false)
+	if (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
 		StartTimer(kitanaMaskSelfMorphMessyTimer, ETimerKitanaMask)
+		; skip puffy nipples as we already have that when we get here
 	else
+		; explicitely trigger puffy nipples when we can take off the mask
 		KitanaMask_TriggerPuffyNipples()
 	endif
 	
