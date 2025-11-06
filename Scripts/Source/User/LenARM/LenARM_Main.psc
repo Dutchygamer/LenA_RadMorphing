@@ -75,7 +75,6 @@ int bloatingSuitPopDetectRadius = 1024 ;768
 bool hasKitanaMaskEquipped = false
 int kitanaMaskMessyPoppedCount = 0
 int kitanaMaskMessyPoppedRequirement = 10
-bool kitanaMaskMessyPoppedRequirementMet = false
 int kitanaMaskPopDetectRadius = 512 ;384
 
 int kitanaMaskSelfMorphTimer = 10
@@ -202,7 +201,8 @@ Group Properties
 	; Perk Property LenARM_BloatSuitPerk Auto Const
 	; Perk Property LenARM_KitanaMaskPerk Auto Const
 
-	Perk Property PoppingExpertPerk Auto
+	Perk Property PoppingExpertPerk1 Auto
+	Perk Property PoppingExpertPerk2 Auto
 	
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
@@ -352,11 +352,11 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 		forceUpdate = true
 	endif
 
-	; when unequipping the Kitana mask check if player has messy popped 5 NPCs
+	; when unequipping the Kitana mask check if player has messy popped enough NPCs
 	if (akBaseObject as Armor && akBaseObject == KitanaMask)
 		; TechnicalNote("main script kitana mask unequipped!")
 		; if not, re-equip the mask
-		if (kitanaMaskMessyPoppedRequirementMet == false)
+		if (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
 			KitanaMaskSelfMorph_Unequip()
 			PlayerRef.EquipItem(KitanaMask)
 		; if so, continue with the unequip and reset the counter
@@ -1813,7 +1813,7 @@ Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 	akTarget.EquipItem(PoppedPotion, abSilent = true)
 	
 	; restart self-morph timer when requirements not yet met
-	if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
+	if (hasKitanaMaskEquipped && (PlayerRef.HasPerk(PoppingExpertPerk1) == false))
 		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 	endif
 EndFunction
@@ -2373,18 +2373,18 @@ EndFunction
 Function KitanaMaskEquipped()
 	; TechnicalNote("mask equipped!")
 	hasKitanaMaskEquipped = true
-	if (TutorialDisplayed_KitanaMask == false)
-		LenARM_Tutorial_BloatingMaskMessage.ShowAsHelpMessage("LenARM_Tutorial_BloatingMaskMessage", 8, 0, 1)
-		TutorialDisplayed_KitanaMask = true
+
+	if (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
+		if (TutorialDisplayed_KitanaMask == false)
+			LenARM_Tutorial_BloatingMaskMessage.ShowAsHelpMessage("LenARM_Tutorial_BloatingMaskMessage", 8, 0, 1)
+			TutorialDisplayed_KitanaMask = true
+		endif
 
 		; 100 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 100)
 		LenARM_FXBloatHitSound_High.Play(PlayerRef)
 		
 		KitanaMask_TriggerPuffyNipples_NoTimer()
-	endif
-
-	if (kitanaMaskMessyPoppedRequirementMet == false)
 		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 	endif
 	
@@ -2434,16 +2434,18 @@ Function KitanaMaskSelfMorph_Kill()
 	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	kitanaMaskMessyPoppedCount += 1
 
+	bool kitanaMaskMessyPoppedRequirementMet = (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
+
 	if (kitanaMaskMessyPoppedCount >= kitanaMaskMessyPoppedRequirement && kitanaMaskMessyPoppedRequirementMet == false)
+		PlayerRef.AddPerk(PoppingExpertPerk1)
 		LenARM_BloatingMask_SafeUnequipMessage.ShowAsHelpMessage("LenARM_BloatingMask_SafeUnequipMessage", 8, 0, 1)
-		kitanaMaskMessyPoppedRequirementMet = true
 	else
 		LenARM_BloatingMask_KillMessage.Show()
 	endif
 
 	; when player has messy popped a certain amount of NPCs with the mask, give out a perk
-	if (kitanaMaskMessyPoppedCount >= 25 && PlayerRef.HasPerk(PoppingExpertPerk) == false)
-		PlayerRef.AddPerk(PoppingExpertPerk)
+	if (kitanaMaskMessyPoppedCount >= 25 && PlayerRef.HasPerk(PoppingExpertPerk2) == false)
+		PlayerRef.AddPerk(PoppingExpertPerk2)
 		LenARM_PoppingExpertPerkMessage.ShowAsHelpMessage("LenARM_PoppingExpertPerkMessage", 8, 0, 1)
 		isPoppingExpert = true
 	endif
@@ -2640,7 +2642,7 @@ EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
 
-	if (PlayerRef.HasPerk(PoppingExpertPerk))
+	if (PlayerRef.HasPerk(PoppingExpertPerk2))
 		Note("popping expert given!")
 		isPoppingExpert = true
 	endif
