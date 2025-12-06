@@ -1,6 +1,7 @@
 ScriptName Fragments:LenARM:LenARM_KitanaMaskPerk extends Perk hidden const
 
 Spell Property BloatSpell Auto Const
+Spell Property DamageAPSpell Auto Const
 ActorValue property NPCBloatImmunity auto const
 Sound Property LenARM_InjectSound Auto Const
 
@@ -17,10 +18,13 @@ Function Fragment_Entry_00(ObjectReference akTargetRef, Actor akActor)
 
     ; for now only work on females
     if (sex == 1)
+        ; damage player ActionPoints ('cost' to use)
+        DamageAPSpell.cast(PlayerRef)
 		LenARM_InjectSound.Play(akTarget)
 
         Utility.Wait(1.0)
 
+        ; start bloating NPC
         BloatSpell.cast(akTarget)
     endif
 EndFunction
