@@ -95,6 +95,7 @@ bool hasMooMilkAddiction = false
 ; does player have popping expert perk?
 bool isPoppingExpert = false
 ; has player just popped an NPC with Kitana Mask
+; aka give puffy nipples
 bool hasKitanaMaskPoppedNPC = false
 
 ; do we want to force a morphs update during next run even if there has been no rads changes?
