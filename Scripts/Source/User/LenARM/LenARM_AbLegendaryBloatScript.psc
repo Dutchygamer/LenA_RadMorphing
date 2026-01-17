@@ -18,10 +18,12 @@ LenARM_Main Property LenARM_Main Auto
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
 weapon property NPCBloatGun auto	
+Sound Property HazardSound Auto Const
 
 ; -- internal props --
 int ChaseSpeed = 140
 Actor victim
+int HazardSoundId = 0
 
 ; default state; waiting to trigger legendary effect
 auto State Waiting
@@ -79,13 +81,15 @@ EndEvent
 ;self destruct process start
 Function startSelfDestructAndWait(Actor selfRef)
     ; remove bloatgun and force-switch to fake weapon so they run after you
-    if(selfRef.IsEquipped(NPCBloatGun))
+    ;TODO dit kunnen meerdere wapens zijn nu
+    if (selfRef.IsEquipped(NPCBloatGun))
         selfRef.removeitem(NPCBloatGun, 1, true)
     endif
     selfRef.equipItem(SelfDestructBot, true, true)
     ; add a hazard field
     selfRef.AddSpell(crCoreMeltdownCloak01)
-    
+    HazardSoundId = HazardSound.Play(selfRef)
+
     ;TODO set confidence?
 
     ; make ourselves immune to further bloating until we are done
@@ -118,11 +122,17 @@ EndEvent
 Event ObjectReference.OnUnload(ObjectReference akSender)
     Actor akTarget = (akSender as Actor)
     ResetActor(akTarget)
+    if (HazardSoundId != 0)
+        Sound.StopInstance(HazardSoundId)
+    EndIf    
 endEvent
 
 EVENT OnDying(ACTOR akKiller)
 	; LenARM_Main.TechnicalNote("DEAD")
     ResetActor(victim)
+    if (HazardSoundId != 0)
+        Sound.StopInstance(HazardSoundId)
+    EndIf    
 ENDEVENT
 
 

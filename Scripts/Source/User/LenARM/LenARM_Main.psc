@@ -1671,13 +1671,16 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 				popStatesToUse = PopStates
 				multiplier *= 3.5
 				UnequipAllNPC(akTarget)
-			; legendary pop bloats actor at shorter rate but even larger
+			; //legendary pop bloats actor at shorter rate but even larger
+			; legendary pop bloats actor at normal rate but even larger then forced messy but doesn't strip them
 			else
-				popStatesToUse = (PopStates - 2)
-				if (popStatesToUse < 1)
-					popStatesToUse = 1
-				endif
-				multiplier *= 5.0
+				; popStatesToUse = (PopStates - 2)
+				; if (popStatesToUse < 1)
+				; 	popStatesToUse = 1
+				; endif
+				; multiplier *= 5.0
+				popStatesToUse = PopStates
+				multiplier *= 3.75
 			endif
 		; 'normal' messy pop bloats actor twice as long and larger as warning for attent player
 		else
