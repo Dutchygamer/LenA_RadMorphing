@@ -226,6 +226,8 @@ Group Properties
 	MagicEffect Property MooMilkAddictionEffect Auto Const
 	MagicEffect Property MS19SurpressantEffect Auto
 	
+	Keyword property ActorTypeBloatingAgent auto
+	
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatGrenadeExplosion Auto
 	Form Property BloatingSuit Auto
@@ -1595,7 +1597,8 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	bool isConcentrated = bloatType == EBloatTypeConcentrated
 	bool isForcedMessy = bloatType == EBloatTypeMessy
-	bool isLegendary = bloatType == EBloatTypeLegendary
+	; when bloatpopping a HalluciGen Agent NPC always make it legendary
+	bool isLegendary = bloatType == EBloatTypeLegendary || akTarget.HasKeyword(ActorTypeBloatingAgent)
 
 	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
