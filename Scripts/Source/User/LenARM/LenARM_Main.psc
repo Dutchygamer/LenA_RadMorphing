@@ -1674,14 +1674,8 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 				popStatesToUse = PopStates
 				multiplier *= 3.5
 				UnequipAllNPC(akTarget)
-			; //legendary pop bloats actor at shorter rate but even larger
 			; legendary pop bloats actor at normal rate but even larger then forced messy but doesn't strip them
 			else
-				; popStatesToUse = (PopStates - 2)
-				; if (popStatesToUse < 1)
-				; 	popStatesToUse = 1
-				; endif
-				; multiplier *= 5.0
 				popStatesToUse = PopStates
 				multiplier *= 3.75
 			endif
@@ -1701,6 +1695,14 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 			; if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
 			; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 			; endif	
+
+			; killing legendary bloating enemies will just pop them directly
+			if (isLegendary)
+				; we need to do some calculations so we go back to the original NPC's morphs
+				float reset = (1.0 + totalPopMultiplier) * -1
+				SetBloatMorphs(akTarget, reset, shouldPop = false)
+				BloatPopActor_HandleMessy(akTarget, milkToAdd, canForcedMessy, isLegendary)
+			endif
 			return
 		endif
 		
