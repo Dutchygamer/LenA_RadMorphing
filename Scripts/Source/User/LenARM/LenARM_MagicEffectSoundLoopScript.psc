@@ -1,5 +1,7 @@
 ScriptName LenARM:LenARM_MagicEffectSoundLoopScript extends ActiveMagicEffect
 
+;TODO entire script is pretty much obsolete now...
+
 Sound Property SoundLoop Auto Const
 
 int castTimerId = 2159753
