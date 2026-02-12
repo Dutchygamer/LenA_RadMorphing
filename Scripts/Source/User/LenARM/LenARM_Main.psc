@@ -1500,8 +1500,8 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 
 	; Note(currentBloatStage + "; " + targetBloatStage)
 
-	; when actor should get bloated to popping, always paralyze first (unless legendary)
-	if (toAdd == -1 && bloatType != EBloatTypeLegendary)
+	; when actor should get bloated to popping, always paralyze first (unless legendary or a HalluciGen Agent NPC)
+	if (toAdd == -1 && bloatType != EBloatTypeLegendary && !akTarget.HasKeyword(ActorTypeBloatingAgent))
 		ParalyzeActor(akTarget)
 	endIf
 
@@ -1614,13 +1614,15 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
 
 	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
+	bool isProtected = actorBaseTarget.IsProtected()
+	bool isEssential = actorBaseTarget.IsEssential()
 	bool canForcedMessy = (isForcedMessy || isLegendary) && isHostile
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
 	; - target is not protected or essential (game does some very weird things if we messy pop those)
 	; - random die roll is below our messyPopChance
-	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && actorBaseTarget.IsProtected() == false && actorBaseTarget.IsEssential() == false && utility.RandomFloat() <= messyPopChance)
+	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isProtected && !isEssential && utility.RandomFloat() <= messyPopChance)
 
 	; before we start expanding log the current breasts size
 	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
