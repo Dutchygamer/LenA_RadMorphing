@@ -459,18 +459,46 @@ Event OnTimer(int tid)
 EndEvent
 
 ; ------------------------
-; On MCM change, check if the settings are valid, and restart the mod if this is the case
+; On MCM change, check what has changed and perform actions based on what has changed
 ; ------------------------
 Function OnMCMSettingChange(string modName, string id)
-	Log("OnMCMSettingChange: " + modName + "; " + id)
-	If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
-		string value = MCM.GetModSettingString(modName, id)
-		If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
-			string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-			MessageBox(msg)
+	If (modName == "LenA_RadMorphing")
+		Log("OnMCMSettingChange: " + modName + "; " + id)
+		; sliderset has been changed
+		If (LL_Fourplay.StringSubstring(id, 0, 6) == "Slider")
+			TechnicalNote("OnMCMSettingChange: " + id + " changed")
+			
+			;check if the value is correct
+			string value = MCM.GetModSettingString(modName, id)
+			; if not correct show warning and don't restart the mod
+			If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
+				string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
+				MessageBox(msg)
+			else
+				; when correct trigger a restart of the mod which will apply the new morphs
+				Restart()
+			EndIf
+		; update delay has been changed
+		ElseIf (id == "fUpdateDelay")
+			MCM_Read_UpdateDelay()
+		; radiation thresholds have been changed
+		ElseIf (LL_Fourplay.StringFind(id, "RadsThreshold") > -1)
+			TechnicalNote("OnMCMSettingChange: " + id + " changed")
+		 	
+			MCM_Read_RadsThresholds()
+		; any of the popping settings have been changed
+		ElseIf (LL_Fourplay.StringFind(id, "Pop") > -1)
+			TechnicalNote("OnMCMSettingChange: " + id + " changed")
+
+			MCM_Read_PlayerPopping()
+		; max radiation multiplier has been changed
+		ElseIf (id == "iMaxRadiationMultiplier")
+			MCM_Read_MaxRadiationMultiplier()
+		; rads perks usage has been changed
+		ElseIf (id == "bEnableRadsPerks")
+			MCM_Read_RadPerks()
 		EndIf
 	EndIf
-	Restart()
 EndFunction
 
 ; ------------------------
@@ -486,24 +514,11 @@ Function Startup()
 
 		LoadSliderSets()
 
-		; get duration from MCM
-		UpdateDelay = MCM.GetModSettingFloat("LenA_RadMorphing", "fUpdateDelay:General")
-		
-		; get radiation threshold (currently used for morph sounds)
-		; the division by 1000 is needed as rads run from 0 to 1, while the MCM settings are in displayed rads for player's convenience
-		LowRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fLowRadsThreshold:General") / 1000.0
-		MediumRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fMediumRadsThreshold:General") / 1000.0
-		HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
-
-		EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
-		PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
-		PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
-		PopStripState = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStripState:General")
-		PopUseFullSounds = MCM.GetModSettingBool("LenA_RadMorphing", "bPopUseFullSounds:General")
-
-		MaxRadiationMultiplier = MCM.GetModSettingInt("LenA_RadMorphing", "iMaxRadiationMultiplier:General")
-		
-		EnableRadsPerks = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableRadsPerks:General")
+		MCM_Read_UpdateDelay()
+		MCM_Read_RadsThresholds()
+		MCM_Read_PlayerPopping()
+		MCM_Read_MaxRadiationMultiplier()
+		MCM_Read_RadPerks()
 
 		; check for DD
 		If (Game.IsPluginInstalled("Devious Devices.esm"))
@@ -588,6 +603,36 @@ Function Startup()
 		Log("  is disabled, no warning")
 	EndIf
 EndFunction
+
+Function MCM_Read_UpdateDelay()	
+	; get duration from MCM
+	UpdateDelay = MCM.GetModSettingFloat("LenA_RadMorphing", "fUpdateDelay:General")
+EndFunction
+
+Function MCM_Read_RadsThresholds()	
+	; get radiation threshold (currently used for morph sounds)
+	; the division by 1000 is needed as rads run from 0 to 1, while the MCM settings are in displayed rads for player's convenience
+	LowRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fLowRadsThreshold:General") / 1000.0
+	MediumRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fMediumRadsThreshold:General") / 1000.0
+	HighRadsThreshold = MCM.GetModSettingFloat("LenA_RadMorphing", "fHighRadsThreshold:General") / 1000.0
+EndFunction
+
+Function MCM_Read_PlayerPopping()	
+	EnablePopping = MCM.GetModSettingBool("LenA_RadMorphing", "bEnablePopping:General")
+	PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
+	PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
+	PopStripState = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStripState:General")
+	PopUseFullSounds = MCM.GetModSettingBool("LenA_RadMorphing", "bPopUseFullSounds:General")
+EndFunction
+
+Function MCM_Read_MaxRadiationMultiplier()	
+	MaxRadiationMultiplier = MCM.GetModSettingInt("LenA_RadMorphing", "iMaxRadiationMultiplier:General")
+EndFunction
+
+Function MCM_Read_RadPerks()	
+	EnableRadsPerks = MCM.GetModSettingBool("LenA_RadMorphing", "bEnableRadsPerks:General")
+EndFunction
+
 
 Function Shutdown(bool withRestore=true)
 	If (!IsShuttingDown)
