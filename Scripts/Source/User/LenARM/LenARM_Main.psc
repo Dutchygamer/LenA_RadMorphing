@@ -1659,15 +1659,14 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
 
 	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
-	bool isProtected = actorBaseTarget.IsProtected()
 	bool isEssential = actorBaseTarget.IsEssential()
 	bool canForcedMessy = (isForcedMessy || isLegendary) && isHostile
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
-	; - target is not protected or essential (game does some very weird things if we messy pop those)
+	; - target is not essential (game does some very weird things if we messy pop those)
 	; - random die roll is below our messyPopChance
-	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isProtected && !isEssential && utility.RandomFloat() <= messyPopChance)
+	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat() <= messyPopChance)
 
 	; before we start expanding log the current breasts size
 	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
@@ -1800,6 +1799,11 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	; messy pop kills actor and places a grenade explosion
 	if (shouldMessyPop)
+		; if actor was protected remove this flag first
+		bool isProtected = actorBaseTarget.IsProtected()
+		if (isProtected)
+			actorBaseTarget.setProtected(false)
+		endif
 		BloatPopActor_HandleMessy(akTarget, milkToAdd, canForcedMessy, isLegendary)
 	; normal pop keeps actor paralyzed for a bit and places a normal explosion
 	else
@@ -1834,7 +1838,7 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; dismember and kill actor
 	; sadly no way to give the XP to the player even if we tell the player is the killer
 	akTarget.Dismember("Torso", true, true, true)
-	akTarget.Kill()
+	akTarget.Kill(PlayerRef)
 
 	; unparalyze the actor
 	; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
