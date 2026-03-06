@@ -296,13 +296,8 @@ EndFunction
 ; On equipping / ingestion of an item, check if we must do something with it
 ; ------------------------
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-	;TODO deze is alleen relevant voor het unequippen; hoeft niet alle andere dingen te blokkeren
-	If (PlayerRef.IsInPowerArmor())
-		return
-	EndIf
-
 	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
-	If (akBaseObject as Armor)
+	If (akBaseObject as Armor && !PlayerRef.IsInPowerArmor())
 		; if player didn't had any nipple blockers equipped but now has, set the bool to true
 		if (!hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
 			;Note("nippleblocker found")
@@ -856,8 +851,8 @@ EndFunction
 ; Timer-based morphs
 ; ------------------------
 Function TimerMorphTick()
-	; if player is currently popping, we are starting up, player is in Power Armor or player is dead, restart timer and do nothing
-	if (IsPopping || IsStartingUp || PlayerRef.IsInPowerArmor() || PlayerRef.IsDead())		
+	; if player is currently popping, we are starting up or player is dead, restart timer and do nothing
+	if (IsPopping || IsStartingUp || PlayerRef.IsDead())
 		StartTimer(UpdateDelay, ETimerMorphTick)
 		return
 	endif
@@ -888,15 +883,15 @@ Function TimerMorphTick()
 	float balloonsMorph = CheckCarriedBalloons()
 	rawMorphInput += balloonsMorph
 
-	; recalculate which balloonsPerk to apply when enabled and carried balloons amount has changed
-	; do after we have updated our balloons count but before we abort the function if there is no morphs diff
-	; otherwise there are certain situations where changing amount of balloons doesn't trigger the perks to refresh
+	; recalculate which balloonsPerk to apply when enabled and carried balloons amount has changed.
+	; do after we have updated our balloons count but before we abort the function if there is no morphs diff.
+	; otherwise there are certain situations where changing amount of balloons doesn't trigger the perks to refresh.
 	if (EnableRadsPerks && hasCarriedBalloonsChanged)
 		ApplyBalloonsPerk()
 	endif
 
-	; check if player has gotten popping expert 2 perk while we haven't set the matching flag
-	; more in case player manually gives perk via console instead of doing it the normal way
+	; check if player has gotten popping expert 2 perk while we haven't set the matching flag.
+	; more in case player manually gives perk via console instead of doing it the normal way.
 	if (PlayerRef.HasPerk(PoppingExpertPerk2) && isPoppingExpert == false)
 		isPoppingExpert = true
 	endif
@@ -938,141 +933,146 @@ Function TimerMorphTick()
 	int morphableSliders = 0
 	int maxedOutSliders = 0
 
-	; check each sliderset whether we need to update the morphs
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]
+	; when player is not in PA calculate and update body morphs.
+	; in PA morphs aren't shown so don't go through all the effort to recalculate these.
+	if (!PlayerRef.IsInPowerArmor())
+		; check each sliderset whether we need to update the morphs
+		While (idxSet < SliderSets.Length)
+			SliderSet sliderSet = SliderSets[idxSet]
 
-		;TODO kijken of Papyrus iets ondersteund ala continue in een loop
-		;hij herkent continue niet als een valid iets, dus ik betwijfel het
+			;TODO kijken of Papyrus iets ondersteund ala continue in een loop
+			;hij herkent continue niet als een valid iets, dus ik betwijfel het
 
-		; only use sliderSets which have actual entries
-		If (sliderSet.NumberOfSliderNames > 0)
-			float calculatedMorphPercentage = CalculateMorphPercentage(rawMorphInput, sliderSet)
+			; only use sliderSets which have actual entries
+			If (sliderSet.NumberOfSliderNames > 0)
+				float calculatedMorphPercentage = CalculateMorphPercentage(rawMorphInput, sliderSet)
 
-			; only try to apply the morphs if either
-			; - the new morph is larger then the slider's current morph
-			; - the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
-			; - we want to force update the morphs
-			; all on one line as Papyrus doesn't understand newLines in if conditions apparently...
-			If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!GetOnlyDoctorCanReset(sliderSet) && calculatedMorphPercentage != sliderSet.CurrentMorph) || forceUpdate)
-				; by default the morph we will apply is the calculated morph, with the max morph being 1.0
-				; both will get modified if we have additive morphs enabled for this sliderSet
-				float morphPercentage = calculatedMorphPercentage
-				float maxMorphPercentage = 1.0
+				; only try to apply the morphs if either
+				; - the new morph is larger then the slider's current morph
+				; - the new morph is unequal to the slider's current morph when slider isn't doctor-only reset
+				; - we want to force update the morphs
+				; all on one line as Papyrus doesn't understand newLines in if conditions apparently...
+				If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!GetOnlyDoctorCanReset(sliderSet) && calculatedMorphPercentage != sliderSet.CurrentMorph) || forceUpdate)
+					; by default the morph we will apply is the calculated morph, with the max morph being 1.0
+					; both will get modified if we have additive morphs enabled for this sliderSet
+					float morphPercentage = calculatedMorphPercentage
+					float maxMorphPercentage = 1.0
 
-				; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
-				; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
-				If (GetIsAdditive(sliderSet))
-					morphPercentage += sliderSet.BaseMorph
-					If (GetHasAdditiveLimit(sliderSet))
-						maxMorphPercentage = (1.0 + GetAdditiveLimit(sliderSet))
-						morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
+					; when we have additive morphs active for this slider, add the BaseMorph to the calculated morph
+					; limit this to the lower of the calculated morph and the additive morph limit when we use additive morph limit
+					If (GetIsAdditive(sliderSet))
+						morphPercentage += sliderSet.BaseMorph
+						If (GetHasAdditiveLimit(sliderSet))
+							maxMorphPercentage = (1.0 + GetAdditiveLimit(sliderSet))
+							morphPercentage = Math.Min(morphPercentage, maxMorphPercentage)
+						EndIf
 					EndIf
-				EndIf
-				
-				;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
+					
+					;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
 
-				; when we have an additive slider with no limit, apply the morphs without further checks
-				if (GetIsAdditive(sliderSet)&& !GetHasAdditiveLimit(sliderSet))
-					changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
-				; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
-				ElseIf (morphPercentage <= maxMorphPercentage)
-					; - sliderSet is doctor-only reset and the sliderset isn't maxed out
-					if (GetOnlyDoctorCanReset(sliderSet) && !sliderSet.IsMaxedOut)
+					; when we have an additive slider with no limit, apply the morphs without further checks
+					if (GetIsAdditive(sliderSet)&& !GetHasAdditiveLimit(sliderSet))
 						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
-						
-						; when the morphs are maxed out, set this on the sliderSet
-						if (morphPercentage == maxMorphPercentage)
-							sliderSet.IsMaxedOut = true
-						; when the morphs are not maxed out, set this on the sliderSet
-						else
-							sliderSet.IsMaxedOut = false
-						endif	
+					; when we have a limited slider, only actually apply the morphs if they are less then/equal to our max allowed morphs and either:
+					ElseIf (morphPercentage <= maxMorphPercentage)
+						; - sliderSet is doctor-only reset and the sliderset isn't maxed out
+						if (GetOnlyDoctorCanReset(sliderSet) && !sliderSet.IsMaxedOut)
+							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
+							
+							; when the morphs are maxed out, set this on the sliderSet
+							if (morphPercentage == maxMorphPercentage)
+								sliderSet.IsMaxedOut = true
+							; when the morphs are not maxed out, set this on the sliderSet
+							else
+								sliderSet.IsMaxedOut = false
+							endif	
 
-					; TODO gehele elseif is obsolete!							
-					; - sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
-					; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
-					elseif (!GetOnlyDoctorCanReset(sliderSet) && (!sliderSet.IsMaxedOut || radsDifference < 0))
-						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
-						
-						; when the morphs are maxed out, set this on the sliderSet
-						if (morphPercentage == maxMorphPercentage)
-							sliderSet.IsMaxedOut = true
-						; when the morphs are not maxed out, set this on the sliderSet, set the global HasReachedMaxMorphs to false
-						else
-							sliderSet.IsMaxedOut = false
-							HasReachedMaxMorphs = false
+						; TODO gehele elseif is obsolete!							
+						; - sliderSet is not doctor-only reset and either the sliderset isn't maxed out or the rads are negative
+						; the only difference here is that we also want affect the global HasReachedMaxMorphs variable in this case
+						elseif (!GetOnlyDoctorCanReset(sliderSet) && (!sliderSet.IsMaxedOut || radsDifference < 0))
+							changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
+							
+							; when the morphs are maxed out, set this on the sliderSet
+							if (morphPercentage == maxMorphPercentage)
+								sliderSet.IsMaxedOut = true
+							; when the morphs are not maxed out, set this on the sliderSet, set the global HasReachedMaxMorphs to false
+							else
+								sliderSet.IsMaxedOut = false
+								HasReachedMaxMorphs = false
+							endif
 						endif
 					endif
+
+					; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
+					; eventually we have taken enough total rads we won't enter the containing if-statement						
+					sliderSet.CurrentMorph = calculatedMorphPercentage
+
+				; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
+				; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
+				ElseIf (GetIsAdditive(sliderSet))
+					sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
+					sliderSet.CurrentMorph = calculatedMorphPercentage
+				EndIf
+
+				; increase morphableSliders with one, and maxedOutSliders with one if the sliderSet is maxed out
+				morphableSliders += 1
+				if (sliderSet.IsMaxedOut)
+					maxedOutSliders += 1
 				endif
-
-				; we always want to update the sliderSet's CurrentMorph, no matter if we actually updated the sliderSet's morphs or not
-				; eventually we have taken enough total rads we won't enter the containing if-statement						
-				sliderSet.CurrentMorph = calculatedMorphPercentage
-
-			; when we have negative morphs and additive sliders, store our current morphs as the new BaseMorph
-			; this way when we take further rads, we start of at the previous morphs instead of starting from scratch again
-			ElseIf (GetIsAdditive(sliderSet))
-				sliderSet.BaseMorph += sliderSet.CurrentMorph - calculatedMorphPercentage
-				sliderSet.CurrentMorph = calculatedMorphPercentage
 			EndIf
+			idxSet += 1
+		EndWhile
 
-			; increase morphableSliders with one, and maxedOutSliders with one if the sliderSet is maxed out
-			morphableSliders += 1
-			if (sliderSet.IsMaxedOut)
-				maxedOutSliders += 1
-			endif
-		EndIf
-		idxSet += 1
-	EndWhile
-
-	; when all morphable sliderSets are maxed out, set maxedOutMorphs to true
-	if (morphableSliders == maxedOutSliders)
-		maxedOutMorphs = true
-	endif
-
-	; Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
-
-	; when at least one of the sliderSets has applied morphs, perform the actual actions
-	If (changedMorphs)
-		BodyGen.UpdateMorphs(PlayerRef)
-		; play morph sound when we haven't reached max morphs yet
-		if (!maxedOutMorphs)
-			CalculateAndPlayMorphSound(PlayerRef, radsDifference)
+		; when all morphable sliderSets are maxed out, set maxedOutMorphs to true
+		if (morphableSliders == maxedOutSliders)
+			maxedOutMorphs = true
 		endif
-		TriggerUnequipSlots()
-	endif
 
-	; when we have reached max morphs and have either taken positive rads or have a force update, perform additional actions
-	If (maxedOutMorphs && (radsDifference > 0 || forceUpdate))
-		; when not yet displayed the max morphs, display the message and set the global variable that we have displayed the max morphs message
-		; also play a sound effect if we have it
-		if (!HasReachedMaxMorphs)
-			if (!IsStartingUp)
-				if (EnablePopping)
-					LenARM_MaxedOutMorphsWithPoppingMessage.Show()
-				else
-					LenARM_MaxedOutMorphsMessage.Show()
-				endif
-				PlayMorphSound(PlayerRef, 4)
-			endif
-			HasReachedMaxMorphs = true
+		; Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
 
-			if (!TutorialDisplayed_MaxedOutMorphs)
-				TutorialDisplayed_MaxedOutMorphs = true
-				if (EnablePopping)
-					LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage", 8, 0, 1)
-				else
-					LenARM_Tutorial_MaxedOutMorphsMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsMessage", 8, 0, 1)
-				endif
+		; when at least one of the sliderSets has applied morphs, perform the actual actions
+		If (changedMorphs)
+			BodyGen.UpdateMorphs(PlayerRef)
+			;TODO eigenlijk wil ik jouw wel doen in PA...
+			; play morph sound when we haven't reached max morphs yet
+			if (!maxedOutMorphs)
+				CalculateAndPlayMorphSound(PlayerRef, radsDifference)
 			endif
-		
-		; when popping is enabled, randomly on taking rads increase the PopWarnings
-		; when PopWarnings eventually has reached three, 'pop' the player
-		Elseif (EnablePopping && !IsStartingUp)
-			CheckPopWarnings()
+			TriggerUnequipSlots()
 		endif
-	EndIf
+
+		; when we have reached max morphs and have either taken positive rads or have a force update, perform additional actions
+		If (maxedOutMorphs && (radsDifference > 0 || forceUpdate))
+			; when not yet displayed the max morphs, display the message and set the global variable that we have displayed the max morphs message
+			; also play a sound effect if we have it
+			if (!HasReachedMaxMorphs)
+				if (!IsStartingUp)
+					if (EnablePopping)
+						LenARM_MaxedOutMorphsWithPoppingMessage.Show()
+					else
+						LenARM_MaxedOutMorphsMessage.Show()
+					endif
+					PlayMorphSound(PlayerRef, 4)
+				endif
+				HasReachedMaxMorphs = true
+
+				if (!TutorialDisplayed_MaxedOutMorphs)
+					TutorialDisplayed_MaxedOutMorphs = true
+					if (EnablePopping)
+						LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsWithPoppingMessage", 8, 0, 1)
+					else
+						LenARM_Tutorial_MaxedOutMorphsMessage.ShowAsHelpMessage("LenARM_Tutorial_MaxedOutMorphsMessage", 8, 0, 1)
+					endif
+				endif
+			
+			; when popping is enabled, randomly on taking rads increase the PopWarnings
+			; when PopWarnings eventually has reached three, 'pop' the player
+			Elseif (EnablePopping && !IsStartingUp)
+				CheckPopWarnings()
+			endif
+		EndIf	
+	endif
 
 	; reset forceUpdate to false when it was true
 	if (forceUpdate)
@@ -1082,7 +1082,18 @@ Function TimerMorphTick()
 	; recalculate which radsPerk to apply when enabled
 	; do after we have updated everything else
 	if (EnableRadsPerks)
-		ApplyRadsPerk()
+		bool hasChangedPerk = ApplyRadsPerk()
+
+		; when player has final or maxed-out radsPerk and is in PA, kick them out of PA
+		if (hasChangedPerk && PlayerRef.IsInPowerArmor())
+			if (CurrentRadsPerk >= 4)
+				Note("PA is too tight!")
+				PlayerRef.SwitchtoPowerArmor(none)
+				forceUpdate = true
+			else
+				Note("PA is growing tighter...")
+			endif
+		endif
 	endif
 
 	; only restart the timer if we aren't shutting down, so it doesn't try to perform updates when the mod is in the process of stopping
@@ -1932,13 +1943,15 @@ Function UnParalyzeActor(Actor akTarget)
 EndFunction
 
 ; ------------------------
-; Check the total accumulated rads, and apply the matching radsPerk to the player
+; Check the total accumulated rads, and apply the matching radsPerk to the player.
+; Returns true if player was wearing torso armor and switched from first perk to higher.
+; Returns false in all other cases.
 ; ------------------------
-Function ApplyRadsPerk()
+bool Function ApplyRadsPerk()
 	; when we have 0 rads, clear all existing perks and don't apply a new one
 	if (TotalRads == 0)
 		ClearAllRadsPerks(PlayerRef)
-		return
+		return false
 	endif
 
 	;TODO bepaal wat min / max zijn, en vanaf wanneer we dus moeten gaan werken tot wanneer
@@ -1948,6 +1961,8 @@ Function ApplyRadsPerk()
 
 	; calculate the perk level
 	int perkLevel = ((TotalRads * 1000) / 200) as int
+	; keep track of whether we've changed perks
+	bool hasChanged = false
 
 	; Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
 	; Log("radsperk; CurrentRads: " + (CurrentRads * 1000) + "; TotalRads: " + (TotalRads * 1000))
@@ -1973,6 +1988,9 @@ Function ApplyRadsPerk()
 			if (HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
 				;Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
 				LenARM_RadPerkSwitchSound.Play(PlayerRef)
+				
+				; only here set our bool to true
+				hasChanged = true
 			endif
 		Else
 			PlayerRef.AddPerk(RadsPerkFull)			
@@ -1980,8 +1998,10 @@ Function ApplyRadsPerk()
 		
 		CurrentRadsPerk = perkLevel
 		; enable bloating suit ammo when we switch perks
-		canGiveBloatingSuitAmmo = true
+		canGiveBloatingSuitAmmo = true		
 	endif
+
+	return hasChanged
 EndFunction
 
 int Function GetCurrentRadsPerkLevel(Actor akTarget)
@@ -1999,9 +2019,9 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 EndFunction
 
 bool Function HasTorsoEquipped(Actor akTarget)
-	; in PA always return false
+	; in PA always return true
 	If (akTarget.IsInPowerArmor())
-		return false
+		return true
 	EndIf
 
 	bool found = false
@@ -2721,28 +2741,28 @@ EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
 
-	if (PlayerRef.HasPerk(PoppingExpertPerk2))
-		Note("popping expert given!")
-		isPoppingExpert = true
-	endif
+	; if (PlayerRef.HasPerk(PoppingExpertPerk2))
+	; 	Note("popping expert given!")
+	; 	isPoppingExpert = true
+	; endif
 
-	; Note("DN050 registered")
-	; RegisterForRemoteEvent(DN050, "OnStageSet")
-	; ;TODO for now hijacked to activate HUDFramework plugin
-	; hud = hudframework.GetInstance()
-	; If (hud)
-	; 	Note("HUDFramework is installed!")
-    ;     ; Register the widget, setting its position to 10, 70 on the screen.
-    ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
-    ;     hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
-	; Else
-	; 	Note("HUDFramework is not installed!")
-	; EndIf
+	; ; Note("DN050 registered")
+	; ; RegisterForRemoteEvent(DN050, "OnStageSet")
+	; ; ;TODO for now hijacked to activate HUDFramework plugin
+	; ; hud = hudframework.GetInstance()
+	; ; If (hud)
+	; ; 	Note("HUDFramework is installed!")
+    ; ;     ; Register the widget, setting its position to 10, 70 on the screen.
+    ; ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
+    ; ;     hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
+	; ; Else
+	; ; 	Note("HUDFramework is not installed!")
+	; ; EndIf
 
-	; ; float lowestPercentage = GetLowestSliderPercentage()
+	float lowestPercentage = GetLowestSliderPercentage()
 
-	; ; ;TODO ik dump TotalRads hier ff als test in
-	; ; MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
+	;TODO ik dump TotalRads hier ff als test in
+	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
 ; This function is called by HUDFramework when the widget is loaded.
