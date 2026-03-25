@@ -25,8 +25,8 @@ float[] OriginalMorphs
 
 ;TODO
 ; HUDFramework plugin
-hudframework hud
-String Property BloatExposure_Widget = "KillCount.swf" AutoReadOnly
+HUDFramework hud
+string Property BloatExposure_Widget = "KillCount.swf" AutoReadOnly
 
 float UpdateDelay
 
@@ -2603,19 +2603,6 @@ Function ResetHasKitanaMaskPoppedNPC()
 EndFunction
 
 
-Function UpdateHUD()
-	int hudValue = (PlayerRef.GetValue(avBloating) as int)
-	
-	; Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget))
-	; Note("bloat: " + hudValue)
-
-	hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
-
-	; hud.SendMessage(Self.DEF_w_PA1_identifier, Self.command_stats_update, playerref.GetValue(PPowerArmorHeadCondition), playerref.GetValue(PPowerArmorTorsoCondition), playerref.GetValue(PPowerArmorRightArmCondition), playerref.GetValue(PPowerArmorLeftArmCondition), playerref.GetValue(PPowerArmorRightLegCondition), playerref.GetValue(PPowerArmorLeftLegCondition))
-
-	StartTimer(UpdateDelay, ETimerHUD)
-EndFunction
-
 
 ; ------------------------
 ; Play a sound depending on the given id
@@ -2748,10 +2735,10 @@ Function Debug_ShowLowestSliderPercentage()
 
 	; ; Note("DN050 registered")
 	; ; RegisterForRemoteEvent(DN050, "OnStageSet")
-	; ; ;TODO for now hijacked to activate HUDFramework plugin
-	; ; hud = hudframework.GetInstance()
-	; ; If (hud)
-	; ; 	Note("HUDFramework is installed!")
+	
+	; ;TODO for now hijacked to activate HUDFramework plugin
+	; hud = HUDFramework.GetInstance()
+	; If (hud)
     ; ;     ; Register the widget, setting its position to 10, 70 on the screen.
     ; ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
     ; ;     hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
@@ -2759,12 +2746,31 @@ Function Debug_ShowLowestSliderPercentage()
 	; ; 	Note("HUDFramework is not installed!")
 	; ; EndIf
 
+	; 	float fX = 500 ;1000
+	; 	float fY = 300 ;70
+
+	; 	Note("HUDFramework is installed!")
+    ;     ; Register the widget, setting its position to 10, 70 on the screen.
+    ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
+    ;     hud.RegisterWidget(Self as ScriptObject, BloatExposure_Widget, fX, fY, abLoadNow = True, abAutoLoad = True)
+    ;     ; hud.RegisterWidget(Self as ScriptObject, BloatExposure_Widget, 10.0, 10.0, abLoadNow = True, abAutoLoad = True)
+    ;     hud.SetWidgetPosition(BloatExposure_Widget, 10.0, 70.0)
+    ;     hud.SetWidgetScale(BloatExposure_Widget, 1.0, 1.0)
+    ;     hud.SetWidgetOpacity(BloatExposure_Widget, 1.0)
+	; Else
+	; 	Note("HUDFramework is not installed!")
+	; EndIf
+
 	float lowestPercentage = GetLowestSliderPercentage()
 
 	;TODO ik dump TotalRads hier ff als test in
 	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
+
+; ------------------------
+; HUD Framework shenenigens
+; ------------------------
 ; This function is called by HUDFramework when the widget is loaded.
 Function HUD_WidgetLoaded(string asWidget)
     If (asWidget == BloatExposure_Widget)
@@ -2784,6 +2790,19 @@ Function HUD_WidgetLoaded(string asWidget)
 		
 		StartTimer(UpdateDelay, ETimerHUD)
     EndIf
+EndFunction
+
+Function UpdateHUD()
+	int hudValue = (PlayerRef.GetValue(avBloating) as int)
+	
+	; Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget) + "; bloat: " + hudValue)
+	Note("bloat: " + hudValue)
+
+	hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
+
+	; hud.SendMessage(Self.DEF_w_PA1_identifier, Self.command_stats_update, playerref.GetValue(PPowerArmorHeadCondition), playerref.GetValue(PPowerArmorTorsoCondition), playerref.GetValue(PPowerArmorRightArmCondition), playerref.GetValue(PPowerArmorLeftArmCondition), playerref.GetValue(PPowerArmorRightLegCondition), playerref.GetValue(PPowerArmorLeftLegCondition))
+
+	StartTimer(UpdateDelay, ETimerHUD)
 EndFunction
 
 
@@ -2899,6 +2918,7 @@ Group EnumTimerId
 EndGroup
 
 Group EnumWidgetCommands
+	; from KillCount.swf
     int Property ECommand_UpdateBloat = 100 Auto Const
 EndGroup
 
