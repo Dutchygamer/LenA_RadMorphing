@@ -227,9 +227,11 @@ Group Properties
 	MagicEffect Property MS19SurpressantEffect Auto
 	
 	Keyword property ActorTypeBloatingAgent auto
+	Keyword property ArmorTypeBloatingSuit auto
 	
 	Form Property BloatNPCPopExplosion Auto
 	Form Property BloatGrenadeExplosion Auto
+	; [OBSOLETE]
 	Form Property BloatingSuit Auto
 	Form Property KitanaMask Auto
 	
@@ -2355,6 +2357,10 @@ bool Function IsItemArmor(Actor:WornItem item)
 	if (!item.item)
 		return false
 	endif
+	; ignore milking armor
+	if (item.item.HasKeyword(ArmorTypeBloatingSuit))
+		return false
+	endif
 	; ignore equipped actors and the pipboy
 	If (LL_Fourplay.StringSubstring(item.modelName, 0, 6) == "Actors" || LL_Fourplay.StringSubstring(item.modelName, 0, 6) == "Pipboy")
 		return false
@@ -2412,7 +2418,7 @@ EndFunction
 ; Bloating Suit inject bloating agent action
 ; ------------------------
 Function SuitInjectBloatingAgent()
-	If (PlayerRef.IsEquipped(BloatingSuit))
+	If (PlayerRef.WornHasKeyword(ArmorTypeBloatingSuit))
 		int bloatingAmmoCount = PlayerRef.GetItemCount(ThirstZapperBloatAmmo)
 		if (bloatingAmmoCount > 0)
 			LenARM_BloatingAgentInjectedMessage.Show()
@@ -2754,12 +2760,6 @@ Function Debug_ShowLowestSliderPercentage()
 	; ;TODO for now hijacked to activate HUDFramework plugin
 	; hud = HUDFramework.GetInstance()
 	; If (hud)
-    ; ;     ; Register the widget, setting its position to 10, 70 on the screen.
-    ; ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
-    ; ;     hud.RegisterWidget(Self, BloatExposure_Widget, 10, 70, abLoadNow = True, abAutoLoad = True)
-	; ; Else
-	; ; 	Note("HUDFramework is not installed!")
-	; ; EndIf
 
 	; 	float fX = 500 ;1000
 	; 	float fY = 300 ;70
