@@ -459,40 +459,55 @@ EndEvent
 Function OnMCMSettingChange(string modName, string id)
 	If (modName == "LenA_RadMorphing")
 		Log("OnMCMSettingChange: " + modName + "; " + id)
-		; sliderset has been changed
-		If (LL_Fourplay.StringSubstring(id, 0, 6) == "Slider")
-			TechnicalNote("OnMCMSettingChange: " + id + " changed")
-			
-			;check if the value is correct
+
+		If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
 			string value = MCM.GetModSettingString(modName, id)
-			; if not correct show warning and don't restart the mod
 			If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
 				string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
 				MessageBox(msg)
-			else
-				; when correct trigger a restart of the mod which will apply the new morphs
-				Restart()
-			EndIf
-		; update delay has been changed
-		ElseIf (id == "fUpdateDelay")
-			MCM_Read_UpdateDelay()
-		; radiation thresholds have been changed
-		ElseIf (LL_Fourplay.StringFind(id, "RadsThreshold") > -1)
-			TechnicalNote("OnMCMSettingChange: " + id + " changed")
-		 	
-			MCM_Read_RadsThresholds()
-		; any of the popping settings have been changed
-		ElseIf (LL_Fourplay.StringFind(id, "Pop") > -1)
-			TechnicalNote("OnMCMSettingChange: " + id + " changed")
 
-			MCM_Read_PlayerPopping()
-		; max radiation multiplier has been changed
-		ElseIf (id == "iMaxRadiationMultiplier")
-			MCM_Read_MaxRadiationMultiplier()
-		; rads perks usage has been changed
-		ElseIf (id == "bEnableRadsPerks")
-			MCM_Read_RadPerks()
+			EndIf
 		EndIf
+		Restart()
+
+		;TODO die LL_Fourplay.StringSubstring werkt niet =/
+		; of iig, hij keek specifiek naar Slider, echter das de naam van de group
+		; de individuele props eronder heten obviously anders...
+		; ; sliderset has been changed
+		; if (LL_Fourplay.StringFind(id, "Slider") > -1)
+		; ; If (LL_Fourplay.StringSubstring(id, 0, 6) == "Slider")
+		; 	TechnicalNote("OnMCMSettingChange: " + id + " changed")
+			
+		; 	;check if the value is correct
+		; 	string value = MCM.GetModSettingString(modName, id)
+		; 	; if not correct show warning and don't restart the mod
+		; 	If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
+		; 		string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
+		; 		MessageBox(msg)
+		; 	else
+		; 		; when correct trigger a restart of the mod which will apply the new morphs
+		; 		Restart()
+		; 	EndIf
+		; ; update delay has been changed
+		; ElseIf (id == "fUpdateDelay")
+		; 	MCM_Read_UpdateDelay()
+		; ; radiation thresholds have been changed
+		; ElseIf (LL_Fourplay.StringFind(id, "RadsThreshold") > -1)
+		; 	TechnicalNote("OnMCMSettingChange: " + id + " changed")
+		 	
+		; 	MCM_Read_RadsThresholds()
+		; ; any of the popping settings have been changed
+		; ElseIf (LL_Fourplay.StringFind(id, "Pop") > -1)
+		; 	TechnicalNote("OnMCMSettingChange: " + id + " changed")
+
+		; 	MCM_Read_PlayerPopping()
+		; ; max radiation multiplier has been changed
+		; ElseIf (id == "iMaxRadiationMultiplier")
+		; 	MCM_Read_MaxRadiationMultiplier()
+		; ; rads perks usage has been changed
+		; ElseIf (id == "bEnableRadsPerks")
+		; 	MCM_Read_RadPerks()
+		; EndIf
 	EndIf
 EndFunction
 
