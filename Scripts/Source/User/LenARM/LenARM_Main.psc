@@ -1717,6 +1717,12 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	if (npcMorph >= 1.1)
 		milkToAdd += 1
 	endif
+	if (npcMorph >= 1.25)
+		milkToAdd += 1
+	endif
+	if (npcMorph >= 1.4)
+		milkToAdd += 1
+	endif
 
 	; paralyze actor first if not legendary
 	PlayMorphSound(akTarget, 4)
@@ -1846,11 +1852,11 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
 	; reduce by 3 (capped to min 1) to not give too many freebies
 	; if forced messy then always only give 1 concentrated as a tradeoff
-	milkToAdd -= 3
-	if (milkToAdd < 1 || canForcedMessy)
-		milkToAdd = 1
+	int concMilkToAdd = milkToAdd -3
+	if (concMilkToAdd < 1 || canForcedMessy)
+		concMilkToAdd = 1
 	endif
-	akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, milkToAdd, abSilent = true)	
+	akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, concMilkToAdd, abSilent = true)	
 
 	; clear rad perks so we don't keep ambient noise
 	ClearAllRadsPerks(akTarget)
@@ -1880,7 +1886,8 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; this takes priority over having the bloating suit equipped as well
 	if (hasKitanaMaskEquipped)
 		; always bloat player independent of distance
-		KitanaMaskSelfMorph_Kill()
+		int bloatingAmount = (milkToAdd * 15) as int
+		KitanaMaskSelfMorph_Kill(bloatingAmount)
 
 		if (distanceToPlayer < kitanaMaskPopDetectRadius)
 			LenARM_NPCPopComment.Play(PlayerRef)
@@ -2546,9 +2553,11 @@ Function KitanaMaskSelfMorph_Unequip()
 	forceUpdate = true
 EndFunction
 
-Function KitanaMaskSelfMorph_Kill()
+Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
+	Note(bloatingAmount)
+
 	; 100 rads worth of bloating
-	PlayerRef.DamageValue(avBloating, 100)
+	PlayerRef.DamageValue(avBloating, bloatingAmount)
 	LenARM_FXBloatHitSound_High.Play(PlayerRef)
 	kitanaMaskMessyPoppedCount += 1
 
