@@ -1697,10 +1697,16 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat() <= messyPopChance)
 
 	; before we start expanding log the current breasts size
-	float npcMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
+	float npcBreastsMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
+	float npcBreastsNewSHMorph = BodyGen.GetMorph(akTarget, True, "BreastsNewSH", None)
 	
+	float npcMorph = npcBreastsMorph + (npcBreastsNewSHMorph / 2) 
+
 	; the bigger the breasts are, the more milk we will add at the end
-	; current settings' base morph is 0.5 
+	; logic behind these values:
+	; - current settings' Breasts slider target morph is 0.5
+	; - base NPC body morphs for Breasts slider vary from 0 to 1, with 0.4 being the 'normal' max and 1 for moomilk agents
+	; - base NPC body morphs for BreastsNewSH slider vary from 0 to 0.3, currenty only being used by one set
 	int milkToAdd = 3
 	if (npcMorph >= 0.55)
 		milkToAdd += 1
