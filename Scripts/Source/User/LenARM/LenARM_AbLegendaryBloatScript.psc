@@ -17,7 +17,7 @@ ActorValue  property SpeedMult Auto const
 LenARM_Main Property LenARM_Main Auto
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
-weapon property NPCBloatGun auto	
+weapon[] property WeaponsToUnequip auto	
 Sound Property HazardSound Auto Const
 
 ; -- internal props --
@@ -80,11 +80,17 @@ EndEvent
 
 ;self destruct process start
 Function startSelfDestructAndWait(Actor selfRef)
-    ; remove bloatgun and force-switch to fake weapon so they run after you
-    ;TODO dit kunnen meerdere wapens zijn nu
-    if (selfRef.IsEquipped(NPCBloatGun))
-        selfRef.removeitem(NPCBloatGun, 1, true)
-    endif
+    ; remove all potential NPC weapons and force-switch to fake weapon so they run after you
+    bool hasUnequipped = False
+    int i = 0
+    While (!hasUnequipped && (i < WeaponsToUnequip.Length))        
+        if (selfRef.IsEquipped(WeaponsToUnequip[i]))
+            selfRef.removeitem(WeaponsToUnequip[i], 1, true)
+            hasUnequipped = True
+        endif
+        i = i + 1
+    EndWhile
+
     selfRef.equipItem(SelfDestructBot, true, true)
     ; add a hazard field
     selfRef.AddSpell(crCoreMeltdownCloak01)
