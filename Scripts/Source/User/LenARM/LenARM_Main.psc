@@ -923,6 +923,12 @@ Function TimerMorphTick()
 	; calculate the amount of rads taken
 	; the longer the timer interval, the larger this will be
 	float radsDifference = rawMorphInput - CurrentRads
+
+	; when we have bloating suit equipped, reduce accumulated bloating by 25%
+	if (hasBloatingSuitEquipped)
+		;Note("reduced morphs from " + radsDifference + " to " + (radsDifference * 0.75))
+		radsDifference = radsDifference * 0.75
+	endif
 	
 	; when already on max morphs and popping is enabled, then any large amount of additional morphs (50 rads worth) will force an update
 	; this is only relevant for CheckPopWarnings
@@ -935,10 +941,11 @@ Function TimerMorphTick()
 
 	; TODO de else is de huidige waarheid gezien we alleen doctor only sliders ondersteunen nu
 	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
-	if (!HasDoctorOnlySliders)
-		TotalRads = rawMorphInput
-	; if we do have doctor-only reset sliders, only update TotalRads if it is an increase in rads
-	elseif (radsDifference > 0)
+	;if (!HasDoctorOnlySliders)
+	;	TotalRads = rawMorphInput
+	;; if we do have doctor-only reset sliders, only update TotalRads if it is an increase in rads
+	;elseif (radsDifference > 0)
+	if (radsDifference > 0)
 		TotalRads += radsDifference
 	endif
 	
@@ -1706,7 +1713,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	; logic behind these values:
 	; - current settings' Breasts slider target morph is 0.5
 	; - base NPC body morphs for Breasts slider vary from 0 to 1, with 0.4 being the 'normal' max and 1 for moomilk agents
-	; - base NPC body morphs for BreastsNewSH slider vary from 0 to 0.3, currenty only being used by one set
+	; - base NPC body morphs for BreastsNewSH slider vary from 0 to 0.3, currently only being used by one set
 	int milkToAdd = 3
 	if (npcMorph >= 0.55)
 		milkToAdd += 1
