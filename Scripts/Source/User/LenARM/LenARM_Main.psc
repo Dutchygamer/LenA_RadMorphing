@@ -1111,10 +1111,12 @@ Function TimerMorphTick()
 		; when player has final or maxed-out radsPerk and is in PA, kick them out of PA
 		if (hasChangedPerk && PlayerRef.IsInPowerArmor())
 			if (CurrentRadsPerk >= 4)
+				;TODO message van ergens anders
 				Note("PA is too tight!")
 				PlayerRef.SwitchtoPowerArmor(none)
 				forceUpdate = true
 			else
+				;TODO message van ergens anders
 				Note("PA is growing tighter...")
 			endif
 		endif
@@ -2070,9 +2072,10 @@ bool Function HasTorsoEquipped(Actor akTarget)
 		Actor:WornItem item = akTarget.GetWornItem(slot)
 		
 		; check if item in the slot is not an actor or the pipboy
-		bool isArmor = IsItemArmor(item)
+		; include bloating suit in this check
+		bool isArmor = IsItemArmor(item, true)
 
-		; when item is an armor and we can unequip it, do so
+		; when item is an armor mark as such
 		If (isArmor && !found)
 			found = true
 		EndIf
@@ -2364,15 +2367,15 @@ Function UnequipAllNPC(Actor akTarget)
 	EndWhile
 EndFunction
 
-bool Function IsItemArmor(Actor:WornItem item)
+bool Function IsItemArmor(Actor:WornItem item, bool includeBloatingSuit = false)
 	;return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 
 	; sanity check
 	if (!item.item)
 		return false
 	endif
-	; ignore milking armor
-	if (item.item.HasKeyword(ArmorTypeBloatingSuit))
+	; ignore milking armor when we should not include it
+	if (!includeBloatingSuit && item.item.HasKeyword(ArmorTypeBloatingSuit))
 		return false
 	endif
 	; ignore equipped actors and the pipboy
@@ -2464,6 +2467,7 @@ Function BloatingSuitUnequipped()
 	forceUpdate = true
 EndFunction
 
+;TODO kunnen we deze slimmer maken dat deze alleen loopt als je daadwerkelijk bloat suit equipped hebt, ipv altijd?
 Function BloatSuitGiveAmmo()
 	if (!hasBloatingSuitEquipped || !canGiveBloatingSuitAmmo)
 		StartTimer(5, ETimerBloatSuit)
@@ -2565,7 +2569,7 @@ Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
 	if (bloatingAmount > 150)
 		bloatingAmount = 150
 	endif
-	Note(bloatingAmount)
+	;Note(bloatingAmount)
 
 	; bloat player
 	PlayerRef.DamageValue(avBloating, bloatingAmount)
