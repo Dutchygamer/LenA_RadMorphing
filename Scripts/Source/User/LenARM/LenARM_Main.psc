@@ -59,6 +59,8 @@ bool PopUseFullSounds
 int PopWarnings
 bool IsPopping
 
+bool ForceNPCBloatPopping
+
 bool TutorialDisplayed_DroppedClothes = false
 bool TutorialDisplayed_MaxedOutMorphs = false
 bool TutorialDisplayed_Popped = false
@@ -475,6 +477,10 @@ Function OnMCMSettingChange(string modName, string id)
 		;TODO die LL_Fourplay.StringSubstring werkt niet =/
 		; of iig, hij keek specifiek naar Slider, echter das de naam van de group
 		; de individuele props eronder heten obviously anders...
+
+		; doe hem andersom: doe if/else voor de configs die NIET een restart dienen te triggeren, en dan als finale else doe de Restart
+
+
 		; ; sliderset has been changed
 		; if (LL_Fourplay.StringFind(id, "Slider") > -1)
 		; ; If (LL_Fourplay.StringSubstring(id, 0, 6) == "Slider")
@@ -529,7 +535,8 @@ Function Startup()
 		MCM_Read_UpdateDelay()
 		MCM_Read_RadsThresholds()
 		MCM_Read_PlayerPopping()
-		MCM_Read_MaxRadiationMultiplier()
+		MCM_Read_NPCPopping()
+		MCM_Read_MaxRadiationMultiplier()		
 		MCM_Read_RadPerks()
 
 		; check for DD
@@ -635,6 +642,10 @@ Function MCM_Read_PlayerPopping()
 	PopShouldParalyze = MCM.GetModSettingBool("LenA_RadMorphing", "bPopShouldParalyze:General")
 	PopStripState = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStripState:General")
 	PopUseFullSounds = MCM.GetModSettingBool("LenA_RadMorphing", "bPopUseFullSounds:General")
+EndFunction
+
+Function MCM_Read_NPCPopping()	
+	ForceNPCBloatPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bForceNPCBloatPopping:General")
 EndFunction
 
 Function MCM_Read_MaxRadiationMultiplier()	
@@ -1684,8 +1695,13 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
+
+	; when configured to always messy pop NPCs the permanent pop chance is 100%
+	; this overrules any other options
+	if (ForceNPCBloatPopping)
+		messyPopChance = 1
 	; when hit by concentrated shot the permanent pop chance is 50%
-	if (isConcentrated)
+	elseif (isConcentrated)
 		messyPopChance = 0.5
 	; when forced to messy pop then the permanent pop chance is 100%
 	elseif (isForcedMessy || isLegendary)

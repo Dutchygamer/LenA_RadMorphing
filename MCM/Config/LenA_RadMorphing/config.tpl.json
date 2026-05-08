@@ -216,6 +216,20 @@
             ]
         },
 		{
+            "pageDisplayName": "Other options",
+            "content": [
+				{
+					"text": "Force hostile NPC messy popping",
+					"help": "Forces hostile NPCs to messy pop upon suffering from any type of milk overflow. Default: false",
+					"type": "switcher",
+					"id": "bForceNPCBloatPopping:General",
+					"valueOptions": {
+						"sourceType": "ModSettingBool"
+					}
+				}
+            ]
+        },
+		{
 			"pageDisplayName": "Debug Tools and Cheats",
 			"content": [
 				{
