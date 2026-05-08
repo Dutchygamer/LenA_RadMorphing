@@ -462,60 +462,51 @@ EndEvent
 ; ------------------------
 Function OnMCMSettingChange(string modName, string id)
 	If (modName == "LenA_RadMorphing")
+		; TechnicalNote("OnMCMSettingChange: " + id + " changed")
 		Log("OnMCMSettingChange: " + modName + "; " + id)
 
-		If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
-			string value = MCM.GetModSettingString(modName, id)
-			If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
-				string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-				MessageBox(msg)
-
-			EndIf
-		EndIf
-		Restart()
-
-		;TODO die LL_Fourplay.StringSubstring werkt niet =/
-		; of iig, hij keek specifiek naar Slider, echter das de naam van de group
-		; de individuele props eronder heten obviously anders...
-
-		; doe hem andersom: doe if/else voor de configs die NIET een restart dienen te triggeren, en dan als finale else doe de Restart
-
-
-		; ; sliderset has been changed
-		; if (LL_Fourplay.StringFind(id, "Slider") > -1)
-		; ; If (LL_Fourplay.StringSubstring(id, 0, 6) == "Slider")
-		; 	TechnicalNote("OnMCMSettingChange: " + id + " changed")
+		; update delay has been changed
+		If (id == "fUpdateDelay")
+			Note("UpdateDelay changes")
 			
-		; 	;check if the value is correct
-		; 	string value = MCM.GetModSettingString(modName, id)
-		; 	; if not correct show warning and don't restart the mod
-		; 	If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
-		; 		string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-		; 		MessageBox(msg)
-		; 	else
-		; 		; when correct trigger a restart of the mod which will apply the new morphs
-		; 		Restart()
-		; 	EndIf
-		; ; update delay has been changed
-		; ElseIf (id == "fUpdateDelay")
-		; 	MCM_Read_UpdateDelay()
-		; ; radiation thresholds have been changed
-		; ElseIf (LL_Fourplay.StringFind(id, "RadsThreshold") > -1)
-		; 	TechnicalNote("OnMCMSettingChange: " + id + " changed")
-		 	
-		; 	MCM_Read_RadsThresholds()
-		; ; any of the popping settings have been changed
-		; ElseIf (LL_Fourplay.StringFind(id, "Pop") > -1)
-		; 	TechnicalNote("OnMCMSettingChange: " + id + " changed")
+			MCM_Read_UpdateDelay()
+		; radiation thresholds have been changed
+		ElseIf (id == "fLowRadsThreshold" || id == "fMediumRadsThreshold" || id == "fHighRadsThreshold")
+			Note("RadThreshold changes")
 
-		; 	MCM_Read_PlayerPopping()
-		; ; max radiation multiplier has been changed
-		; ElseIf (id == "iMaxRadiationMultiplier")
-		; 	MCM_Read_MaxRadiationMultiplier()
-		; ; rads perks usage has been changed
-		; ElseIf (id == "bEnableRadsPerks")
-		; 	MCM_Read_RadPerks()
-		; EndIf
+			MCM_Read_RadsThresholds()
+		; any of the player popping settings have been changed
+		ElseIf (id == "bEnablePopping" || id == "iPopStates" || id == "bPopShouldParalyze" || id == "iPopStripState" || id == "bPopUseFullSounds")
+			Note("Player Popping changes")
+
+			MCM_Read_PlayerPopping()
+		; max radiation multiplier has been changed
+		ElseIf (id == "iMaxRadiationMultiplier")
+			Note("Max Radiation mult changes")
+
+			MCM_Read_MaxRadiationMultiplier()
+		; rads perks usage has been changed
+		ElseIf (id == "bEnableRadsPerks")
+			Note("Perk changes")
+
+			MCM_Read_RadPerks()
+		; any other non-slider config has been changed
+		ElseIf (id == "bForceNPCBloatPopping")
+			Note("Other changes")
+
+			MCM_Read_NPCPopping()
+		; sliders config has been changed; this will trigger mod restart
+		else
+			If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
+				string value = MCM.GetModSettingString(modName, id)
+				If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
+					string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
+					MessageBox(msg)
+
+				EndIf
+			EndIf
+			Restart()
+		endif
 	EndIf
 EndFunction
 
