@@ -8,6 +8,7 @@ Sound Property LenARM_InjectSound Auto Const
 Function Fragment_Entry_00(ObjectReference akTargetRef, Actor akActor)
     Actor akTarget = akTargetRef as Actor     
     ; when in Power Armor, dead or immune to bloating don't morph
+    ;TODO indien moomilk agent + legendary skip dan ook => ABLegendaryBloatScript gaat dat handlen
 	If (akTarget.IsInPowerArmor() || akTarget.IsDead() || ((akTarget.getValue(NPCBloatImmunity) as bool) == true))
 		return
 	EndIf
