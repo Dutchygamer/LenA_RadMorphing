@@ -466,32 +466,32 @@ Function OnMCMSettingChange(string modName, string id)
 		Log("OnMCMSettingChange: " + modName + "; " + id)
 
 		; update delay has been changed
-		If (id == "fUpdateDelay")
+		If (id == "fUpdateDelay:General")
 			Note("UpdateDelay changes")
 			
 			MCM_Read_UpdateDelay()
 		; radiation thresholds have been changed
-		ElseIf (id == "fLowRadsThreshold" || id == "fMediumRadsThreshold" || id == "fHighRadsThreshold")
+		ElseIf (id == "fLowRadsThreshold:General" || id == "fMediumRadsThreshold:General" || id == "fHighRadsThreshold:General")
 			Note("RadThreshold changes")
 
 			MCM_Read_RadsThresholds()
 		; any of the player popping settings have been changed
-		ElseIf (id == "bEnablePopping" || id == "iPopStates" || id == "bPopShouldParalyze" || id == "iPopStripState" || id == "bPopUseFullSounds")
+		ElseIf (id == "bEnablePopping:General" || id == "iPopStates:General" || id == "bPopShouldParalyze:General" || id == "iPopStripState:General" || id == "bPopUseFullSounds:General")
 			Note("Player Popping changes")
 
 			MCM_Read_PlayerPopping()
 		; max radiation multiplier has been changed
-		ElseIf (id == "iMaxRadiationMultiplier")
+		ElseIf (id == "iMaxRadiationMultiplier:General")
 			Note("Max Radiation mult changes")
 
 			MCM_Read_MaxRadiationMultiplier()
 		; rads perks usage has been changed
-		ElseIf (id == "bEnableRadsPerks")
+		ElseIf (id == "bEnableRadsPerks:General")
 			Note("Perk changes")
 
 			MCM_Read_RadPerks()
 		; any other non-slider config has been changed
-		ElseIf (id == "bForceNPCBloatPopping")
+		ElseIf (id == "bForceNPCBloatPopping:General")
 			Note("Other changes")
 
 			MCM_Read_NPCPopping()
