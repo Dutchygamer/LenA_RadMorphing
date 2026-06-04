@@ -1201,6 +1201,11 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	
 	string matchingSlider = SliderNames[idxSlider]
 
+	; ; player has kitana mask equipped
+	; if (hasKitanaMaskEquipped)		
+	; 	morphBonus += (targetMorph * 0.2)
+	; endif
+
 	; permanent breast size increase
 	if (matchingSlider == "Breasts")
 		; player has (or has had) molecow disease
@@ -1877,6 +1882,7 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; clear rad perks so we don't keep ambient noise
 	ClearAllRadsPerks(akTarget)
 
+	;TODO waarom zit dit niet op de Explosion?
 	LenARM_PopMessySound.Play(akTarget)
 	; spread the joy to nearby NPCs
 	akTarget.PlaceAtMe(BloatGrenadeExplosion)	
@@ -1953,10 +1959,18 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
 				string slider = SliderNames[idxSlider]
 
+				float toApplyPercentage = morphPercentage
+				;TODO for now hardcoded to half these sliders as these look wonky when large morphed
+				if (slider == "PregnancyBelly" || slider == "BigBelly")
+					toApplyPercentage = toApplyPercentage / 2.0
+				endif
+
 				;TODO not the most efficient way tho...	
+				; grab NPC's current morphs for the slider
 				float npcMorph = BodyGen.GetMorph(akTarget, True, slider, None)
 
-				float newMorph = npcMorph + (morphPercentage * sliderSet.targetMorph)
+				; calculate the new morphs based on current morphs + what we need to add
+				float newMorph = npcMorph + (toApplyPercentage * sliderSet.targetMorph)
 				; float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
 
 				; ;TODO debug ding
@@ -1964,7 +1978,9 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 				; 	Log(npcMorph + "; " + morphPercentage + "; " + sliderSet.targetMorph + "; " + newMorph)
 				; endif
 						
+				; set the morphs
 				BodyGen.SetMorph(akTarget, sex==ESexFemale, slider, kwMorph, newMorph)
+
 				idxSlider += 1
 			EndWhile
 		EndIf
