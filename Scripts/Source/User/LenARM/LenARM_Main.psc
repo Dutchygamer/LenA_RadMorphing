@@ -1755,7 +1755,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 	int currentPopState = 1
-	float multiplier = 0.1
+	float multiplier = 1.0/8.0 ;same multiplier as for player
 	float totalPopMultiplier = 0
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
@@ -1770,20 +1770,19 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		if (canForcedMessy)
 			playAltMorphSound = true
 
-			; forced messy pop bloats actor at normal rate but much larger and immediately strips them
+			; forced messy pop bloats actor at normal rate but twice as large and immediately strips them
 			if (!isLegendary)
 				popStatesToUse = PopStates
-				multiplier *= 3.5
+				multiplier *= 2.0
 				UnequipAllNPC(akTarget)
 			; legendary pop bloats actor at normal rate but even larger then forced messy but doesn't strip them
 			else
 				popStatesToUse = PopStates
-				multiplier *= 3.75
+				multiplier *= 2.5
 			endif
-		; 'normal' messy pop bloats actor twice as long and larger as warning for attent player
+		; 'normal' messy pop bloats actor twice as long
 		else
 			popStatesToUse *= 2
-			multiplier *= 1.5
 		endif
 	endif
 
