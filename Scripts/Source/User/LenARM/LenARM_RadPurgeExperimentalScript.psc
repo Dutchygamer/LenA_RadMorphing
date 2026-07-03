@@ -10,12 +10,6 @@ Sound Property LenARM_PurgeFailSound Auto Const
 Potion Property PoppedPotion Auto Const	
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
-    ; when in Power Armor don't reset morphs
-	If (PlayerRef.IsInPowerArmor())
-        LenARM_PurgeInPAMessage.Show()
-		return
-	EndIf
-
     ; base 50% chance to trigger
     bool shouldPop = LenARM_Main.ShouldPop(5)
 

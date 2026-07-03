@@ -1424,11 +1424,17 @@ Function TryPop()
 	var isInVATS = (Game.IsMovementControlsEnabled()) == false
 	var isInScene = PlayerRef.IsInScene()
 	var isInTrade = Utility.IsInMenuMode()
+	var isInPA = PlayerRef.IsInPowerArmor()
 
-	; player should not be in VATS, not be in a conversation and not be trading
-	If (!isInVATS && !isInScene && !isInTrade)
+	; when player is in PA, eject and then put on the queue
+	if (isInPA)
+		PlayerRef.SwitchtoPowerArmor(none)
+		forceUpdate = true
+		StartTimer(1, ETimerDelayPop)		
+	; when player is not in VATS, in a conversation and not trading then pop
+	elseIf (!isInVATS && !isInScene && !isInTrade)
 		Pop()
-	; if so, put on the queue and retry after a second
+	; else put on the queue and retry after a second
 	Else
 		StartTimer(1, ETimerDelayPop)
 	EndIf
