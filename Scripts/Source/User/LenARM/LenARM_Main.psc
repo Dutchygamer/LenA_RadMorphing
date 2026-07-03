@@ -198,6 +198,8 @@ Group Properties
 	Message Property LenARM_MoleCow_BalloonPopTriggerMessage Auto
 	Message Property LenARM_BalloonTriggerMessage Auto
 	Message Property LenARM_PoppingExpertPerkMessage Auto
+	Message Property LenARM_PAPerkSwitchMessage Auto
+	Message Property LenARM_PAEjectMessage Auto
 
 	Perk[] Property RadsPerkArray Auto
 	Perk Property RadsPerkFull Auto
@@ -1118,13 +1120,11 @@ Function TimerMorphTick()
 		; when player has final or maxed-out radsPerk and is in PA, kick them out of PA
 		if (hasChangedPerk && PlayerRef.IsInPowerArmor())
 			if (CurrentRadsPerk >= 4)
-				;TODO message van ergens anders
-				Note("PA is too tight!")
+				LenARM_PAEjectMessage.Show()
 				PlayerRef.SwitchtoPowerArmor(none)
 				forceUpdate = true
 			else
-				;TODO message van ergens anders
-				Note("PA is growing tighter...")
+				LenARM_PAPerkSwitchMessage.Show()
 			endif
 		endif
 	endif
