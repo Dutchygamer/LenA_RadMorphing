@@ -950,6 +950,8 @@ Function TimerMorphTick()
 	if (radsDifference > 0)
 		TotalRads += radsDifference
 	endif
+	;TODO ein experiment
+	; TotalRads = rawMorphInput
 	
 	; TODO more debug shenenigens...
 	; Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
@@ -979,6 +981,8 @@ Function TimerMorphTick()
 				; - we want to force update the morphs
 				; all on one line as Papyrus doesn't understand newLines in if conditions apparently...
 				If (calculatedMorphPercentage > sliderSet.CurrentMorph || (!GetOnlyDoctorCanReset(sliderSet) && calculatedMorphPercentage != sliderSet.CurrentMorph) || forceUpdate)
+				;TODO ein experiment
+				; If (calculatedMorphPercentage != sliderSet.CurrentMorph || forceUpdate)
 					; by default the morph we will apply is the calculated morph, with the max morph being 1.0
 					; both will get modified if we have additive morphs enabled for this sliderSet
 					float morphPercentage = calculatedMorphPercentage
@@ -996,6 +1000,7 @@ Function TimerMorphTick()
 					
 					;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
 
+					;TODO hoeveel van dit is echt nodig nog? is basically niet alles nu additive?
 					; when we have an additive slider with no limit, apply the morphs without further checks
 					if (GetIsAdditive(sliderSet)&& !GetHasAdditiveLimit(sliderSet))
 						changedMorphs = SetMorphsAndReturnTrue(idxSet, sliderSet, morphPercentage)
