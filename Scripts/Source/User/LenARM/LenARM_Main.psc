@@ -99,6 +99,7 @@ bool isPoppingExpert = false
 ; has player just popped an NPC with Kitana Mask
 ; aka give puffy nipples
 bool hasKitanaMaskPoppedNPC = false
+bool isRadPurgeFailure = false
 
 ; do we want to force a morphs update during next run even if there has been no rads changes?
 bool forceUpdate = false
@@ -1206,10 +1207,10 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	
 	string matchingSlider = SliderNames[idxSlider]
 
-	; ; player has kitana mask equipped
-	; if (hasKitanaMaskEquipped)		
-	; 	morphBonus += (targetMorph * 0.2)
-	; endif
+	; player is suffering from experimental radpurge failure
+	if (isRadPurgeFailure)		
+		morphBonus += (targetMorph * 0.2)
+	endif
 
 	; permanent breast size increase
 	if (matchingSlider == "Breasts")
@@ -1501,6 +1502,9 @@ Function Pop()
 
 	; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 	ExtendMorphs(currentPopState, shouldPop = true)
+
+	; reset radPurge failure flag
+	isRadPurgeFailure = false
 
 	; apply the debuffs on the player and reset the player's rads by ingesting the respective potions
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
@@ -2678,6 +2682,23 @@ Function ResetHasKitanaMaskPoppedNPC()
 	; if (!HasReachedMaxMorphs)
 	; 	forceUpdate = true
 	; endif
+EndFunction
+
+Function RadPurgeFailSelfMorph()
+	Utility.Wait(1.0)
+	; bloat player
+	PlayerRef.DamageValue(avBloating, 9999)
+	LenARM_FXBloatHitSound_High.Play(PlayerRef)
+	
+	KitanaMask_TriggerPuffyNipples()
+EndFunction
+
+Function RadPurgeFailSelfMorphAndPop()
+	isRadPurgeFailure = true
+	
+	RadPurgeFailSelfMorph()
+	Utility.Wait(2.0)
+	TryPop()
 EndFunction
 
 

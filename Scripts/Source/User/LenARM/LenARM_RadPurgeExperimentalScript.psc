@@ -14,17 +14,16 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
     bool shouldPop = LenARM_Main.ShouldPop(5)
 
     if (shouldPop)
-        ; perform the actual popping if enabled in config
+        ; bloat player followed by popping if enabled in config
         if (LenARM_Main.IsPoppingEnabled())
             LenARM_RadPurgePopFailureMessage.Show()
             LenARM_PurgeFailSound.Play(PlayerRef)
-            Utility.Wait(1.0)
-            LenARM_Main.TryPop()
-        ; else only apply the popped debuffs on the player
-        else
+            LenARM_Main.RadPurgeFailSelfMorphAndPop()
+        ; else bloat player and apply the popped debuffs on the player
+        else            
             LenARM_RadPurgeFailureMessage.Show()
             PlayerRef.EquipItem(PoppedPotion, abSilent = true)
-            LenARM_Main.ResetMorphs()	
+            LenARM_Main.RadPurgeFailSelfMorph()
         endif
     Else
         LenARM_RadPurgeSuccessMessage.Show()
