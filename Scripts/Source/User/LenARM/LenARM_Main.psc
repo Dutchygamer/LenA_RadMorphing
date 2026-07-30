@@ -1719,7 +1719,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		messyPopChance = 1
 	endif
 
-	; since IsProtected is only on ActorBase make a quick cast
+	; since IsEssential is only on ActorBase make a quick cast
 	ActorBase actorBaseTarget = akTarget.GetBaseObject() as ActorBase
 
 	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
@@ -1728,9 +1728,11 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
-	; - target is not essential (game does some very weird things if we messy pop those)
+	; - target is not essential (protected is fine)
 	; - random die roll is below our messyPopChance
 	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat() <= messyPopChance)
+	; messy popping essential NPCs will lead to some very weird things hence we don't support that
+	; if you want to messy pop an essential NPC (ie that Hubologist cook from Nuka World) first use console command `setessential <baseid> 0` on them
 
 	; before we start expanding log the current breasts size
 	float npcBreastsMorph = BodyGen.GetMorph(akTarget, True, "Breasts", None)
