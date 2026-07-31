@@ -154,7 +154,8 @@ Group Properties
 	; Nuka World
 	Scene Property DLC04SettlementDoctor_EndScene Auto Const
 	GenericDoctorsScript Property DLC04SettlementDoctor Auto Const
-
+	
+	; all [OBSOLETE]
 	Sound Property LenARM_DropClothesSound Auto Const
 	Sound Property LenARM_MorphSound Auto Const
 	Sound Property LenARM_MorphSound_Med Auto Const
@@ -172,6 +173,7 @@ Group Properties
 	Sound Property LenARM_BloatSuitMilkSound Auto Const
 	Sound Property LenARM_NPCPopComment Auto Const
 	Sound Property LenARM_FXBloatHitSound_High Auto Const
+	; all [OBSOLETE]
 
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
@@ -256,7 +258,7 @@ Group LenARM
 	; LenARM_Perks Property P Auto Const
 	; LenARM_Util Property LenARM_Util Auto
 	LenARM_Debug Property LenARM_Debug Auto
-	; LenARM_SFX Property SFX Auto Const
+	LenARM_SFX Property LenARM_SFX Auto Const
 EndGroup
 
 ; ------------------------
@@ -1094,7 +1096,7 @@ Function TimerMorphTick()
 					else
 						LenARM_MaxedOutMorphsMessage.Show()
 					endif
-					PlayMorphSound(PlayerRef, 4)
+					LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_Full)
 				endif
 				HasReachedMaxMorphs = true
 
@@ -1393,7 +1395,7 @@ Function CheckPopWarnings()
 
 	; when enabled, always play the dedicated sounds even if we don't trigger
 	if (PopUseFullSounds)
-		LenARM_FullGroanSound.Play(PlayerRef)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFullGroanSound)
 	endif
 
 	; when the dice decides we should not pop, return unless when we have a forceUpdate
@@ -1474,7 +1476,7 @@ Function Pop()
 	RestorePlayerRads()
 
 	; play the full sound for player
-	PlayMorphSound(PlayerRef, 4)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_Full)
 	; then paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
 	if (PopShouldParalyze)
@@ -1565,13 +1567,13 @@ Function ExtendMorphs(float step,  bool shouldPop, int soundId = 5)
 		; apply the final morphs, and do the 'pop', resetting all the morphs back to 0
 		; for this situation we do want to wait for the sound effect to finish playing
 		BodyGen.UpdateMorphs(PlayerRef)
-		LenARM_PrePopSound.PlayAndWait(PlayerRef)
-		LenARM_PopSound.Play(PlayerRef)
+		LenARM_SFX.ActorPlaySoundAndWait(PlayerRef, LenARM_SFX.EPrePopSound)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EPopSound)
 		ResetMorphs()	
 	else
 		; then apply the morphs (with sound) to the player
 		BodyGen.UpdateMorphs(PlayerRef)
-		PlayMorphSound(PlayerRef, soundId)
+		LenARM_SFX.ActorPlaySound(PlayerRef, soundId)
 	endif
 EndFunction
 
@@ -1692,9 +1694,9 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
 
 	; play the matching sound
 	if (perkLevel < maxNPCBloatStages)
-		PlayMorphSound(akTarget, 3)
+		LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_High)
 	elseif (perkLevel == maxNPCBloatStages && nextBloatStage == maxNPCBloatStages)
-		PlayMorphSound(akTarget, 4)
+		LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
 	; pop the actor 
 	elseif (perkLevel == maxNPCBloatStages && nextBloatStage > maxNPCBloatStages)		
 		Utility.Wait(randomFloat)
@@ -1770,7 +1772,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	endif
 
 	; paralyze actor first if not legendary
-	PlayMorphSound(akTarget, 4)
+	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
 	if (!isLegendary)
 		ParalyzeActor(akTarget)
 	endif
@@ -1836,10 +1838,10 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		BodyGen.UpdateMorphs(akTarget)
 		; play normal swell sound when bloating normally
 		if (currentPopState < PopStates && !playAltMorphSound)
-			PlayMorphSound(akTarget, 5)
+			LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Swell)
 		; when we are bloating beyond normal play the alt swell sound 
 		else
-			PlayMorphSound(akTarget, 6)
+			LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_SwellPop)
 		endif
 
 		; add bloating ammo to actor's inventory
@@ -1891,7 +1893,7 @@ EndFunction
 
 ; messy pop kills actor and places a grenade explosion
 Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy, bool isLegendary)
-	LenARM_PrePopMessySound.PlayAndWait(akTarget)
+	LenARM_SFX.ActorPlaySoundAndWait(akTarget, LenARM_SFX.EPrePopMessySound)
 
 	; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
 	; reduce by 3 (capped to min 1) to not give too many freebies
@@ -1906,7 +1908,7 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	ClearAllRadsPerks(akTarget)
 
 	;TODO waarom zit dit niet op de Explosion?
-	LenARM_PopMessySound.Play(akTarget)
+	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EPopMessySound)
 	; spread the joy to nearby NPCs
 	akTarget.PlaceAtMe(BloatGrenadeExplosion)	
 
@@ -1935,24 +1937,24 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 		KitanaMaskSelfMorph_Kill(bloatingAmount)
 
 		if (distanceToPlayer < kitanaMaskPopDetectRadius)
-			LenARM_NPCPopComment.Play(PlayerRef)
+			LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
 			PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
 		endif
 	; give player a temp buff if bloating suit is equipped and within range
 	elseif (hasBloatingSuitEquipped && distanceToPlayer < bloatingSuitPopDetectRadius)
-		LenARM_NPCPopComment.Play(PlayerRef)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
 		PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
 	endif
 EndFunction
 
 ; normal pop keeps actor paralyzed for a bit and places a normal explosion
 Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
-	LenARM_PrePopSound.PlayAndWait(akTarget)
+	LenARM_SFX.ActorPlaySoundAndWait(akTarget, LenARM_SFX.EPrePopSound)
 
 	; add some more bloating ammo to actor's inventory when they've been allowed to pop
 	akTarget.AddItem(ThirstZapperBloatAmmo, milkToAdd, abSilent = true)
 
-	LenARM_PopSound.Play(akTarget)
+	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EPopSound)
 	; spread the joy to nearby NPCs
 	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
@@ -2066,7 +2068,7 @@ bool Function ApplyRadsPerk()
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
 			if (HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
 				;LenARM_Debug.Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
-				LenARM_RadPerkSwitchSound.Play(PlayerRef)
+				LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ERadPerkSwitchSound)
 				
 				; only here set our bool to true
 				hasChanged = true
@@ -2297,7 +2299,7 @@ Function UnequipSlots()
 							else
 								LenARM_DropClothesMessage.Show()
 							endif
-							LenARM_DropClothesSound.Play(PlayerRef)
+							LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EDropClothesSound)
 							found = true
 						EndIf
 					EndIf
@@ -2358,7 +2360,7 @@ Function UnequipAll()
 			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
 			; play the strip sound if available
 			If (!found && !PlayerRef.IsEquipped(item.item))
-				LenARM_DropClothesSound.Play(PlayerRef)
+				LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EDropClothesSound)
 				found = true
 			EndIf
 		EndIf
@@ -2404,7 +2406,7 @@ Function UnequipAllNPC(Actor akTarget)
 			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
 			; play the strip sound if available
 			If (!found && !akTarget.IsEquipped(item.item))
-				LenARM_DropClothesSound.Play(akTarget)
+				LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EDropClothesSound)
 				found = true
 			EndIf
 		EndIf
@@ -2465,15 +2467,15 @@ Function CalculateAndPlayMorphSound(Actor akSender, float radsDifference)
 	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
 	elseif (radsDifference <= MediumRadsThreshold)
 		; LenARM_Debug.Log("  medium rads taken")
-		PlayMorphSound(akSender, 1)
+		LenARM_SFX.ActorPlaySound(akSender, LenARM_SFX.EMorphSound_Low)
 	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
 	elseif (radsDifference <= HighRadsThreshold)
 		; LenARM_Debug.Log("  high rads taken")
-		PlayMorphSound(akSender, 2)
+		LenARM_SFX.ActorPlaySound(akSender, LenARM_SFX.EMorphSound_Medium)
 	; everything above HighRadsThreshold rads taken
 	elseif (radsDifference > HighRadsThreshold)
 		; LenARM_Debug.Log("  very high rads taken")
-		PlayMorphSound(akSender, 3)
+		LenARM_SFX.ActorPlaySound(akSender, LenARM_SFX.EMorphSound_High)
 	endif
 EndFunction
 
@@ -2522,7 +2524,7 @@ Function BloatSuitGiveAmmo()
 
 	;LenARM_Debug.TechnicalNote("Bloating Outfit gives ammo!")
 	if (CurrentRadsPerk > 0)
-		LenARM_BloatSuitMilkSound.Play(PlayerRef)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EBloatSuitMilkSound)
 	endif
 
 	; you won't get anything for the first perk, only from second perk onwards
@@ -2557,7 +2559,7 @@ Function KitanaMaskEquipped()
 
 		; 100 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 100)
-		LenARM_FXBloatHitSound_High.Play(PlayerRef)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
 		
 		KitanaMask_TriggerPuffyNipples_NoTimer()
 		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
@@ -2588,7 +2590,7 @@ Function KitanaMaskSelfMorph_Timer()
 	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_FXBloatHitSound_High.Play(PlayerRef)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
 	
 	; skip puffy nipples as we already have that when we get here
 	
@@ -2602,7 +2604,7 @@ Function KitanaMaskSelfMorph_Unequip()
 	LenARM_BloatingMask_UnsafeUnequipMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_FXBloatHitSound_High.Play(PlayerRef)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
 	
 	; skip puffy nipples as we already have that when we get here
 
@@ -2619,7 +2621,7 @@ Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
 
 	; bloat player
 	PlayerRef.DamageValue(avBloating, bloatingAmount)
-	LenARM_FXBloatHitSound_High.Play(PlayerRef)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
 	kitanaMaskMessyPoppedCount += 1
 
 	; when player has popped enough NPCs to safely unequip mask, give out perk and display special message
@@ -2668,8 +2670,7 @@ Function DN050SelfMorph()
 	if (DN050.GetStage() == 30)
 		; 20 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 20)
-		; LenARM_FullGroanSound.Play(PlayerRef)
-		LenARM_FXBloatHitSound_High.Play(PlayerRef)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
 		; give player puffy nipples for a bit
 		hasKitanaMaskPoppedNPC = true
 		
@@ -2697,7 +2698,7 @@ Function RadPurgeFailSelfMorph()
 	Utility.Wait(1.0)
 	; bloat player
 	PlayerRef.DamageValue(avBloating, 9999)
-	LenARM_FXBloatHitSound_High.Play(PlayerRef)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
 	
 	KitanaMask_TriggerPuffyNipples()
 EndFunction
@@ -2708,34 +2709,6 @@ Function RadPurgeFailSelfMorphAndPop()
 	RadPurgeFailSelfMorph()
 	Utility.Wait(2.0)
 	TryPop()
-EndFunction
-
-
-
-; ------------------------
-; Play a sound depending on the given id
-; 1 = MorphSound_Low
-; 2 = MorphSound_Medium
-; 3 = MorphSound_High
-; 4 = MorphSound_Full
-; 5 = MorphSound_Swell
-; 6 = MorphSound_SwellPop
-; ------------------------
-;TODO wellicht omzetten naar losse consts en bovenin definieren en dan gebruiken
-Function PlayMorphSound(Actor akSender, int soundId)
-	if (soundId == 1)
-		LenARM_MorphSound.Play(akSender)
-	elseif (soundId == 2)
-		LenARM_MorphSound_Med.Play(akSender)
-	elseif (soundId == 3)
-		LenARM_MorphSound_High.Play(akSender)
-	elseif (soundId == 4)
-		LenARM_FullSound.Play(akSender)
-	elseif (soundId == 5)
-		LenARM_SwellSound.Play(akSender)
-	elseif (soundId == 6)
-		LenARM_SwellPopSound.Play(akSender)
-	endif
 EndFunction
 
 
