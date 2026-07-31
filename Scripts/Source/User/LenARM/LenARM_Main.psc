@@ -12,6 +12,7 @@ Scriptname LenARM:LenARM_Main extends Quest
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
 ; ------------------------
+; [OBSOLETE]
 SliderSet[] SliderSets
 
 ; flattened two-dimensional array[idxSliderSet][idxSliderName]
@@ -256,10 +257,10 @@ Group Properties
 EndGroup
 
 Group LenARM
-	; LenARM_Perks Property P Auto Const
-	LenARM_Util Property LenARM_Util Auto
-	LenARM_Debug Property LenARM_Debug Auto
+	LenARM_Util Property LenARM_Util Auto Const
+	LenARM_Debug Property LenARM_Debug Auto Const
 	LenARM_SFX Property LenARM_SFX Auto Const
+	LenARM_SliderSet Property LenARM_SliderSet Auto Const
 EndGroup
 
 ; ------------------------
@@ -535,7 +536,8 @@ Function Startup()
 
 		CurrentRads = 0
 
-		LoadSliderSets()
+		; re-initialize the sliderSets from MCM
+		LenARM_SliderSet.LoadSliderSets(_NUMBER_OF_SLIDERSETS_, PlayerRef)
 
 		MCM_Read_UpdateDelay()
 		MCM_Read_RadsThresholds()
@@ -578,10 +580,13 @@ Function Startup()
 		; reset unequip stack
 		UnequipStackSize = 0
 
+		;TODO temp(?)
+		LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 		; reapply base morphs for the doctor-only reset morphs
 		int idxSet = 0
-		While (idxSet < SliderSets.Length)
-			SliderSet sliderSet = SliderSets[idxSet]
+		While (idxSet < currentSliderSets.Length)
+			LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
 			;TODO hier ook bepalen wat de laagste min slider is
 			;TODO hier ook bepalen wat de hoogste max slider is
 
@@ -753,89 +758,6 @@ Function Restart()
 	RestartStackSize -= 1
 EndFunction
 
-; ------------------------
-; Read the slider sets from the MCM config, and store them into the local variables.
-; Will perform the initial local variables setup if these are not yet initialized.
-; Will cleanup no longer existing slider sets if these existed in the local variables but are no longer in the MCM config.
-; ------------------------
-Function LoadSliderSets()
-	LenARM_Debug.Log("LoadSliderSets")
-	; create arrays if not exist
-	If (!SliderSets)
-		SliderSets = new SliderSet[_NUMBER_OF_SLIDERSETS_]
-	EndIf
-	If (!SliderNames)
-		SliderNames = new string[0]
-	EndIf
-	If (!UnequipSlots)
-		UnequipSlots = new int[0]
-	EndIf
-	If (!OriginalMorphs)
-		OriginalMorphs = new float[0]
-	EndIf
-	
-	; get slider sets
-	int idxSet = 0
-	While (idxSet < _NUMBER_OF_SLIDERSETS_)
-		SliderSet oldSet = SliderSets[idxSet]
-		SliderSet newSet = SliderSet_Constructor(idxSet)
-		SliderSets[idxSet] = newSet
-
-		; when we found an existing sliderSet, reuse the BaseMorph, CurrentMorph and IsMaxedOut
-		If (oldSet)
-			newSet.BaseMorph = oldSet.BaseMorph
-			newSet.CurrentMorph = oldSet.CurrentMorph
-			newSet.IsMaxedOut = oldSet.IsMaxedOut
-		EndIf
-		
-		; populate flattened arrays
-		int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
-		If (newSet.IsUsed)
-			string[] names = LenARM_Util.StringSplit(newSet.SliderName, "|")
-			int idxSlider = 0
-			While (idxSlider < newSet.NumberOfSliderNames)
-				float morph = BodyGen.GetMorph(playerRef, True, names[idxSlider], None)
-				int currentIndex = sliderNameOffset + idxSlider
-				If (!oldSet || idxSlider >= oldSet.NumberOfSliderNames)
-					; insert into array
-					SliderNames.Insert(names[idxSlider], currentIndex)
-					OriginalMorphs.Insert(morph, currentIndex)
-				Else
-					; replace item
-					SliderNames[currentIndex] = names[idxSlider]
-					OriginalMorphs[currentIndex] = morph
-				EndIf
-				idxSlider += 1
-			EndWhile
-		EndIf
-		; remove unused items
-		If (oldSet && newSet.NumberOfSliderNames < oldSet.NumberOfSliderNames)
-			SliderNames.Remove(sliderNameOffset + newSet.NumberOfSliderNames, oldSet.NumberOfSliderNames - newSet.NumberOfSliderNames)
-		EndIf
-
-		int unequipSlotOffset = SliderSet_GetUnequipSlotOffset(idxSet)
-		If (newSet.IsUsed && newSet.NumberOfUnequipSlots > 0)
-			string[] slots = LenARM_Util.StringSplit(newSet.UnequipSlot, "|")
-			int idxSlot = 0
-			While (idxSlot < newSet.NumberOfUnequipSlots)
-				int currentIndex = unequipSlotOffset + idxSlot
-				If (!oldSet || idxSlot >= oldSet.NumberOfUnequipSlots)
-					; insert into array
-					UnequipSlots.Insert(slots[idxSlot] as int, currentIndex)
-				Else
-					; replace item
-					UnequipSlots[currentIndex] = slots[idxSlot] as int
-				EndIf
-				idxSlot += 1
-			EndWhile
-		EndIf
-		; remove unused items
-		If (oldSet && newSet.NumberOfUnequipSlots < oldSet.NumberOfUnequipSlots)
-			UnequipSlots.Remove(unequipSlotOffset + newSet.NumberOfUnequipSlots, oldSet.NumberOfUnequipSlots - newSet.NumberOfUnequipSlots)
-		EndIf
-		idxSet += 1
-	EndWhile
-EndFunction
 
 ; ------------------------
 ; Radiation detection and what not. Doesn't work with god mode (TGM), but works fine with invulnerability mode (TIM).
@@ -977,12 +899,15 @@ Function TimerMorphTick()
 	int morphableSliders = 0
 	int maxedOutSliders = 0
 
+	;TODO temp(?)
+	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 	; when player is not in PA calculate and update body morphs.
 	; in PA morphs aren't shown so don't go through all the effort to recalculate these.
 	if (!PlayerRef.IsInPowerArmor())
 		; check each sliderset whether we need to update the morphs
-		While (idxSet < SliderSets.Length)
-			SliderSet sliderSet = SliderSets[idxSet]
+		While (idxSet < currentSliderSets.Length)
+			LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
 
 			;TODO kijken of Papyrus iets ondersteund ala continue in een loop
 			;hij herkent continue niet als een valid iets, dus ik betwijfel het
@@ -1154,7 +1079,7 @@ EndFunction
 ; ------------------------
 
 ;TODO voor nu werken deze zoals eerst; kmoet al die bool (en float) vars erin hangen samen met de enum, en in de configs hangen
-bool Function GetOnlyDoctorCanReset(SliderSet sliderSet)
+bool Function GetOnlyDoctorCanReset(LenARM_SliderSet:SliderSet sliderSet)
 	; If (OverrideOnlyDoctorCanReset != EOverrideBoolNoOverride)
 	; 	return OverrideOnlyDoctorCanReset == EOverrideBoolTrue
 	; Else
@@ -1162,7 +1087,7 @@ bool Function GetOnlyDoctorCanReset(SliderSet sliderSet)
 	; EndIf
 EndFunction
 
-bool Function GetIsAdditive(SliderSet sliderSet)
+bool Function GetIsAdditive(LenARM_SliderSet:SliderSet sliderSet)
 	; If (OverrideIsAdditive != EOverrideBoolNoOverride)
 	; 	return OverrideIsAdditive == EOverrideBoolTrue
 	; Else
@@ -1170,7 +1095,7 @@ bool Function GetIsAdditive(SliderSet sliderSet)
 	; EndIf
 EndFunction
 
-bool Function GetHasAdditiveLimit(SliderSet sliderSet)
+bool Function GetHasAdditiveLimit(LenARM_SliderSet:SliderSet sliderSet)
 	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
 	; 	return OverrideHasAdditiveLimit == EOverrideBoolTrue
 	; Else
@@ -1178,7 +1103,7 @@ bool Function GetHasAdditiveLimit(SliderSet sliderSet)
 	; EndIf
 EndFunction
 
-float Function GetAdditiveLimit(SliderSet sliderSet)
+float Function GetAdditiveLimit(LenARM_SliderSet:SliderSet sliderSet)
 	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
 	; 	return OverrideAdditiveLimit
 	; Else
@@ -1189,7 +1114,7 @@ EndFunction
 ; ------------------------
 ; Calculate the morph percentage for the given sliderSet based on the given rads and the slider's min / max thresholds
 ; ------------------------
-float Function CalculateMorphPercentage(float newRads, SliderSet sliderSet)
+float Function CalculateMorphPercentage(float newRads, LenARM_SliderSet:SliderSet sliderSet)
 	float morphPercentage
 
 	; calculate the amount of rads we see as the max (by default 1000, modified by a multiplier)
@@ -1274,8 +1199,8 @@ EndFunction
 ; ------------------------
 ; Apply the given sliderSet's morphs to the matching BodyGen sliders
 ; ------------------------
-Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
-	int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
+Function SetMorphs(int idxSet, LenARM_SliderSet:SliderSet sliderSet, float morphPercentage)
+	int sliderNameOffset = LenARM_SliderSet.SliderSet_GetSliderNameOffset(idxSet)
 	int idxSlider = sliderNameOffset
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
@@ -1288,7 +1213,7 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 	EndWhile
 EndFunction
 
-bool Function SetMorphsAndReturnTrue(int idxSet, SliderSet sliderSet, float morphPercentage)
+bool Function SetMorphsAndReturnTrue(int idxSet, LenARM_SliderSet:SliderSet sliderSet, float morphPercentage)
 	SetMorphs(idxSet, sliderSet, morphPercentage)
 	return true
 EndFunction
@@ -1320,14 +1245,7 @@ Function ResetMorphs()
 	ClearAllRadsPerks(PlayerRef)
 
 	; reset saved morphs in SliderSets
-	int idxSet = 0
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]
-		sliderSet.BaseMorph = 0.0
-		sliderSet.CurrentMorph = 0.0
-		sliderSet.IsMaxedOut = false
-		idxSet += 1
-	EndWhile
+	LenARM_SliderSet.ResetSliderSetMorphs()
 EndFunction
 
 Function RestoreOriginalMorphs()
@@ -1557,10 +1475,13 @@ Function ExtendMorphs(float step,  bool shouldPop, int soundId = 5)
 	; calculate the new morphs multiplier
 	float multiplier = CalculateExtendMorphs(step)
 
+	;TODO temp(?)
+	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 	int idxSet = 0
 	; apply it to all morphs from slidersets which aren't excluded
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]		
+	While (idxSet < currentSliderSets.Length)
+		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0 && !sliderSet.ExcludeFromPopping)
 			SetMorphs(idxSet, sliderSet, multiplier)
 		EndIf
@@ -1978,11 +1899,14 @@ EndFunction
 Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)	
 	int idxSet = 0
 
+	;TODO temp(?)
+	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 	; apply it to all morphs from slidersets which aren't excluded
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]		
+	While (idxSet < currentSliderSets.Length)
+		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0);  && (!shouldPop || (shouldPop && !sliderSet.ExcludeFromPopping)))
-			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
+			int sliderNameOffset = LenARM_SliderSet.SliderSet_GetSliderNameOffset(idxSet)
 			int idxSlider = sliderNameOffset
 			int sex = akTarget.GetLeveledActorBase().GetSex()
 			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
@@ -2226,13 +2150,16 @@ Function UnequipSlots()
 
 		; LenARM_Debug.Log(hasFullBodyItem)
 
+		;TODO temp(?)
+		LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 		; check for each sliderSet
-		While (idxSet < SliderSets.Length)
-			SliderSet sliderSet = SliderSets[idxSet]
+		While (idxSet < currentSliderSets.Length)
+			LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
 			
 			; continue when the morphs are larger then the unequip threshold
 			If (sliderSet.BaseMorph + sliderSet.CurrentMorph > sliderSet.ThresholdUnequip)
-				int unequipSlotOffset = SliderSet_GetUnequipSlotOffset(idxSet)
+				int unequipSlotOffset = LenARM_SliderSet.SliderSet_GetUnequipSlotOffset(idxSet)
 				int idxSlot = unequipSlotOffset
 				
 				; check each slot that should get unequipped
@@ -2655,9 +2582,12 @@ float Function GetLowestSliderPercentage()
 	int idxSet = 0
 	float lowestPercentage = 0
 
+	;TODO temp(?)
+	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 	; loop through the slidersets
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]
+	While (idxSet < currentSliderSets.Length)
+		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
 		
 		; only check the slidersets that have actual sliders
 		If (sliderSet.NumberOfSliderNames > 0)
@@ -2720,11 +2650,12 @@ Function ForgetState(bool isCalledByUser=false)
 		Shutdown(false)
 		
 		; reset the mod's state
-		SliderSets = none
-		SliderNames = none
-		UnequipSlots = none
+		LenARM_SliderSet.ResetVariables()
+		; SliderSets = none
+		; SliderNames = none
+		; UnequipSlots = none
 
-		OriginalMorphs = none
+		; OriginalMorphs = none
 		
 		CurrentRads = 0.0
 		HasReachedMaxMorphs = false
@@ -2820,6 +2751,7 @@ Function UpdateHUD()
 EndFunction
 
 
+;TODO MCM debug ding moet nog om naar Utils
 ; ; ------------------------
 ; ; Debug function to check which slots the current equipped clothes / armor occupies
 ; ; ------------------------
@@ -2897,64 +2829,7 @@ Group EnumNPCBloatType
 EndGroup
 
 
-
-; ------------------------
-; MCM SliderSet functions / struct
-; ------------------------
-SliderSet Function SliderSet_Constructor(int idxSet)
-	;LenARM_Debug.Log("SliderSet_Constructor: " + idxSet)
-	SliderSet sliderSet = new SliderSet
-	sliderSet.SliderName = MCM.GetModSettingString("LenA_RadMorphing", "sSliderName:Slider" + idxSet)
-	If (sliderSet.SliderName != "")
-		sliderSet.IsUsed = true
-		sliderSet.TargetMorph = MCM.GetModSettingFloat("LenA_RadMorphing", "fTargetMorph:Slider" + idxSet) / 100.0
-		sliderSet.ThresholdMin = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMin:Slider" + idxSet) / 100.0
-		sliderSet.ThresholdMax = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdMax:Slider" + idxSet) / 100.0
-		sliderSet.UnequipSlot = MCM.GetModSettingString("LenA_RadMorphing", "sUnequipSlot:Slider" + idxSet)
-		sliderSet.ThresholdUnequip = MCM.GetModSettingFloat("LenA_RadMorphing", "fThresholdUnequip:Slider" + idxSet) / 100.0
-		sliderSet.OnlyDoctorCanReset = MCM.GetModSettingBool("LenA_RadMorphing", "bOnlyDoctorCanReset:Slider" + idxSet)
-		sliderSet.IsAdditive = MCM.GetModSettingBool("LenA_RadMorphing", "bIsAdditive:Slider" + idxSet)
-		sliderSet.HasAdditiveLimit = MCM.GetModSettingBool("LenA_RadMorphing", "bHasAdditiveLimit:Slider" + idxSet)
-		sliderSet.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
-		sliderSet.ExcludeFromPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bExcludeFromPopping:Slider" + idxSet)
-
-		string[] names = LenARM_Util.StringSplit(sliderSet.SliderName, "|")
-		sliderSet.NumberOfSliderNames = names.Length
-
-		If (sliderSet.UnequipSlot != "")
-			string[] slots = LenARM_Util.StringSplit(sliderSet.UnequipSlot, "|")
-			sliderSet.NumberOfUnequipSlots = slots.Length
-		Else
-			sliderSet.NumberOfUnequipSlots = 0
-		EndIf
-	Else
-		sliderSet.IsUsed = false
-	EndIf
-
-	;LenARM_Debug.Log("  " + set)
-	return sliderSet
-EndFunction
-
-int Function SliderSet_GetSliderNameOffset(int idxSet)
-	int offset = 0
-	int index = 0
-	While (index < idxSet)
-		offset += SliderSets[index].NumberOfSliderNames
-		index += 1
-	EndWhile
-	return offset
-EndFunction
-
-int Function SliderSet_GetUnequipSlotOffset(int idxSet)
-	int offset = 0
-	int index = 0
-	While (index < idxSet)
-		offset += SliderSets[index].NumberOfUnequipSlots
-		index += 1
-	EndWhile
-	return offset
-EndFunction
-
+; [OBSOLETE]
 Struct SliderSet
 	bool IsUsed
 
