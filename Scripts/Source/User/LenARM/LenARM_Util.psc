@@ -1,12 +1,37 @@
 Scriptname LenARM:LenARM_Util extends Quest
 
+; ------------------------
+; ------------------------
+; Quest input params
+
+Group LenARM
+	LenARM_Debug Property LenARM_Debug Auto
+EndGroup
+
 Group Properties
 	ActorValue Property ParalysisAV Auto Const
 EndGroup
 
 ; ------------------------
-; Helper functions for splitting strings
 ; ------------------------
+; variables
+
+;TODO init me, zit nu in startup van main script
+FormList DD_FL_All
+
+
+; ------------------------
+; ------------------------
+; methods
+
+; For some reason doc comments from the first function after variable declarations are not picked up.
+Function DummyFunction()
+EndFunction
+
+
+;
+; Split string @target into array at @delimiter
+;
 string[] Function StringSplit(string target, string delimiter)
 	;Log("splitting '" + target + "' with '" + delimiter + "'")
 	string[] result = new string[0]
@@ -26,20 +51,27 @@ string[] Function StringSplit(string target, string delimiter)
 	return result
 EndFunction
 
+;
+; Clamp @value between @limit1 and @limit2
+;
 float Function Clamp(float value, float limit1, float limit2)
 	float lower = Math.Min(limit1, limit2)
 	float upper = Math.Max(limit1, limit2)
 	return Math.Min(Math.Max(value, lower), upper)
 EndFunction
 
-
+;
+; Get a random float value between @min and @max
+; When no params given @min is 2 and @max is 6
+;
 float Function GetRandomDelay(int min = 2, int max = 6)
 	return (Utility.RandomInt(min,max) * 0.1) as float
 EndFunction
 
 
-;TODO unequip logic?
-
+;
+; Checks if @akTarget has Torso armor equipped
+;
 bool Function HasTorsoEquipped(Actor akTarget)
 	; in PA always return false
 	If (akTarget.IsInPowerArmor())
@@ -74,6 +106,10 @@ bool Function HasTorsoEquipped(Actor akTarget)
 	return found
 EndFunction
 
+;
+; Checks if @item is an armor piece
+; PipBoy, actors and DD items are ignored
+;
 bool Function IsItemArmor(Actor:WornItem item)
 	;return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 
@@ -94,14 +130,40 @@ bool Function IsItemArmor(Actor:WornItem item)
 	return true
 EndFunction
 
+;TODO roep aan vanuit MCM
+; 
+; Check which slots the current equipped clothes / armor occupies
+; 
+Function ShowEquippedClothes(Actor akSender)
+	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
+	string[] items = new string[0]
+	int slot = 0
+	While (slot < 62)
+		Actor:WornItem item = akSender.GetWornItem(slot)
+		If (item != None && item.item != None)
+			items.Add(slot + ": " + item.item.GetName())
+			; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+		Else
+			; Log("  Slot " + slot + " is empty")
+		EndIf
+		slot += 1
+	EndWhile
+
+	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
+EndFunction
 
 
-
+;
+; Paralyzes @akTarget
+;
 Function ParalyzeActor(Actor akTarget)
 	akTarget.SetValue(ParalysisAV, 1)
 	akTarget.PushActorAway(akTarget, 0.5)	
 EndFunction
 
+;
+; Unparalyzes @akTarget
+;
 Function UnParalyzeActor(Actor akTarget)
 	akTarget.SetValue(ParalysisAV, 0)
 EndFunction

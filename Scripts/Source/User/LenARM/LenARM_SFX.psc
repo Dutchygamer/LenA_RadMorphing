@@ -1,5 +1,9 @@
 Scriptname LenARM:LenARM_SFX extends Quest
 
+; ------------------------
+; ------------------------
+; Quest input params
+
 Group Properties
 	Sound Property LenARM_DropClothesSound Auto Const
 	Sound Property LenARM_MorphSound Auto Const
@@ -20,9 +24,39 @@ Group Properties
 	Sound Property LenARM_FXBloatHitSound_High Auto Const
 EndGroup
 
+
 ; ------------------------
-; Play a sound depending on the given id
 ; ------------------------
+; enums
+
+Group EnumSoundEffect
+	int Property EMorphSound_Low = 1 Auto Const
+	int Property EMorphSound_Medium = 2 Auto Const
+	int Property EMorphSound_High = 3 Auto Const
+	int Property EMorphSound_Full = 4 Auto Const
+	int Property EMorphSound_Swell = 5 Auto Const
+	int Property EMorphSound_SwellPop = 6 Auto Const
+	int Property EDropClothesSound = 7 Auto Const
+	int Property ERadPerkSwitchSound = 8 Auto Const
+	int Property EPrePopSound = 9 Auto Const
+	int Property EPrePopMessySound = 10 Auto Const
+	int Property EPopSound = 11 Auto Const
+	int Property EPopMessySound = 12 Auto Const
+	int Property EPurgeFailSound = 13 Auto Const
+	int Property EFullGroanSound = 14 Auto Const
+	int Property EBloatSuitMilkSound = 15 Auto Const
+	int Property ENPCPopComment = 16 Auto Const
+	int Property EFXBloatHitSound_High = 17 Auto Const
+EndGroup
+
+
+; ------------------------
+; ------------------------
+; methods
+
+; 
+; @akSender plays sound effect with id @soundId
+; 
 Function ActorPlaySound(Actor akSender, int soundId)
 	if (soundId == EMorphSound_Low)
 		LenARM_MorphSound.Play(akSender)
@@ -65,7 +99,9 @@ Function ActorPlaySound(Actor akSender, int soundId)
 	endif
 EndFunction
 
-
+; 
+; @akSender plays sound effect with id @soundId and wait for its completion before continuing
+; 
 Function ActorPlaySoundAndWait(Actor akSender, int soundId)
 	if (soundId == EMorphSound_Low)
 		LenARM_MorphSound.PlayAndWait(akSender)
@@ -107,25 +143,3 @@ Function ActorPlaySoundAndWait(Actor akSender, int soundId)
 		LenARM_FXBloatHitSound_High.PlayAndWait(akSender)
 	endif
 EndFunction
-
-
-Group EnumSoundEffect
-	int Property EMorphSound_Low = 1 Auto Const
-	int Property EMorphSound_Medium = 2 Auto Const
-	int Property EMorphSound_High = 3 Auto Const
-	int Property EMorphSound_Full = 4 Auto Const
-	int Property EMorphSound_Swell = 5 Auto Const
-	int Property EMorphSound_SwellPop = 6 Auto Const
-	int Property EDropClothesSound = 7 Auto Const
-	int Property ERadPerkSwitchSound = 8 Auto Const
-	int Property EPrePopSound = 9 Auto Const
-	int Property EPrePopMessySound = 10 Auto Const
-	int Property EPopSound = 11 Auto Const
-	int Property EPopMessySound = 12 Auto Const
-	int Property EPurgeFailSound = 13 Auto Const
-	int Property EFullGroanSound = 14 Auto Const
-	int Property EBloatSuitMilkSound = 15 Auto Const
-	int Property ENPCPopComment = 16 Auto Const
-	int Property EFXBloatHitSound_High = 17 Auto Const
-EndGroup
-
