@@ -252,18 +252,25 @@ Group Properties
 	Quest Property DN050 Auto ; SQ Quality Assurance
 EndGroup
 
+Group LenARM
+	; LenARM_Perks Property P Auto Const
+	; LenARM_Util Property LenARM_Util Auto
+	LenARM_Debug Property LenARM_Debug Auto
+	; LenARM_SFX Property SFX Auto Const
+EndGroup
+
 ; ------------------------
 ; Register all generic Quest public events / entry points related to setup, start and stop the actual mod
 ; ------------------------
 Event OnQuestInit()
-	Log("OnQuestInit")
+	LenARM_Debug.Log("OnQuestInit")
 	RegisterForRemoteEvent(PlayerRef, "OnPlayerLoadGame")
 	RegisterForExternalEvent("OnMCMSettingChange|LenA_RadMorphing", "OnMCMSettingChange")
 	Startup()
 EndEvent
 
 Event OnQuestShutdown()
-	Log("OnQuestShutdown")
+	LenARM_Debug.Log("OnQuestShutdown")
 	Shutdown()
 EndEvent
 
@@ -271,27 +278,27 @@ EndEvent
 ; On savegame loaded, check for mod updates based on version
 ; ------------------------
 Event Actor.OnPlayerLoadGame(Actor akSender)
-	Log("Actor.OnPlayerLoadGame: " + akSender)
+	LenARM_Debug.Log("Actor.OnPlayerLoadGame: " + akSender)
 	PerformUpdateIfNecessary()
 EndEvent
 
 Function PerformUpdateIfNecessary()
-	Log("PerformUpdateIfNecessary: " + Version + " != " + GetVersion() + " -> " + (Version != GetVersion()))
+	LenARM_Debug.Log("PerformUpdateIfNecessary: " + Version + " != " + GetVersion() + " -> " + (Version != GetVersion()))
 	If (Version != GetVersion())
-		Log("  update")
-		MessageBox("Updating Rad Morphing Redux from version " + Version + " to " + GetVersion())
+		LenARM_Debug.Log("  update")
+		LenARM_Debug.MessageBox("Updating Rad Morphing Redux from version " + Version + " to " + GetVersion())
 		Shutdown()
 		While (IsShuttingDown)
 			Utility.Wait(1.0)
 		EndWhile
 		ForgetState()
 		Version = GetVersion()
-		MessageBox("Rad Morphing Redux has been updated to version " + Version + ".")
+		LenARM_Debug.MessageBox("Rad Morphing Redux has been updated to version " + Version + ".")
 	Else
 		If (MQ102.IsStageDone(6))
 			AddItemsToPlayerInventory()
 		endif
-		Log("  no update")
+		LenARM_Debug.Log("  no update")
 	EndIf
 EndFunction
 
@@ -314,7 +321,7 @@ Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference ak
 			forceUpdate = true
 		endif
 
-		; Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
+		; LenARM_Debug.Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
 		Utility.Wait(1.0)
 		TriggerUnequipSlots()
 	endif
@@ -363,7 +370,7 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 
 	; when unequipping the Kitana mask check if player has messy popped enough NPCs
 	if (akBaseObject as Armor && akBaseObject == KitanaMask)
-		; TechnicalNote("main script kitana mask unequipped!")
+		; LenARM_Debug.TechnicalNote("main script kitana mask unequipped!")
 		; if not, re-equip the mask
 		if (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
 			KitanaMaskSelfMorph_Unequip()
@@ -380,12 +387,12 @@ EndEvent
 ; ------------------------
 Event Scene.OnBegin(Scene akSender)
 	float radsBeforeDoc = PlayerRef.GetValue(Rads)
-	Log("Scene.OnBegin: " + akSender + " (rads: " + radsBeforeDoc + ")")
+	LenARM_Debug.Log("Scene.OnBegin: " + akSender + " (rads: " + radsBeforeDoc + ")")
 EndEvent
 
 Event Scene.OnEnd(Scene akSender)
 	float radsNow = PlayerRef.GetValue(Rads)
-	Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
+	LenARM_Debug.Log("Scene.OnEnd: " + akSender + " (rads: " + radsNow + ")")
 
 	;TODO kzie dat LenAnderson hier nog meer doet, naast dat ie het anders heeft opgezet:
 	;https://github.com/LenAnderson/LenA_RadMorphing/compare/4cccf04..334a699#diff-cf41e4f3e45042dd90f3c9900096513df3b291d27c44417a55a129897c412ab1
@@ -413,24 +420,24 @@ Event Quest.OnStageSet(Quest akSender, int auiStageID, int auiItemID)
 	elseIf (akSender == DN050 && auiStageID == 30)
 		UnregisterForRemoteEvent(DN050, "OnStageSet")
 		;LenARM_BloatingMask_PeriodicMessage.Show()
-		Note("Your breasts start bloating in anticipation!")
+		LenARM_Debug.Note("Your breasts start bloating in anticipation!")
 		;StartTimer(20, ETimerDN050)
 		DN050SelfMorph()
 	EndIf
 EndEvent
 
 Function AddItemsToPlayerInventory()
-	Log("AddItemsToPlayerInventory -> start")
+	LenARM_Debug.Log("AddItemsToPlayerInventory -> start")
 	int i = 0
 	While (i < AutoAddToPlayerInventory.GetSize())
 		Form AutoAddItem = AutoAddToPlayerInventory.GetAt(i)
 		If (PlayerRef.GetItemCount(AutoAddItem) == 0)
 			PlayerRef.AddItem(AutoAddItem, 1, False)
-			Log("AddItemsToPlayerInventory -> " + AutoAddItem as string + " added")
+			LenARM_Debug.Log("AddItemsToPlayerInventory -> " + AutoAddItem as string + " added")
 		EndIf
 		i += 1
 	EndWhile
-	Log("AddItemsToPlayerInventory -> end")
+	LenARM_Debug.Log("AddItemsToPlayerInventory -> end")
 EndFunction
 
 ; ------------------------
@@ -465,37 +472,37 @@ EndEvent
 ; ------------------------
 Function OnMCMSettingChange(string modName, string id)
 	If (modName == "LenA_RadMorphing")
-		; TechnicalNote("OnMCMSettingChange: " + id + " changed")
-		Log("OnMCMSettingChange: " + modName + "; " + id)
+		; LenARM_Debug.TechnicalNote("OnMCMSettingChange: " + id + " changed")
+		LenARM_Debug.Log("OnMCMSettingChange: " + modName + "; " + id)
 
 		; update delay has been changed
 		If (id == "fUpdateDelay:General")
-			Note("UpdateDelay changes")
+			LenARM_Debug.Note("UpdateDelay changes")
 			
 			MCM_Read_UpdateDelay()
 		; radiation thresholds have been changed
 		ElseIf (id == "fLowRadsThreshold:General" || id == "fMediumRadsThreshold:General" || id == "fHighRadsThreshold:General")
-			Note("RadThreshold changes")
+			LenARM_Debug.Note("RadThreshold changes")
 
 			MCM_Read_RadsThresholds()
 		; any of the player popping settings have been changed
 		ElseIf (id == "bEnablePopping:General" || id == "iPopStates:General" || id == "bPopShouldParalyze:General" || id == "iPopStripState:General" || id == "bPopUseFullSounds:General")
-			Note("Player Popping changes")
+			LenARM_Debug.Note("Player Popping changes")
 
 			MCM_Read_PlayerPopping()
 		; max radiation multiplier has been changed
 		ElseIf (id == "iMaxRadiationMultiplier:General")
-			Note("Max Radiation mult changes")
+			LenARM_Debug.Note("Max Radiation mult changes")
 
 			MCM_Read_MaxRadiationMultiplier()
 		; rads perks usage has been changed
 		ElseIf (id == "bEnableRadsPerks:General")
-			Note("Perk changes")
+			LenARM_Debug.Note("Perk changes")
 
 			MCM_Read_RadPerks()
 		; any other non-slider config has been changed
 		ElseIf (id == "bForceNPCBloatPopping:General")
-			Note("Other changes")
+			LenARM_Debug.Note("Other changes")
 
 			MCM_Read_NPCPopping()
 		; sliders config has been changed; this will trigger mod restart
@@ -504,7 +511,7 @@ Function OnMCMSettingChange(string modName, string id)
 				string value = MCM.GetModSettingString(modName, id)
 				If (LL_Fourplay.StringSubstring(value, 0, 1) == " ")
 					string msg = "The value you have just changed has leading whitespace:\n\n'" + value + "'"
-					MessageBox(msg)
+					LenARM_Debug.MessageBox(msg)
 
 				EndIf
 			EndIf
@@ -517,9 +524,9 @@ EndFunction
 ; Start / shutdown / reset of the mod
 ; ------------------------
 Function Startup()
-	Log("Startup")
+	LenARM_Debug.Log("Startup")
 	If (MCM.GetModSettingBool("LenA_RadMorphing", "bIsEnabled:General") && !IsStartingUp)
-		Log("  is enabled")
+		LenARM_Debug.Log("  is enabled")
 		IsStartingUp = true
 
 		CurrentRads = 0
@@ -535,7 +542,7 @@ Function Startup()
 
 		; check for DD
 		If (Game.IsPluginInstalled("Devious Devices.esm"))
-			Log("found DD")
+			LenARM_Debug.Log("found DD")
 			DD_FL_All = Game.getFormFromFile(0x0905E95B, "Devious Devices.esm") as FormList
 		EndIf
 
@@ -575,7 +582,7 @@ Function Startup()
 			If (GetOnlyDoctorCanReset(sliderSet) && GetIsAdditive(sliderSet))
 				HasDoctorOnlySliders = true
 				if (sliderSet.BaseMorph > 0)
-					Log("reload sliderset " + idxSet)
+					LenARM_Debug.Log("reload sliderset " + idxSet)
 					SetMorphs(idxSet, sliderSet, sliderSet.BaseMorph)
 				endif
 			endif
@@ -608,12 +615,12 @@ Function Startup()
 		BloatSuitGiveAmmo()
 
 		IsStartingUp = false
-		Log("Startup complete")
+		LenARM_Debug.Log("Startup complete")
 	ElseIf (MCM.GetModSettingBool("LenA_RadMorphing", "bWarnDisabled:General"))
-		Log("  is disabled, with warning")
-		MessageBox("Rad Morphing is currently disabled. You can enable it in MCM > Rad Morphing > Enable Rad Morphing")
+		LenARM_Debug.Log("  is disabled, with warning")
+		LenARM_Debug.MessageBox("Rad Morphing is currently disabled. You can enable it in MCM > Rad Morphing > Enable Rad Morphing")
 	Else
-		Log("  is disabled, no warning")
+		LenARM_Debug.Log("  is disabled, no warning")
 	EndIf
 EndFunction
 
@@ -653,7 +660,7 @@ EndFunction
 
 Function Shutdown(bool withRestore=true)
 	If (!IsShuttingDown)
-		Log("Shutdown")
+		LenARM_Debug.Log("Shutdown")
 		IsShuttingDown = true
 
 		; stop timers
@@ -683,7 +690,7 @@ Function Shutdown(bool withRestore=true)
 EndFunction
 
 Function ShutdownRestoreMorphs()
-	Log("ShutdownRestoreMorphs")
+	LenARM_Debug.Log("ShutdownRestoreMorphs")
 	; restore base values
 	RestoreOriginalMorphs()
 
@@ -691,7 +698,7 @@ Function ShutdownRestoreMorphs()
 EndFunction
 
 Function FinishShutdown()
-	Log("FinishShutdown")
+	LenARM_Debug.Log("FinishShutdown")
 	IsShuttingDown = false
 EndFunction
 
@@ -699,7 +706,7 @@ Function Restart()
 	RestartStackSize += 1
 	Utility.Wait(1.0)
 	If (RestartStackSize <= 1)
-		Log("Restart")
+		LenARM_Debug.Log("Restart")
 
 		;TODO dis niet goed, want in de timerbased morphs doen we wat funkies met bepalen hoe / wat CurrentMorph is
 		;nu schiet ie iedere keer een stuk vooruit als ie dit gedaan heeft, omdat BaseMorph nu te groot wordt opgeslagen
@@ -733,9 +740,9 @@ Function Restart()
 		While (IsStartingUp)
 			Utility.Wait(1.0)
 		EndWhile
-		Log("Restart completed")
+		LenARM_Debug.Log("Restart completed")
 	Else
-		Log("RestartStackSize: " + RestartStackSize)
+		LenARM_Debug.Log("RestartStackSize: " + RestartStackSize)
 	EndIf
 	RestartStackSize -= 1
 EndFunction
@@ -746,7 +753,7 @@ EndFunction
 ; Will cleanup no longer existing slider sets if these existed in the local variables but are no longer in the MCM config.
 ; ------------------------
 Function LoadSliderSets()
-	Log("LoadSliderSets")
+	LenARM_Debug.Log("LoadSliderSets")
 	; create arrays if not exist
 	If (!SliderSets)
 		SliderSets = new SliderSet[_NUMBER_OF_SLIDERSETS_]
@@ -881,7 +888,7 @@ Function TimerMorphTick()
 
 	;TODO debug ding
 	if (PlayerRef.IsEquipped(KitanaMask) && !hasKitanaMaskEquipped)
-		Note("mask bugged out!")
+		LenARM_Debug.Note("mask bugged out!")
 	endif
 
 	; by default, assume we have no changed morphs for all sliderSets
@@ -931,7 +938,7 @@ Function TimerMorphTick()
 
 	; when we have bloating suit equipped, reduce accumulated bloating by 25%
 	if (hasBloatingSuitEquipped)
-		;Note("reduced morphs from " + radsDifference + " to " + (radsDifference * 0.75))
+		;LenARM_Debug.Note("reduced morphs from " + radsDifference + " to " + (radsDifference * 0.75))
 		radsDifference = radsDifference * 0.75
 	endif
 	
@@ -957,7 +964,7 @@ Function TimerMorphTick()
 	; TotalRads = rawMorphInput
 	
 	; TODO more debug shenenigens...
-	; Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
+	; LenARM_Debug.Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
 
 	int idxSet = 0
 
@@ -1001,7 +1008,7 @@ Function TimerMorphTick()
 						EndIf
 					EndIf
 					
-					;Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
+					;LenARM_Debug.Log("    test " + idxSet + " morphPercentage: " + morphPercentage + "; maxMorphPercentage: " + maxMorphPercentage+ "; HasReachedMaxMorphs: " + HasReachedMaxMorphs+ "; sliderSet.OnlyDoctorCanReset: " + sliderSet.OnlyDoctorCanReset + "; sliderSet.IsMaxedOut: " + sliderSet.IsMaxedOut + "; radsDifference: " + radsDifference)
 
 					;TODO hoeveel van dit is echt nodig nog? is basically niet alles nu additive?
 					; when we have an additive slider with no limit, apply the morphs without further checks
@@ -1063,7 +1070,7 @@ Function TimerMorphTick()
 			maxedOutMorphs = true
 		endif
 
-		; Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
+		; LenARM_Debug.Log("    update - changedMorphs: " + changedMorphs + "; maxedOutMorphs: " + maxedOutMorphs + "; radsDifference: " + radsDifference + "; HasReachedMaxMorphs: " + HasReachedMaxMorphs)
 
 		; when at least one of the sliderSets has applied morphs, perform the actual actions
 		If (changedMorphs)
@@ -1194,7 +1201,7 @@ float Function CalculateMorphPercentage(float newRads, SliderSet sliderSet)
 		morphPercentage = (newRads - minThreshold) / (maxThreshold - minThreshold)
 	EndIf
 	
-	;TechnicalNote("rads: " + newRads + "; morph: " + morphPercentage + "; minT: " + minThreshold + "; maxT: " + maxThreshold + "; %: " + MaxRadiationMultiplier)
+	;LenARM_Debug.TechnicalNote("rads: " + newRads + "; morph: " + morphPercentage + "; minT: " + minThreshold + "; maxT: " + maxThreshold + "; %: " + MaxRadiationMultiplier)
 
 	return morphPercentage
 EndFunction
@@ -1269,7 +1276,7 @@ Function SetMorphs(int idxSet, SliderSet sliderSet, float morphPercentage)
 		float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
 
 		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
-		; Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
+		; LenARM_Debug.Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
 		
 		idxSlider += 1
 	EndWhile
@@ -1285,7 +1292,7 @@ EndFunction
 ; Will also reset various global bools used on various places
 ; ------------------------
 Function ResetMorphs()
-	Log("ResetMorphs")
+	LenARM_Debug.Log("ResetMorphs")
 	RestoreOriginalMorphs()
 
 	; re-enable the display of the max-morphs message
@@ -1318,7 +1325,7 @@ Function ResetMorphs()
 EndFunction
 
 Function RestoreOriginalMorphs()
-	Log("RestoreOriginalMorphs")
+	LenARM_Debug.Log("RestoreOriginalMorphs")
 	; restore base values
 	int i = 0
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
@@ -1359,7 +1366,7 @@ bool Function ShouldPop(int popChance)
 	; bloating suit equipped decrease chance of popping (milkers provide relief)
 	int bloatSuitMod = (hasBloatingSuitEquipped as int)*-1
 
-	;Note("luck " + luckMod + "; molecow " + moleCowDiseaseMod + "; nipple " + nippleBlockersMod + "; suit " + bloatSuitMod)
+	;LenARM_Debug.Note("luck " + luckMod + "; molecow " + moleCowDiseaseMod + "; nipple " + nippleBlockersMod + "; suit " + bloatSuitMod)
 
 	; base pop chance is X/10, but X can be modified by above modifiers
 	; depending on X and modifiers it can become 0 or less, so cap it to a minimum of 1
@@ -1455,7 +1462,7 @@ Function Pop()
 	IsPopping = true
 
 	LenARM_PopMessage.Show()
-	Log("pop!")
+	LenARM_Debug.Log("pop!")
 
 	; force third person camera when we paralyze the player
 	if (PopShouldParalyze)
@@ -1539,7 +1546,7 @@ EndFunction
 ; Does not store the updated sliders' CurrentMorphs, as we will call ResetMorphs afterwards anyway
 ; ------------------------
 Function ExtendMorphs(float step,  bool shouldPop, int soundId = 5)
-	; Log("extending morphs with: " + step)
+	; LenARM_Debug.Log("extending morphs with: " + step)
 
 	; calculate the new morphs multiplier
 	float multiplier = CalculateExtendMorphs(step)
@@ -1602,7 +1609,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 	int nextBloatStage = currentBloatStage + 1
 	float morphPercentage = 0.2
 
-	; Note(currentBloatStage + "; " + targetBloatStage)
+	; LenARM_Debug.Note(currentBloatStage + "; " + targetBloatStage)
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary or a HalluciGen Agent NPC)
 	if (toAdd == -1 && bloatType != EBloatTypeLegendary && !akTarget.HasKeyword(ActorTypeBloatingAgent))
@@ -1625,7 +1632,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 	else
 		; calculate the diff between current bloat stage and max and use that as our percentage
 		int bloatStageDiff = maxNPCBloatStages - currentBloatStage
-		; Note("current: " + currentBloatStage + "; target: " + targetBloatStage + "; diff: " + bloatStageDiff)
+		; LenARM_Debug.Note("current: " + currentBloatStage + "; target: " + targetBloatStage + "; diff: " + bloatStageDiff)
 		; first bloat to max if we aren't at max yet
 		if (bloatStageDiff > 0)
 			float maxMorphPercentage = morphPercentage * bloatStageDiff			
@@ -1991,7 +1998,7 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 
 				; ;TODO debug ding
 				; if (slider == "Breasts")
-				; 	Log(npcMorph + "; " + morphPercentage + "; " + sliderSet.targetMorph + "; " + newMorph)
+				; 	LenARM_Debug.Log(npcMorph + "; " + morphPercentage + "; " + sliderSet.targetMorph + "; " + newMorph)
 				; endif
 						
 				; set the morphs
@@ -2036,8 +2043,8 @@ bool Function ApplyRadsPerk()
 	; keep track of whether we've changed perks
 	bool hasChanged = false
 
-	; Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
-	; Log("radsperk; CurrentRads: " + (CurrentRads * 1000) + "; TotalRads: " + (TotalRads * 1000))
+	; LenARM_Debug.Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
+	; LenARM_Debug.Log("radsperk; CurrentRads: " + (CurrentRads * 1000) + "; TotalRads: " + (TotalRads * 1000))
 
 	; limit to 4 just in case (we have 5 perks, starting from 0)
     If (perkLevel > 4)
@@ -2058,7 +2065,7 @@ bool Function ApplyRadsPerk()
 
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
 			if (HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
-				;Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
+				;LenARM_Debug.Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
 				LenARM_RadPerkSwitchSound.Play(PlayerRef)
 				
 				; only here set our bool to true
@@ -2136,7 +2143,7 @@ Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
 	;TODO kan je niet gewoon RadsPerkArray.Length doen?
     While (i <= 4)
         If (i != newPerkLevel && akTarget.HasPerk(RadsPerkArray[i]))
-			; Log("Removing radsperk of level " + i)
+			; LenARM_Debug.Log("Removing radsperk of level " + i)
 			akTarget.RemovePerk(RadsPerkArray[i])
         EndIf
         i += 1
@@ -2148,7 +2155,7 @@ Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
 	endif
 	
 	; if (newPerkLevel > -1)
-    ; 	Log("RadsPerk Level " + newPerkLevel + " applied")    
+    ; 	LenARM_Debug.Log("RadsPerk Level " + newPerkLevel + " applied")    
 	; endif
 EndFunction
 
@@ -2200,7 +2207,7 @@ Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
 	;TODO kan je niet gewoon BalloonsPerkArray.Length doen?
     While (i <= 3)
         If (i != newPerkLevel && akTarget.HasPerk(BalloonsPerkArray[i]))
-			; Log("Removing radsperk of level " + i)
+			; LenARM_Debug.Log("Removing radsperk of level " + i)
 			akTarget.RemovePerk(BalloonsPerkArray[i])
         EndIf
         i += 1
@@ -2225,7 +2232,7 @@ Function UnequipSlots()
 		return
 	EndIf
 
-	; Log("UnequipSlots (stack=" + UnequipStackSize + ")")
+	; LenARM_Debug.Log("UnequipSlots (stack=" + UnequipStackSize + ")")
 	UnequipStackSize += 1
 	If (UnequipStackSize <= 1)
 		bool found = false
@@ -2255,7 +2262,7 @@ Function UnequipSlots()
 			hasFullBodyItem = true
 		EndIf
 
-		; Log(hasFullBodyItem)
+		; LenARM_Debug.Log(hasFullBodyItem)
 
 		; check for each sliderSet
 		While (idxSet < SliderSets.Length)
@@ -2277,7 +2284,7 @@ Function UnequipSlots()
 
 					; when item is an armor and we can unequip it, do so
 					If (isArmor && canUnequip)
-						Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
+						LenARM_Debug.Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
 						PlayerRef.UnequipItem(item.item, false, true)
 
@@ -2302,11 +2309,11 @@ Function UnequipSlots()
 		EndWhile
 	EndIf
 	UnequipStackSize -= 1
-	; Log("FINISHED UnequipSlots")
+	; LenARM_Debug.Log("FINISHED UnequipSlots")
 EndFunction
 
 Function TriggerUnequipSlots()
-	; Log("TriggerUnequipSlots")
+	; LenARM_Debug.Log("TriggerUnequipSlots")
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
@@ -2316,7 +2323,7 @@ Function UnequipAll()
 		return
 	EndIf
 	
-	; Log("UnequipAll")
+	; LenARM_Debug.Log("UnequipAll")
 
 	bool found = false
 	int idxSlot = 0
@@ -2342,7 +2349,7 @@ Function UnequipAll()
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
-			; Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+			; LenARM_Debug.Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
 			;TODO make configurabel
 			PoppingUnequippedItems.Add(item);
@@ -2358,7 +2365,7 @@ Function UnequipAll()
 		
 		idxSlot += 1	
 	EndWhile
-	; Log("FINISHED UnequipAll")
+	; LenARM_Debug.Log("FINISHED UnequipAll")
 EndFunction
 
 Function UnequipAllNPC(Actor akTarget)
@@ -2390,7 +2397,7 @@ Function UnequipAllNPC(Actor akTarget)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
-			; Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+			; LenARM_Debug.Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
 			akTarget.UnequipItem(item.item, false, true)
 			
@@ -2454,18 +2461,18 @@ Function CalculateAndPlayMorphSound(Actor akSender, float radsDifference)
 
 	; everything below LowRadsThreshold rads taken, including rad decreases (ie RadAway)
 	if (radsDifference <= LowRadsThreshold)
-		; Log("  minimum rads taken")
+		; LenARM_Debug.Log("  minimum rads taken")
 	; everything between LowRadsThreshold and MediumRadsThreshold rads taken
 	elseif (radsDifference <= MediumRadsThreshold)
-		; Log("  medium rads taken")
+		; LenARM_Debug.Log("  medium rads taken")
 		PlayMorphSound(akSender, 1)
 	; everything between MediumRadsThreshold and HighRadsThreshold rads taken
 	elseif (radsDifference <= HighRadsThreshold)
-		; Log("  high rads taken")
+		; LenARM_Debug.Log("  high rads taken")
 		PlayMorphSound(akSender, 2)
 	; everything above HighRadsThreshold rads taken
 	elseif (radsDifference > HighRadsThreshold)
-		; Log("  very high rads taken")
+		; LenARM_Debug.Log("  very high rads taken")
 		PlayMorphSound(akSender, 3)
 	endif
 EndFunction
@@ -2481,17 +2488,17 @@ Function SuitInjectBloatingAgent()
 			PlayerRef.EquipItem(BloatSuitInjectAgent, abSilent = true)
 			PlayerRef.RemoveItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 		else
-			;TechnicalNote("No Bloating Ammo!")
+			;LenARM_Debug.TechnicalNote("No Bloating Ammo!")
 			LenARM_BloatingAgentMissingMessage.Show()
 		endif
 	else
-		;TechnicalNote("Bloating Outfit not equipped!")
+		;LenARM_Debug.TechnicalNote("Bloating Outfit not equipped!")
 		LenARM_BloatingSuitMissingMessage.Show()
 	endif
 EndFunction
 
 Function BloatingSuitEquipped()
-	;TechnicalNote("Bloating Outfit equipped!")
+	;LenARM_Debug.TechnicalNote("Bloating Outfit equipped!")
 	hasBloatingSuitEquipped = true
 	
 	; force update morphs on next run
@@ -2499,7 +2506,7 @@ Function BloatingSuitEquipped()
 EndFunction
 
 Function BloatingSuitUnequipped()
-	;TechnicalNote("Bloating Outfit unequipped!")
+	;LenARM_Debug.TechnicalNote("Bloating Outfit unequipped!")
 	hasBloatingSuitEquipped = false
 	
 	; force update morphs on next run
@@ -2513,7 +2520,7 @@ Function BloatSuitGiveAmmo()
 		return
 	endif
 
-	;TechnicalNote("Bloating Outfit gives ammo!")
+	;LenARM_Debug.TechnicalNote("Bloating Outfit gives ammo!")
 	if (CurrentRadsPerk > 0)
 		LenARM_BloatSuitMilkSound.Play(PlayerRef)
 	endif
@@ -2539,7 +2546,7 @@ EndFunction
 
 
 Function KitanaMaskEquipped()
-	; TechnicalNote("mask equipped!")
+	; LenARM_Debug.TechnicalNote("mask equipped!")
 	hasKitanaMaskEquipped = true
 
 	if (PlayerRef.HasPerk(PoppingExpertPerk1) == false)
@@ -2561,7 +2568,7 @@ Function KitanaMaskEquipped()
 EndFunction
 
 Function KitanaMaskUnequipped()
-	; TechnicalNote("mask unequipped!")
+	; LenARM_Debug.TechnicalNote("mask unequipped!")
 	hasKitanaMaskEquipped = false
 
 	; force update morphs on next run
@@ -2608,7 +2615,7 @@ Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
 	if (bloatingAmount > 150)
 		bloatingAmount = 150
 	endif
-	;Note(bloatingAmount)
+	;LenARM_Debug.Note(bloatingAmount)
 
 	; bloat player
 	PlayerRef.DamageValue(avBloating, bloatingAmount)
@@ -2772,29 +2779,29 @@ EndFunction
 ; Debug functions from the Debug MCM menu
 ; ------------------------
 Function ForgetState(bool isCalledByUser=false)
-	Log("ForgetState: isCalledByUser=" + isCalledByUser + "; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount + "; IsForgetStateBusy=" + IsForgetStateBusy)
+	LenARM_Debug.Log("ForgetState: isCalledByUser=" + isCalledByUser + "; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount + "; IsForgetStateBusy=" + IsForgetStateBusy)
 
 	; display notice to player that proces is still running
 	If (isCalledByUser && IsForgetStateBusy)
-		Log("  show busy warning")
-		MessageBox("This function is already running. Wait until it has completed.")
+		LenARM_Debug.Log("  show busy warning")
+		LenARM_Debug.MessageBox("This function is already running. Wait until it has completed.")
 	; on first button click, show warning instead of starting proces
 	ElseIf (isCalledByUser && ForgetStateCalledByUserCount < 1)
-		Log("  show warning")
+		LenARM_Debug.Log("  show warning")
 		CancelTimer(ETimerForgetStateCalledByUserTick)
-		MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
+		LenARM_Debug.MessageBox("<center><b>! WARNING !</b></center><br><br><p align='justify'>This function does not reset this mod's settings.<br>It will reset the mod's state. This includes the record of the original body shape. If your body is currently morphed by this mod you will be stuck with the current shape.</p><br>Click the button again to reset the mod's state.")
 		ForgetStateCalledByUserCount = 1
 		StartTimer(0.1, ETimerForgetStateCalledByUserTick)
 	; on second button click (or called from system), start the proces
 	Else
-		Log("  reset state")
+		LenARM_Debug.Log("  reset state")
 		IsForgetStateBusy = true
 
 		If (isCalledByUser)
 			CancelTimer(ETimerForgetStateCalledByUserTick)
 			ForgetStateCalledByUserCount = 0
-			Log("  show reset start message")
-			MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
+			LenARM_Debug.Log("  show reset start message")
+			LenARM_Debug.MessageBox("Rad Morphing Redux is resetting itself. Another message will let you know once the mod is fully reset.")
 		EndIf
 		
 		; stop timers and unregister events
@@ -2814,27 +2821,27 @@ Function ForgetState(bool isCalledByUser=false)
 		; start the mod up again
 		Startup()
 		IsForgetStateBusy = false
-		TechnicalNote("Mod state has been reset")
+		LenARM_Debug.TechnicalNote("Mod state has been reset")
 		If (isCalledByUser)
-			Log("  show reset complete message")
-			MessageBox("Rad Morphing Redux has been reset.")
+			LenARM_Debug.Log("  show reset complete message")
+			LenARM_Debug.MessageBox("Rad Morphing Redux has been reset.")
 		EndIf
 	EndIf
 EndFunction
 
 Function ForgetStateCounterReset()
-	Log("ForgetStateCounterReset; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount)
+	LenARM_Debug.Log("ForgetStateCounterReset; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount)
 	ForgetStateCalledByUserCount = 0
 EndFunction
 
 Function Debug_ShowLowestSliderPercentage()
 
 	; if (PlayerRef.HasPerk(PoppingExpertPerk2))
-	; 	Note("popping expert given!")
+	; 	LenARM_Debug.Note("popping expert given!")
 	; 	isPoppingExpert = true
 	; endif
 
-	; ; Note("DN050 registered")
+	; ; LenARM_Debug.Note("DN050 registered")
 	; ; RegisterForRemoteEvent(DN050, "OnStageSet")
 	
 	; ;TODO for now hijacked to activate HUDFramework plugin
@@ -2844,7 +2851,7 @@ Function Debug_ShowLowestSliderPercentage()
 	; 	float fX = 500 ;1000
 	; 	float fY = 300 ;70
 
-	; 	Note("HUDFramework is installed!")
+	; 	LenARM_Debug.Note("HUDFramework is installed!")
     ;     ; Register the widget, setting its position to 10, 70 on the screen.
     ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
     ;     hud.RegisterWidget(Self as ScriptObject, BloatExposure_Widget, fX, fY, abLoadNow = True, abAutoLoad = True)
@@ -2853,13 +2860,13 @@ Function Debug_ShowLowestSliderPercentage()
     ;     hud.SetWidgetScale(BloatExposure_Widget, 1.0, 1.0)
     ;     hud.SetWidgetOpacity(BloatExposure_Widget, 1.0)
 	; Else
-	; 	Note("HUDFramework is not installed!")
+	; 	LenARM_Debug.Note("HUDFramework is not installed!")
 	; EndIf
 
 	float lowestPercentage = GetLowestSliderPercentage()
 
 	;TODO ik dump TotalRads hier ff als test in
-	MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
+	LenARM_Debug.MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
 
@@ -2869,10 +2876,10 @@ EndFunction
 ; This function is called by HUDFramework when the widget is loaded.
 Function HUD_WidgetLoaded(string asWidget)
     If (asWidget == BloatExposure_Widget)
-		; Note("Widget registered!")
+		; LenARM_Debug.Note("Widget registered!")
 
 		float[] huh = hud.GetWidgetPosition(BloatExposure_Widget)
-		Note("Widget registered!" + huh[0] + "; " + huh[1])
+		LenARM_Debug.Note("Widget registered!" + huh[0] + "; " + huh[1])
 
 
 		; hud.SetWidgetScale(BloatExposure_Widget, 1, 1, False)
@@ -2890,8 +2897,8 @@ EndFunction
 Function UpdateHUD()
 	int hudValue = (PlayerRef.GetValue(avBloating) as int)
 	
-	; Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget) + "; bloat: " + hudValue)
-	Note("bloat: " + hudValue)
+	; LenARM_Debug.Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget) + "; bloat: " + hudValue)
+	LenARM_Debug.Note("bloat: " + hudValue)
 
 	hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
 
@@ -2905,21 +2912,21 @@ EndFunction
 ; Debug function to check which slots the current equipped clothes / armor occupies
 ; ------------------------
 Function ShowEquippedClothes()
-	TechnicalNote("ShowEquippedClothes")
+	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
 	string[] items = new string[0]
 	int slot = 0
 	While (slot < 62)
 		Actor:WornItem item = PlayerRef.GetWornItem(slot)
 		If (item != None && item.item != None)
 			items.Add(slot + ": " + item.item.GetName())
-			; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+			; LenARM_Debug.Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
 		Else
-			; Log("  Slot " + slot + " is empty")
+			; LenARM_Debug.Log("  Slot " + slot + " is empty")
 		EndIf
 		slot += 1
 	EndWhile
 
-	MessageBox(LL_FourPlay.StringJoin(items, "\n"))
+	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
 Function GiveIrradiatedBlood()
@@ -2942,21 +2949,21 @@ EndFunction
 ; Helper functions for splitting strings
 ; ------------------------
 string[] Function StringSplit(string target, string delimiter)
-	;Log("splitting '" + target + "' with '" + delimiter + "'")
+	;LenARM_Debug.Log("splitting '" + target + "' with '" + delimiter + "'")
 	string[] result = new string[0]
 	string current = target
 	int idx = LL_Fourplay.StringFind(current, delimiter)
-	;Log("split idx: " + idx + " current: '" + current + "'")
+	;LenARM_Debug.Log("split idx: " + idx + " current: '" + current + "'")
 	While (idx > -1 && current)
 		result.Add(LL_Fourplay.StringSubstring(current, 0, idx))
 		current = LL_Fourplay.StringSubstring(current, idx+1)
 		idx = LL_Fourplay.StringFind(current, delimiter)
-		;Log("split idx: " + idx + " current: '" + current + "'")
+		;LenARM_Debug.Log("split idx: " + idx + " current: '" + current + "'")
 	EndWhile
 	If (current)
 		result.Add(current)
 	EndIf
-	;Log("split result: " + result)
+	;LenARM_Debug.Log("split result: " + result)
 	return result
 EndFunction
 
@@ -2964,34 +2971,6 @@ float Function Clamp(float value, float limit1, float limit2)
 	float lower = Math.Min(limit1, limit2)
 	float upper = Math.Max(limit1, limit2)
 	return Math.Min(Math.Max(value, lower), upper)
-EndFunction
-
-; ------------------------
-; Debug helpers for writing to Papyrus logs and displaying info messages ingame
-; ------------------------
-
-; show a big fat message box in the center of the page, which the player has to click away
-Function MessageBox(string msg)
-	Debug.MessageBox(msg)
-	Debug.Trace("[LenARM] " + msg)
-	Log(msg)
-EndFunction
-
-; show a message in the top-left
-Function Note(string msg)
-	Debug.Notification(msg)
-	Log(msg)
-EndFunction
-
-; same as Note only the message gets prefixed with [LenARM]
-Function TechnicalNote(string msg)
-	Debug.Notification("[LenARM] " + msg)
-	Log(msg)
-EndFunction
-
-; write a line to the log
-Function Log(string msg)
-	Debug.Trace("[LenARM] " + msg)
 EndFunction
 
 
@@ -3039,7 +3018,7 @@ EndGroup
 ; MCM SliderSet functions / struct
 ; ------------------------
 SliderSet Function SliderSet_Constructor(int idxSet)
-	;Log("SliderSet_Constructor: " + idxSet)
+	;LenARM_Debug.Log("SliderSet_Constructor: " + idxSet)
 	SliderSet sliderSet = new SliderSet
 	sliderSet.SliderName = MCM.GetModSettingString("LenA_RadMorphing", "sSliderName:Slider" + idxSet)
 	If (sliderSet.SliderName != "")
@@ -3068,7 +3047,7 @@ SliderSet Function SliderSet_Constructor(int idxSet)
 		sliderSet.IsUsed = false
 	EndIf
 
-	;Log("  " + set)
+	;LenARM_Debug.Log("  " + set)
 	return sliderSet
 EndFunction
 
