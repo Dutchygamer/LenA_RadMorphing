@@ -14,8 +14,8 @@ Group Properties
 	; Perk Property LenARM_BloatSuitPerk Auto Const
 	; Perk Property LenARM_KitanaMaskPerk Auto Const
 
-	Perk Property PoppingExpertPerk1 Auto
-	Perk Property PoppingExpertPerk2 Auto
+	; Perk Property PoppingExpertPerk1 Auto
+	; Perk Property PoppingExpertPerk2 Auto
 	
 EndGroup
 
@@ -93,6 +93,14 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 	
 	; fallback in case we actor has no radsPerk
 	return 0
+EndFunction
+
+
+Function ApplyRadsPerk(Actor akTarget, int perkLevel)
+	akTarget.AddPerk(RadsPerkArray[perkLevel])	
+EndFunction
+Function ApplyRadsPerkMax(Actor akTarget)
+	akTarget.AddPerk(RadsPerkFull)	
 EndFunction
 
 

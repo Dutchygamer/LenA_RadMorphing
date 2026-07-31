@@ -1,8 +1,53 @@
 Scriptname LenARM:LenARM_BloatNPC extends Quest
 
+; ------------------------
+; ------------------------
+; Quest input params
+
+Group LenARM
+	LenARM_Perks Property LenARM_Perks Auto Const
+	LenARM_Util Property LenARM_Util Auto Const
+	LenARM_Debug Property LenARM_Debug Auto Const
+	LenARM_SFX Property LenARM_SFX Auto Const
+	LenARM_SliderSet Property LenARM_SliderSet Auto Const
+EndGroup
+
+
+Group Properties
+	Actor Property PlayerRef Auto Const
+	
+	;TODO jij wordt nooit geset?
+	Keyword Property kwMorph Auto Const
+
+	Keyword property ActorTypeBloatingAgent auto
+	; Keyword property ArmorTypeBloatingSuit auto
+	
+	Form Property BloatNPCPopExplosion Auto
+	Form Property BloatGrenadeExplosion Auto
+	; ; [OBSOLETE]
+	; Form Property BloatingSuit Auto
+	; Form Property KitanaMask Auto
+    
+	Ammo Property ThirstZapperBloatAmmo Auto Const
+	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const		
+EndGroup
+
+
+; ------------------------
+; ------------------------
+; variables
 
 int maxNPCBloatStages = 5
 int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
+
+;TODO ergens vandaan krijgen
+int PopStates = 5
+;TODO ergens vandaan krijgen
+int PopStripState = 1
+
+; ------------------------
+; ------------------------
+; Enums
 
 Group EnumNPCBloatType
 	int Property EBloatTypeNormal = 1 Auto Const
@@ -11,39 +56,51 @@ Group EnumNPCBloatType
 	int Property EBloatTypeLegendary = 4 Auto Const
 EndGroup
 
-; ------------------------
-; Register the .esp Quest properties so we can act on them
-; ------------------------
-Group LenARM
-	LenARM_Perks Property P Auto Const
-	LenARM_Util Property Util Auto Const
-	LenARM_SFX Property SFX Auto Const
+Group EnumSex
+	int Property ESexMale = 0 Auto Const
+	int Property ESexFemale = 1 Auto Const
 EndGroup
 
 
-Group Properties
-	Actor Property PlayerRef Auto Const
-
-	Keyword property ActorTypeBloatingAgent auto
-	Keyword property ArmorTypeBloatingSuit auto
-	
-	Form Property BloatNPCPopExplosion Auto
-	Form Property BloatGrenadeExplosion Auto
-	; [OBSOLETE]
-	Form Property BloatingSuit Auto
-	Form Property KitanaMask Auto
-    
-	Ammo Property ThirstZapperBloatAmmo Auto Const
-	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const		
-EndGroup
-
-
-
-
 ; ------------------------
+; ------------------------
+; methods
+
+; For some reason doc comments from the first function after variable declarations are not picked up.
+Function DummyFunction()
+EndFunction
+
+
+
+;
+; Bloats @akTarget with @toAdd stages. Minor chance of messy bloat-popping
+;
+Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeNormal)
+EndFunction
+;
+; Bloats @akTarget with @toAdd stages. Major chance of messy bloat-popping
+;
+Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeConcentrated)
+EndFunction
+;
+; Bloats @akTarget with @toAdd stages. 100% chance of messy bloat-popping
+;
+Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeMessy)
+EndFunction
+;
+; Bloats @akTarget with @toAdd stages. 100% of legendary bloat-popping
+;
+Function BloatActorLegendary(Actor akTarget, int currentBloatStage, int toAdd)
+	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeLegendary)
+EndFunction
+
+; 
 ; Increase all sliders by a percentage multiplied with the input for the given actor.
 ; Intended for use on NPCs.
-; ------------------------
+; 
 Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, int bloatType)
 	; don't bloat actor that is dead
 	if (akTarget.IsDead())
@@ -70,7 +127,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary or a HalluciGen Agent NPC)
 	if (toAdd == -1 && bloatType != EBloatTypeLegendary && !akTarget.HasKeyword(ActorTypeBloatingAgent))
-		Util.ParalyzeActor(akTarget)
+		LenARM_Util.ParalyzeActor(akTarget)
 	endIf
 
 	; when bloatType is normal or concentrated keep bloating the actor until the bloatStage is equal to target
@@ -101,20 +158,6 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 	endif
 EndFunction
 
-; public endpoints used in the Magic Effect scripts
-Function BloatActor(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeNormal)
-EndFunction
-Function BloatActorConcentrated(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeConcentrated)
-EndFunction
-Function BloatActorMessy(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeMessy)
-EndFunction
-Function BloatActorLegendary(Actor akTarget, int currentBloatStage, int toAdd)
-	BloatActor_Internal(akTarget, currentBloatStage, toAdd, EBloatTypeLegendary)
-EndFunction
-
 
 Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPercentage, int bloatType)
 	; perkLevel is equal to the bloat state 
@@ -126,19 +169,21 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
     EndIf
 
 	; compare current akTarget radsPerk level vs the new level, change perks if needed
-	if (GetCurrentRadsPerkLevel(akTarget) != perkLevel)
-		P.ClearOldRadsPerks(akTarget, perkLevel)
+	if (LenARM_Perks.GetCurrentRadsPerkLevel(akTarget) != perkLevel)
+		LenARM_Perks.ClearOldRadsPerks(akTarget, perkLevel)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
-			akTarget.AddPerk(RadsPerkArray[perkLevel])		
+			LenARM_Perks.ApplyRadsPerk(akTarget, perkLevel)
+			; akTarget.AddPerk(RadsPerkArray[perkLevel])		
 		Else
-			akTarget.AddPerk(RadsPerkFull)			
+			LenARM_Perks.ApplyRadsPerkMax(akTarget)
+			; akTarget.AddPerk(RadsPerkFull)			
 		endif
 	endif
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	; float randomFloat = GetRandomDelay(2,3)
-	float randomFloat = GetRandomDelay(1,2)
+	; float randomFloat = LenARM_Util.GetRandomDelay(2,3)
+	float randomFloat = LenARM_Util.GetRandomDelay(1,2)
 	Utility.Wait(randomFloat)
 
 	; only apply initial morphs if we are not going to pop
@@ -149,9 +194,9 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
 
 	; play the matching sound
 	if (perkLevel < maxNPCBloatStages)
-		SFX.ActorPlaySound(akTarget, SFX.EMorphSound_High)
+		LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_High)
 	elseif (perkLevel == maxNPCBloatStages && nextBloatStage == maxNPCBloatStages)
-		SFX.ActorPlaySound(akTarget, SFX.EMorphSound_Full)
+		LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
 	; pop the actor 
 	elseif (perkLevel == maxNPCBloatStages && nextBloatStage > maxNPCBloatStages)		
 		Utility.Wait(randomFloat)
@@ -160,8 +205,9 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
 EndFunction
 
 Function BloatPopActor(Actor akTarget, int bloatType)
-	; pause self-bloat timer
-	CancelTimer(ETimerKitanaMask)
+	;TODO main ref?
+	; ; pause self-bloat timer
+	; CancelTimer(ETimerKitanaMask)
 
 	bool isConcentrated = bloatType == EBloatTypeConcentrated
 	bool isForcedMessy = bloatType == EBloatTypeMessy
@@ -173,7 +219,8 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	; when configured to always messy pop NPCs the permanent pop chance is 100%
 	; this overrules any other options
-	if (ForceNPCBloatPopping)
+	;TODO main ref?
+	if (1 == 0); ForceNPCBloatPopping)
 		messyPopChance = 1
 	; when hit by concentrated shot the permanent pop chance is 50%
 	elseif (isConcentrated)
@@ -194,6 +241,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	; - target is hostile to player
 	; - target is not essential (protected is fine)
 	; - random die roll is below our messyPopChance
+	
 	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat() <= messyPopChance)
 	; messy popping essential NPCs will lead to some very weird things hence we don't support that
 	; if you want to messy pop an essential NPC (ie that Hubologist cook from Nuka World) first use console command `setessential <baseid> 0` on them
@@ -227,9 +275,9 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	endif
 
 	; paralyze actor first if not legendary
-	SFX.ActorPlaySound(akTarget, SFX.EMorphSound_Full)
+	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
 	if (!isLegendary)
-		Util.ParalyzeActor(akTarget)
+		LenARM_Util.ParalyzeActor(akTarget)
 	endif
 	
 	; add bloating ammo to actor's inventory
@@ -240,7 +288,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	float totalPopMultiplier = 0
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	float randomFloat = GetRandomDelay(1,2) ;(2,3)
+	float randomFloat = LenARM_Util.GetRandomDelay(1,2) ;(2,3)
 	Utility.Wait(randomFloat)
 
 	int popStatesToUse = PopStates
@@ -293,10 +341,10 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		BodyGen.UpdateMorphs(akTarget)
 		; play normal swell sound when bloating normally
 		if (currentPopState < PopStates && !playAltMorphSound)
-			SFX.ActorPlaySound(akTarget, SFX.EMorphSound_Swell)
+			LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Swell)
 		; when we are bloating beyond normal play the alt swell sound 
 		else
-			SFX.ActorPlaySound(akTarget, SFX.EMorphSound_SwellPop)
+			LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_SwellPop)
 		endif
 
 		; add bloating ammo to actor's inventory
@@ -346,9 +394,11 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	endif
 EndFunction
 
+; 
 ; messy pop kills actor and places a grenade explosion
+;
 Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForcedMessy, bool isLegendary)
-	SFX.ActorPlaySoundAndWait(akTarget, SFX.EPrePopMessySound)
+	LenARM_SFX.ActorPlaySoundAndWait(akTarget, LenARM_SFX.EPrePopMessySound)
 
 	; add some concentrated bloating ammo to actor's inventory when they've been allowed to pop
 	; reduce by 3 (capped to min 1) to not give too many freebies
@@ -360,10 +410,10 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	akTarget.AddItem(ThirstZapperBloatAmmo_Concentrated, concMilkToAdd, abSilent = true)	
 
 	; clear rad perks so we don't keep ambient noise
-	P.ClearAllRadsPerks(akTarget)
+	LenARM_Perks.ClearAllRadsPerks(akTarget)
 
 	;TODO waarom zit dit niet op de Explosion?
-	SFX.ActorPlaySound(akTarget, SFX.EPopMessySound)
+	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EPopMessySound)
 	; spread the joy to nearby NPCs
 	akTarget.PlaceAtMe(BloatGrenadeExplosion)	
 
@@ -379,65 +429,72 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; unparalyze the actor
 	; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
 	if (!isLegendary)
-		Util.UnParalyzeActor(akTarget)
+		LenARM_Util.UnParalyzeActor(akTarget)
 	endif
 	
-	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
+	;TODO main ref?
+	; float distanceToPlayer = PlayerRef.GetDistance(akTarget)
 
-	; bloat player and give temp buff if kitana mask is equipped and within range
-	; this takes priority over having the bloating suit equipped as well
-	if (hasKitanaMaskEquipped)
-		; always bloat player independent of distance
-		int bloatingAmount = (milkToAdd * 20)
-		KitanaMaskSelfMorph_Kill(bloatingAmount)
+	; ; bloat player and give temp buff if kitana mask is equipped and within range
+	; ; this takes priority over having the bloating suit equipped as well
+	; if (hasKitanaMaskEquipped)
+	; 	; always bloat player independent of distance
+	; 	int bloatingAmount = (milkToAdd * 20)
+	; 	KitanaMaskSelfMorph_Kill(bloatingAmount)
 
-		if (distanceToPlayer < kitanaMaskPopDetectRadius)
-			SFX.ActorPlaySound(PlayerRef, SFX.ENPCPopComment)
-			PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
-		endif
-	; give player a temp buff if bloating suit is equipped and within range
-	elseif (hasBloatingSuitEquipped && distanceToPlayer < bloatingSuitPopDetectRadius)
-		SFX.ActorPlaySound(PlayerRef, SFX.ENPCPopComment)
-		PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
-	endif
+	; 	if (distanceToPlayer < kitanaMaskPopDetectRadius)
+	; 		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
+	; 		PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
+	; 	endif
+	; ; give player a temp buff if bloating suit is equipped and within range
+	; elseif (hasBloatingSuitEquipped && distanceToPlayer < bloatingSuitPopDetectRadius)
+	; 	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
+	; 	PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+	; endif
 EndFunction
 
+; 
 ; normal pop keeps actor paralyzed for a bit and places a normal explosion
+;
 Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
-	SFX.ActorPlaySoundAndWait(akTarget, SFX.EPrePopSound)
+	LenARM_SFX.ActorPlaySoundAndWait(akTarget, LenARM_SFX.EPrePopSound)
 
 	; add some more bloating ammo to actor's inventory when they've been allowed to pop
 	akTarget.AddItem(ThirstZapperBloatAmmo, milkToAdd, abSilent = true)
 
-	SFX.ActorPlaySound(akTarget, SFX.EPopSound)
+	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EPopSound)
 	; spread the joy to nearby NPCs
 	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
 
 	; reset all the morphs back to 0
 	BodyGen.UpdateMorphs(akTarget)
 
-	ClearAllRadsPerks(akTarget)
-	akTarget.EquipItem(PoppedPotion, abSilent = true)
+	LenARM_Perks.ClearAllRadsPerks(akTarget)
+	;TODO waarom dit?
+	; akTarget.EquipItem(PoppedPotion, abSilent = true)
 	
-	; restart self-morph timer when requirements not yet met
-	if (hasKitanaMaskEquipped && (PlayerRef.HasPerk(PoppingExpertPerk1) == false))
-		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
-	endif
+	;TODO main ref?
+	; ; restart self-morph timer when requirements not yet met
+	; if (hasKitanaMaskEquipped && (PlayerRef.HasPerk(PoppingExpertPerk1) == false))
+	; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+	; endif
 EndFunction
 
 
 Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)	
 	int idxSet = 0
 
+	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+
 	; apply it to all morphs from slidersets which aren't excluded
-	While (idxSet < SliderSets.Length)
-		SliderSet sliderSet = SliderSets[idxSet]		
+	While (idxSet < currentSliderSets.Length)
+		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]		
 		If (sliderSet.NumberOfSliderNames > 0);  && (!shouldPop || (shouldPop && !sliderSet.ExcludeFromPopping)))
-			int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
+			int sliderNameOffset = LenARM_SliderSet.SliderSet_GetSliderNameOffset(idxSet)
 			int idxSlider = sliderNameOffset
 			int sex = akTarget.GetLeveledActorBase().GetSex()
 			While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
-				string slider = SliderNames[idxSlider]
+				string slider = LenARM_SliderSet.GetSliderName(idxSlider)
 
 				float toApplyPercentage = morphPercentage
 				;TODO for now hardcoded to half these sliders as these look wonky when large morphed
@@ -465,5 +522,53 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 			EndWhile
 		EndIf
 		idxSet += 1
+	EndWhile
+EndFunction
+
+
+
+;TODO hernoem naar UnequipAll_NPC
+Function UnequipAllNPC(Actor akTarget)
+	; don't bother unequipping if akTarget is in power armor
+	If (akTarget.IsInPowerArmor())
+		return
+	EndIf
+
+	bool found = false
+	int idxSlot = 0
+
+	; these are all the slots we want to unequip
+	int[] allSlots = new int[0]	
+	allSlots.Add(3)  ; body
+	allSlots.Add(11) ; chest armor
+	allSlots.Add(12) ; arm armor
+	allSlots.Add(13) ; arm armor
+	allSlots.Add(14) ; leg armor
+	allSlots.Add(15) ; leg armor
+
+	; check for each slot
+	While (idxSlot < allSlots.Length)
+		int slot = allSlots[idxSlot]
+		
+		Actor:WornItem item = akTarget.GetWornItem(slot)
+		
+		; check if item in the slot is not an actor or the pipboy
+		bool isArmor = LenARM_Util.IsItemArmor(item)
+
+		; when item is an armor and we can unequip it, do so
+		If (isArmor)
+			; LenARM_Debug.Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
+
+			akTarget.UnequipItem(item.item, false, true)
+			
+			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
+			; play the strip sound if available
+			If (!found && !akTarget.IsEquipped(item.item))
+				LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EDropClothesSound)
+				found = true
+			EndIf
+		EndIf
+		
+		idxSlot += 1	
 	EndWhile
 EndFunction

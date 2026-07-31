@@ -74,7 +74,7 @@ EndFunction
 ; Get the list of all SliderSets.
 ;
 SliderSet[] Function GetAllSliderSets()
-	LenARM_Debug.TechnicalNote("GetAllSliderSets")
+	; LenARM_Debug.TechnicalNote("GetAllSliderSets")
 	return SliderSets
 EndFunction
 
@@ -90,6 +90,13 @@ EndFunction
 ;
 string[] Function GetAllSliderNames()
 	return SliderNames
+EndFunction
+
+;
+; Get SliderNames with id @idxSlider
+;
+string Function GetSliderName(int idxSlider)
+	return SliderNames[idxSlider]
 EndFunction
 
 
@@ -178,7 +185,6 @@ Function LoadSliderSets(int numberOfSliderSets, Actor playerRef)
 	EndWhile
 EndFunction
 
-
 ; 
 ; Setup a new SliderSet from MCM with id @idxSet
 ; 
@@ -216,6 +222,7 @@ SliderSet Function SliderSet_Constructor(int idxSet)
 	return sliderSet
 EndFunction
 
+
 ; 
 ; Get the slider name offset for SliderSet id @idxSet
 ; 
@@ -228,7 +235,6 @@ int Function SliderSet_GetSliderNameOffset(int idxSet)
 	EndWhile
 	return offset
 EndFunction
-
 ; 
 ; Get the unequip slot offset for SliderSet id @idxSet
 ; 
@@ -258,7 +264,6 @@ Function ResetSliderSetMorphs()
 	EndWhile
 EndFunction
 
-
 ;
 ; Reset stored variables
 ;
@@ -272,55 +277,86 @@ EndFunction
 
 
 
-; ========================================================
-; ========================================================
-; BLOCK
-; ========================================================
-; ========================================================
+
+
+;TODO voor nu werken deze zoals eerst; kmoet al die bool (en float) vars erin hangen samen met de enum, en in de configs hangen
+bool Function GetOnlyDoctorCanReset(LenARM_SliderSet:SliderSet sliderSet)
+	; If (OverrideOnlyDoctorCanReset != EOverrideBoolNoOverride)
+	; 	return OverrideOnlyDoctorCanReset == EOverrideBoolTrue
+	; Else
+		return sliderSet.OnlyDoctorCanReset
+	; EndIf
+EndFunction
+
+bool Function GetIsAdditive(LenARM_SliderSet:SliderSet sliderSet)
+	; If (OverrideIsAdditive != EOverrideBoolNoOverride)
+	; 	return OverrideIsAdditive == EOverrideBoolTrue
+	; Else
+		return sliderSet.IsAdditive
+	; EndIf
+EndFunction
+
+bool Function GetHasAdditiveLimit(LenARM_SliderSet:SliderSet sliderSet)
+	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
+	; 	return OverrideHasAdditiveLimit == EOverrideBoolTrue
+	; Else
+		return sliderSet.HasAdditiveLimit
+	; EndIf
+EndFunction
+
+float Function GetAdditiveLimit(LenARM_SliderSet:SliderSet sliderSet)
+	; If (OverrideHasAdditiveLimit != EOverrideBoolNoOverride)
+	; 	return OverrideAdditiveLimit
+	; Else
+		return sliderSet.AdditiveLimit
+	; EndIf
+EndFunction
 
 
 
-; float Function GetLowestSliderPercentage()
-; 	int idxSet = 0
-; 	float lowestPercentage = 0
+;
+; Debug function to show the lowest SliderSet's current value
+;
+float Function Debug_GetLowestSliderPercentage()
+	int idxSet = 0
+	float lowestPercentage = 0
 
-; 	; loop through the slidersets
-; 	While (idxSet < SliderSets.Length)
-; 		SliderSet sliderSet = SliderSets[idxSet]
+	; loop through the slidersets
+	While (idxSet < SliderSets.Length)
+		SliderSet sliderSet = SliderSets[idxSet]
 		
-; 		; only check the slidersets that have actual sliders
-; 		If (sliderSet.NumberOfSliderNames > 0)
-; 			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
-; 			float sliderPercentage = sliderSet.CurrentMorph
-; 			If (GetIsAdditive(sliderSet))
-; 				sliderPercentage += sliderSet.BaseMorph
-; 			EndIf
+		; only check the slidersets that have actual sliders
+		If (sliderSet.NumberOfSliderNames > 0)
+			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
+			float sliderPercentage = sliderSet.CurrentMorph
+			If (GetIsAdditive(sliderSet))
+				sliderPercentage += sliderSet.BaseMorph
+			EndIf
 
-; 			; limit the percentage to 100% if we get irradiated when already at max
-; 			if (sliderPercentage > 1)
-; 				sliderPercentage = 1
-; 			endIf
+			; limit the percentage to 100% if we get irradiated when already at max
+			if (sliderPercentage > 1)
+				sliderPercentage = 1
+			endIf
 
-; 			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
-; 			if (lowestPercentage == 0)
-; 				lowestPercentage = sliderPercentage
-; 			else
-; 				lowestPercentage = Math.Min(sliderPercentage, lowestPercentage)
-; 			endif
-; 		endif
+			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
+			if (lowestPercentage == 0)
+				lowestPercentage = sliderPercentage
+			else
+				lowestPercentage = Math.Min(sliderPercentage, lowestPercentage)
+			endif
+		endif
 
-; 		idxSet += 1
-; 	EndWhile	
+		idxSet += 1
+	EndWhile	
 
-; 	return lowestPercentage
-; EndFunction
+	return lowestPercentage
+EndFunction
 
-
-; ; ------------------------
+; ; 
 ; ; Calculate the morph percentage for the given sliderSet based on the given rads and the slider's min / max thresholds
-; ; ------------------------
+; ; 
 ; float Function CalculateMorphPercentage(float newRads, SliderSet sliderSet)
-; 	float morphPercentage
+; 	float morphPercentage = 0.0
 
 ; 	; calculate the amount of rads we see as the max (by default 1000, modified by a multiplier)
 ; 	float maxRads = 1.0 * MaxRadiationMultiplier
@@ -341,6 +377,8 @@ EndFunction
 
 ; 	return morphPercentage
 ; EndFunction
+
+
 
 ; ; ------------------------
 ; ; Calculate the morph for the given sliderSet based on the given morph percentage and target morph

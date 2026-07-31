@@ -1,6 +1,12 @@
 ScriptName LenARM:LenARM_NPCBloatScript extends ActiveMagicEffect
 
+;[OBSOLETE]
 LenARM_Main Property LenARM_Main Auto
+
+LenARM_BloatNPC Property LenARM_BloatNPC Auto
+LenARM_Util Property LenARM_Util Auto
+; LenARM:LenARM_BloatNPC
+
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
 actorValue property NPCConcentratedBloatCount auto
@@ -24,7 +30,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
     victim = akTarget
 
     ; for now only work on females
-    if (sex == LenARM_Main.ESexFemale)
+    if (sex == LenARM_BloatNPC.ESexFemale)
         RegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
         
         ; when concentrated or messy always overwrite stageToAdd to -1 (which gets intrepeted as 'bloat to max')
@@ -48,14 +54,14 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         if (IsConcentrated)
             ; when not popped from two concentrated hits in a row, the third one will make it a messy pop
             if (concentratedBloatCount >= 2)
-                LenARM_Main.BloatActorMessy(akTarget, currentBloatStage, StageToAdd)
+                LenARM_BloatNPC.BloatActorMessy(akTarget, currentBloatStage, StageToAdd)
             else
-                LenARM_Main.BloatActorConcentrated(akTarget, currentBloatStage, StageToAdd)
+                LenARM_BloatNPC.BloatActorConcentrated(akTarget, currentBloatStage, StageToAdd)
             endif            
         elseif (IsMessy)
-            LenARM_Main.BloatActorMessy(akTarget, currentBloatStage, StageToAdd)
+            LenARM_BloatNPC.BloatActorMessy(akTarget, currentBloatStage, StageToAdd)
         else
-            LenARM_Main.BloatActor(akTarget, currentBloatStage, StageToAdd)
+            LenARM_BloatNPC.BloatActor(akTarget, currentBloatStage, StageToAdd)
         endif
 
         ; if not dead by now (ie messy popped), do some additional actions
@@ -74,7 +80,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
                 akTarget.SetValue(NPCBloatImmunity, 0)
                 ; unparalyze the npc after a bit, but do leave them open for renewed bloating
                 Utility.Wait(9)
-                LenARM_Main.UnParalyzeActor(akTarget)
+                LenARM_Util.UnParalyzeActor(akTarget)
             ; else take away our immunity directly
             else
                 akTarget.SetValue(NPCBloatImmunity, 0)
@@ -115,9 +121,10 @@ Function ResetActor(Actor akTarget, bool shouldDispel)
 	; LenARM_Main.TechnicalNote("reset!")
 
     ; don't stay paralyzed
-    LenARM_Main.UnParalyzeActor(akTarget)
-    ; clear overlays
-    LenARM_Main.ClearAllRadsPerks(akTarget)    
+    LenARM_Util.UnParalyzeActor(akTarget)
+    ;TODO main ref?
+    ; ; clear overlays
+    ; LenARM_Main.ClearAllRadsPerks(akTarget)    
     ; reset concentrated bloated counter
     akTarget.SetValue(NPCConcentratedBloatCount, 0)
     ; reset bloating immunity
