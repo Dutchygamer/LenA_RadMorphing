@@ -10,6 +10,7 @@ Group LenARM
 	LenARM_Debug Property LenARM_Debug Auto Const
 	LenARM_SFX Property LenARM_SFX Auto Const
 	LenARM_SliderSet Property LenARM_SliderSet Auto Const
+	LenARM:LenARM_Main Property LenARM_Main Auto Const
 EndGroup
 
 
@@ -432,9 +433,10 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 		LenARM_Util.UnParalyzeActor(akTarget)
 	endif
 	
-	;TODO main ref?
-	; float distanceToPlayer = PlayerRef.GetDistance(akTarget)
+	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
+	LenARM_Main.KitanaMask_Kill(distanceToPlayer, milkToAdd)
 
+	;TODO main ref?
 	; ; bloat player and give temp buff if kitana mask is equipped and within range
 	; ; this takes priority over having the bloating suit equipped as well
 	; if (hasKitanaMaskEquipped)

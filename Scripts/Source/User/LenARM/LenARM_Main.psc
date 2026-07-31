@@ -137,6 +137,7 @@ string Version
 Group Properties
 	Actor Property PlayerRef Auto Const
 
+	;TODO jij wordt nooit geset?
 	Keyword Property kwMorph Auto Const
 
 	ActorValue Property Rads Auto Const
@@ -1143,7 +1144,8 @@ EndFunction
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
 	float morphBonus = 0.0
 	
-	string matchingSlider = SliderNames[idxSlider]
+	; string matchingSlider = SliderNames[idxSlider]
+	string matchingSlider = LenARM_SliderSet.GetSliderName(idxSlider)
 
 	; player is suffering from experimental radpurge failure
 	if (isRadPurgeFailure)		
@@ -2477,6 +2479,28 @@ Function KitanaMaskSelfMorph_Unequip()
 	; force update morphs on next run
 	forceUpdate = true
 EndFunction
+
+
+Function KitanaMask_Kill(float distanceToPlayer, int milkToAdd)
+	; bloat player and give temp buff if kitana mask is equipped and within range
+	; this takes priority over having the bloating suit equipped as well
+	if (hasKitanaMaskEquipped)
+		; always bloat player independent of distance
+		int bloatingAmount = (milkToAdd * 20)
+		KitanaMaskSelfMorph_Kill(bloatingAmount)
+
+		if (distanceToPlayer < kitanaMaskPopDetectRadius)
+			LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
+			PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
+		endif
+	; give player a temp buff if bloating suit is equipped and within range
+	elseif (hasBloatingSuitEquipped && distanceToPlayer < bloatingSuitPopDetectRadius)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
+		PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
+	endif
+EndFunction
+
+
 
 Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
 	; cap at 150 bloating max
