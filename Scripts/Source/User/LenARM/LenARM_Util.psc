@@ -16,7 +16,6 @@ EndGroup
 ; ------------------------
 ; variables
 
-;TODO init me, zit nu in startup van main script
 FormList DD_FL_All
 
 
@@ -66,6 +65,12 @@ EndFunction
 ;
 float Function GetRandomDelay(int min = 2, int max = 6)
 	return (Utility.RandomInt(min,max) * 0.1) as float
+EndFunction
+
+
+
+Function Init_DD_FL_All(FormList value)
+	DD_FL_All = value
 EndFunction
 
 

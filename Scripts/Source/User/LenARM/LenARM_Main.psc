@@ -216,6 +216,7 @@ Group Properties
 	Perk Property PoppingExpertPerk1 Auto
 	Perk Property PoppingExpertPerk2 Auto
 	
+	; [OBSOLETE]
 	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
 	Potion Property GlowingOneBlood Auto Const
@@ -256,7 +257,7 @@ EndGroup
 
 Group LenARM
 	; LenARM_Perks Property P Auto Const
-	; LenARM_Util Property LenARM_Util Auto
+	LenARM_Util Property LenARM_Util Auto
 	LenARM_Debug Property LenARM_Debug Auto
 	LenARM_SFX Property LenARM_SFX Auto Const
 EndGroup
@@ -305,7 +306,8 @@ Function PerformUpdateIfNecessary()
 EndFunction
 
 string Function GetVersion()
-	return "DG 0.8.0.0"; 2024-09-06 10:10 UTC+2
+	; version bump to force restart
+	return "DG 0.9.0.0"; 2024-09-06 10:10 UTC+2
 EndFunction
 
 ; ------------------------
@@ -545,7 +547,9 @@ Function Startup()
 		; check for DD
 		If (Game.IsPluginInstalled("Devious Devices.esm"))
 			LenARM_Debug.Log("found DD")
-			DD_FL_All = Game.getFormFromFile(0x0905E95B, "Devious Devices.esm") as FormList
+			
+			FormList deviousDevices = Game.getFormFromFile(0x0905E95B, "Devious Devices.esm") as FormList
+			LenARM_Util.Init_DD_FL_All(deviousDevices)
 		EndIf
 
 		; start listening for equipping items
@@ -787,7 +791,7 @@ Function LoadSliderSets()
 		; populate flattened arrays
 		int sliderNameOffset = SliderSet_GetSliderNameOffset(idxSet)
 		If (newSet.IsUsed)
-			string[] names = StringSplit(newSet.SliderName, "|")
+			string[] names = LenARM_Util.StringSplit(newSet.SliderName, "|")
 			int idxSlider = 0
 			While (idxSlider < newSet.NumberOfSliderNames)
 				float morph = BodyGen.GetMorph(playerRef, True, names[idxSlider], None)
@@ -811,7 +815,7 @@ Function LoadSliderSets()
 
 		int unequipSlotOffset = SliderSet_GetUnequipSlotOffset(idxSet)
 		If (newSet.IsUsed && newSet.NumberOfUnequipSlots > 0)
-			string[] slots = StringSplit(newSet.UnequipSlot, "|")
+			string[] slots = LenARM_Util.StringSplit(newSet.UnequipSlot, "|")
 			int idxSlot = 0
 			While (idxSlot < newSet.NumberOfUnequipSlots)
 				int currentIndex = unequipSlotOffset + idxSlot
@@ -1480,7 +1484,7 @@ Function Pop()
 	; then paralyse player and then knock them out
 	; the order of first paralysing and then knocking out is important, lest you get odd glitches
 	if (PopShouldParalyze)
-		ParalyzeActor(PlayerRef)
+		LenARM_Util.ParalyzeActor(PlayerRef)
 	endif
 	Utility.Wait(0.7)
 
@@ -1531,7 +1535,7 @@ Function Pop()
 	if (PopShouldParalyze)
 		Utility.Wait(1.5)
 
-		UnParalyzeActor(PlayerRef)
+		LenARM_Util.UnParalyzeActor(PlayerRef)
 
 		;TODO make configurabel
 		;ReEquipAll()
@@ -1615,7 +1619,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 
 	; when actor should get bloated to popping, always paralyze first (unless legendary or a HalluciGen Agent NPC)
 	if (toAdd == -1 && bloatType != EBloatTypeLegendary && !akTarget.HasKeyword(ActorTypeBloatingAgent))
-		ParalyzeActor(akTarget)
+		LenARM_Util.ParalyzeActor(akTarget)
 	endIf
 
 	; when bloatType is normal or concentrated keep bloating the actor until the bloatStage is equal to target
@@ -1682,8 +1686,8 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
 	endif
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	; float randomFloat = GetRandomDelay(2,3)
-	float randomFloat = GetRandomDelay(1,2)
+	; float randomFloat = LenARM_Util.GetRandomDelay(2,3)
+	float randomFloat = LenARM_Util.GetRandomDelay(1,2)
 	Utility.Wait(randomFloat)
 
 	; only apply initial morphs if we are not going to pop
@@ -1774,7 +1778,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	; paralyze actor first if not legendary
 	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
 	if (!isLegendary)
-		ParalyzeActor(akTarget)
+		LenARM_Util.ParalyzeActor(akTarget)
 	endif
 	
 	; add bloating ammo to actor's inventory
@@ -1785,7 +1789,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	float totalPopMultiplier = 0
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	float randomFloat = GetRandomDelay(1,2) ;(2,3)
+	float randomFloat = LenARM_Util.GetRandomDelay(1,2) ;(2,3)
 	Utility.Wait(randomFloat)
 
 	int popStatesToUse = PopStates
@@ -1924,7 +1928,7 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; unparalyze the actor
 	; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
 	if (!isLegendary)
-		UnParalyzeActor(akTarget)
+		LenARM_Util.UnParalyzeActor(akTarget)
 	endif
 	
 	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
@@ -2014,15 +2018,6 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 EndFunction
 
 
-Function ParalyzeActor(Actor akTarget)
-	akTarget.SetValue(ParalysisAV, 1)
-	akTarget.PushActorAway(akTarget, 0.5)	
-EndFunction
-
-Function UnParalyzeActor(Actor akTarget)
-	akTarget.SetValue(ParalysisAV, 0)
-EndFunction
-
 ; ------------------------
 ; Check the total accumulated rads, and apply the matching radsPerk to the player.
 ; Returns true if player was wearing torso armor and switched from first perk to higher.
@@ -2066,7 +2061,7 @@ bool Function ApplyRadsPerk()
 			PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
-			if (HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
+			if (LenARM_Util.HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
 				;LenARM_Debug.Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
 				LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ERadPerkSwitchSound)
 				
@@ -2097,41 +2092,6 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 	
 	; fallback in case we actor has no radsPerk
 	return 0
-EndFunction
-
-bool Function HasTorsoEquipped(Actor akTarget)
-	; in PA always return true
-	If (akTarget.IsInPowerArmor())
-		return true
-	EndIf
-
-	bool found = false
-	int idxSlot = 0
-
-	; these are all the slots we want to unequip
-	int[] allSlots = new int[0]	
-	allSlots.Add(3)  ; body
-	allSlots.Add(11) ; chest armor
-
-	; check for each slot
-	While (idxSlot < allSlots.Length && !found)
-		int slot = allSlots[idxSlot]
-		
-		Actor:WornItem item = akTarget.GetWornItem(slot)
-		
-		; check if item in the slot is not an actor or the pipboy
-		; include bloating suit in this check
-		bool isArmor = IsItemArmor(item, true)
-
-		; when item is an armor mark as such
-		If (isArmor && !found)
-			found = true
-		EndIf
-		
-		idxSlot += 1	
-	EndWhile
-
-	return found
 EndFunction
 
 ; ------------------------
@@ -2220,14 +2180,14 @@ Function ClearAllBalloonsPerks(Actor akTarget)
     ClearOldBalloonsPerks(akTarget, -1)
 EndFunction
 
-float Function GetRandomDelay(int min = 2, int max = 6)
-	return (Utility.RandomInt(min,max) * 0.1) as float
-EndFunction
+
+;TODO onderstaand kan pas over naar Util als we de SliderSets kunnen inladen daaro
 
 ; ------------------------
 ; Check for each slider whether pieces of clothing / armor should get unequipped
 ; For more info on usage of the slots: https://www.creationkit.com/fallout4/index.php?title=ArmorAddon
 ; ------------------------
+;TODO hernoem naar UnequipSlots_Player
 Function UnequipSlots()
 	; don't bother unequipping if player is in power armor
 	If (PlayerRef.IsInPowerArmor())
@@ -2280,7 +2240,7 @@ Function UnequipSlots()
 					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
 					
 					; check if item in the slot is clothes / armor
-					bool isArmor = IsItemArmor(item)
+					bool isArmor = LenARM_Util.IsItemArmor(item)
 					; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
 					bool canUnequip = (item.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
 
@@ -2319,6 +2279,7 @@ Function TriggerUnequipSlots()
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
+;TODO hernoem naar UnequipAll_Player
 Function UnequipAll()
 	; don't bother unequipping if player is in power armor
 	If (PlayerRef.IsInPowerArmor())
@@ -2347,7 +2308,7 @@ Function UnequipAll()
 		Actor:WornItem item = PlayerRef.GetWornItem(slot)
 		
 		; check if item in the slot is not an actor or the pipboy
-		bool isArmor = IsItemArmor(item)
+		bool isArmor = LenARM_Util.IsItemArmor(item)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
@@ -2370,6 +2331,7 @@ Function UnequipAll()
 	; LenARM_Debug.Log("FINISHED UnequipAll")
 EndFunction
 
+;TODO hernoem naar UnequipAll_NPC
 Function UnequipAllNPC(Actor akTarget)
 	; don't bother unequipping if akTarget is in power armor
 	If (akTarget.IsInPowerArmor())
@@ -2395,7 +2357,7 @@ Function UnequipAllNPC(Actor akTarget)
 		Actor:WornItem item = akTarget.GetWornItem(slot)
 		
 		; check if item in the slot is not an actor or the pipboy
-		bool isArmor = IsItemArmor(item)
+		bool isArmor = LenARM_Util.IsItemArmor(item)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor)
@@ -2415,30 +2377,7 @@ Function UnequipAllNPC(Actor akTarget)
 	EndWhile
 EndFunction
 
-bool Function IsItemArmor(Actor:WornItem item, bool includeBloatingSuit = false)
-	;return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
-
-	; sanity check
-	if (!item.item)
-		return false
-	endif
-	; ignore milking armor when we should not include it
-	if (!includeBloatingSuit && item.item.HasKeyword(ArmorTypeBloatingSuit))
-		return false
-	endif
-	; ignore equipped actors and the pipboy
-	If (LL_Fourplay.StringSubstring(item.modelName, 0, 6) == "Actors" || LL_Fourplay.StringSubstring(item.modelName, 0, 6) == "Pipboy")
-		return false
-	EndIf
-	; ignore DD equipment
-	If (DD_FL_All != None && DD_FL_All.Find(item.item) > -1)
-		return false
-	EndIf
-
-	; anything else is armor
-	return true
-EndFunction
-
+;TODO hernoem naar ReEquipAll_Player
 Function ReEquipAll()
 	int idxItem = 0
 	While (idxItem < PoppingUnequippedItems.Length)
@@ -2881,26 +2820,26 @@ Function UpdateHUD()
 EndFunction
 
 
-; ------------------------
-; Debug function to check which slots the current equipped clothes / armor occupies
-; ------------------------
-Function ShowEquippedClothes()
-	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
-	string[] items = new string[0]
-	int slot = 0
-	While (slot < 62)
-		Actor:WornItem item = PlayerRef.GetWornItem(slot)
-		If (item != None && item.item != None)
-			items.Add(slot + ": " + item.item.GetName())
-			; LenARM_Debug.Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
-		Else
-			; LenARM_Debug.Log("  Slot " + slot + " is empty")
-		EndIf
-		slot += 1
-	EndWhile
+; ; ------------------------
+; ; Debug function to check which slots the current equipped clothes / armor occupies
+; ; ------------------------
+; Function ShowEquippedClothes()
+; 	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
+; 	string[] items = new string[0]
+; 	int slot = 0
+; 	While (slot < 62)
+; 		Actor:WornItem item = PlayerRef.GetWornItem(slot)
+; 		If (item != None && item.item != None)
+; 			items.Add(slot + ": " + item.item.GetName())
+; 			; LenARM_Debug.Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+; 		Else
+; 			; LenARM_Debug.Log("  Slot " + slot + " is empty")
+; 		EndIf
+; 		slot += 1
+; 	EndWhile
 
-	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
-EndFunction
+; 	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
+; EndFunction
 
 Function GiveIrradiatedBlood()
 	PlayerRef.AddItem(GlowingOneBlood, 50)
@@ -2916,34 +2855,6 @@ EndFunction
 
 bool Function GetHasHadMoleCowDisease()
 	return hasHadMoleCowDisease
-EndFunction
-
-; ------------------------
-; Helper functions for splitting strings
-; ------------------------
-string[] Function StringSplit(string target, string delimiter)
-	;LenARM_Debug.Log("splitting '" + target + "' with '" + delimiter + "'")
-	string[] result = new string[0]
-	string current = target
-	int idx = LL_Fourplay.StringFind(current, delimiter)
-	;LenARM_Debug.Log("split idx: " + idx + " current: '" + current + "'")
-	While (idx > -1 && current)
-		result.Add(LL_Fourplay.StringSubstring(current, 0, idx))
-		current = LL_Fourplay.StringSubstring(current, idx+1)
-		idx = LL_Fourplay.StringFind(current, delimiter)
-		;LenARM_Debug.Log("split idx: " + idx + " current: '" + current + "'")
-	EndWhile
-	If (current)
-		result.Add(current)
-	EndIf
-	;LenARM_Debug.Log("split result: " + result)
-	return result
-EndFunction
-
-float Function Clamp(float value, float limit1, float limit2)
-	float lower = Math.Min(limit1, limit2)
-	float upper = Math.Max(limit1, limit2)
-	return Math.Min(Math.Max(value, lower), upper)
 EndFunction
 
 
@@ -3007,11 +2918,11 @@ SliderSet Function SliderSet_Constructor(int idxSet)
 		sliderSet.AdditiveLimit = MCM.GetModSettingFloat("LenA_RadMorphing", "fAdditiveLimit:Slider" + idxSet) / 100.0
 		sliderSet.ExcludeFromPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bExcludeFromPopping:Slider" + idxSet)
 
-		string[] names = StringSplit(sliderSet.SliderName, "|")
+		string[] names = LenARM_Util.StringSplit(sliderSet.SliderName, "|")
 		sliderSet.NumberOfSliderNames = names.Length
 
 		If (sliderSet.UnequipSlot != "")
-			string[] slots = StringSplit(sliderSet.UnequipSlot, "|")
+			string[] slots = LenARM_Util.StringSplit(sliderSet.UnequipSlot, "|")
 			sliderSet.NumberOfUnequipSlots = slots.Length
 		Else
 			sliderSet.NumberOfUnequipSlots = 0
