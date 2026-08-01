@@ -140,7 +140,7 @@ string Version
 Group Properties
 	Actor Property PlayerRef Auto Const
 
-	;TODO jij wordt nooit geset?
+	; dummy keyword for BodyMorphs; never gets set
 	Keyword Property kwMorph Auto Const
 
 	ActorValue Property Rads Auto Const
@@ -1970,6 +1970,18 @@ Function KitanaMaskUnequipped()
 	forceUpdate = true
 	
 	; cancel timer is handled in OnItemUnequipped due to additional logic
+EndFunction
+
+
+Function KitanaMaskCancelTimer()
+	CancelTimer(ETimerKitanaMask)
+EndFunction
+
+Function KitanaMaskRestartTimer()
+	; restart self-morph timer when requirements not yet met
+	if (hasKitanaMaskEquipped && (PlayerRef.HasPerk(PoppingExpertPerk1) == false))
+		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
+	endif
 EndFunction
 
 

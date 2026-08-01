@@ -106,8 +106,7 @@ EndFunction
 ; Will cleanup no longer existing slider sets if these existed in the local variables but are no longer in the MCM config.
 ;
 Function LoadSliderSets(int numberOfSliderSets, Actor playerRef)
-	LenARM_Debug.TechnicalNote("LoadSliderSets")
-	; LenARM_Debug.Log("LoadSliderSets")
+	LenARM_Debug.Log("LoadSliderSets")
 	; create arrays if not exist
 	If (!SliderSets)
 		SliderSets = new SliderSet[numberOfSliderSets]

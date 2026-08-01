@@ -17,7 +17,7 @@ EndGroup
 Group Properties
 	Actor Property PlayerRef Auto Const
 	
-	;TODO jij wordt nooit geset?
+	; dummy keyword for BodyMorphs; never gets set
 	Keyword Property kwMorph Auto Const
 
 	Keyword property ActorTypeBloatingAgent auto
@@ -46,6 +46,7 @@ int PopStates
 int PopStripState
 bool ForceNPCBloatPopping
 
+
 ; ------------------------
 ; ------------------------
 ; Enums
@@ -57,11 +58,6 @@ Group EnumNPCBloatType
 	int Property EBloatTypeLegendary = 4 Auto Const
 EndGroup
 
-Group EnumSex
-	int Property ESexMale = 0 Auto Const
-	int Property ESexFemale = 1 Auto Const
-EndGroup
-
 
 ; ------------------------
 ; ------------------------
@@ -70,7 +66,6 @@ EndGroup
 ; For some reason doc comments from the first function after variable declarations are not picked up.
 Function DummyFunction()
 EndFunction
-
 
 
 ;
@@ -180,16 +175,13 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
 			LenARM_Perks.ApplyRadsPerk(akTarget, perkLevel)
-			; akTarget.AddPerk(RadsPerkArray[perkLevel])		
 		Else
 			LenARM_Perks.ApplyRadsPerkMax(akTarget)
-			; akTarget.AddPerk(RadsPerkFull)			
 		endif
 	endif
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
-	; float randomFloat = LenARM_Util.GetRandomDelay(2,3)
-	float randomFloat = LenARM_Util.GetRandomDelay(1,2)
+	float randomFloat = LenARM_Util.GetRandomDelay(1,2) ;(2,3)
 	Utility.Wait(randomFloat)
 
 	; only apply initial morphs if we are not going to pop
@@ -211,9 +203,8 @@ Function ApplyActorBloatStage(Actor akTarget, int nextBloatStage, float morphPer
 EndFunction
 
 Function BloatPopActor(Actor akTarget, int bloatType)
-	;TODO main ref?
-	; ; pause self-bloat timer
-	; CancelTimer(ETimerKitanaMask)
+	; pause self-bloat timer
+	LenArm_Main.KitanaMaskCancelTimer()
 
 	bool isConcentrated = bloatType == EBloatTypeConcentrated
 	bool isForcedMessy = bloatType == EBloatTypeMessy
@@ -459,11 +450,8 @@ Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 
 	LenARM_Perks.ClearAllRadsPerks(akTarget)
 	
-	;TODO main ref?
-	; ; restart self-morph timer when requirements not yet met
-	; if (hasKitanaMaskEquipped && (PlayerRef.HasPerk(PoppingExpertPerk1) == false))
-	; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
-	; endif
+	; restart self-morph timer when requirements not yet met
+	LenARM_Main.KitanaMaskRestartTimer()
 EndFunction
 
 
@@ -556,3 +544,8 @@ Function UnequipAllNPC(Actor akTarget)
 		idxSlot += 1	
 	EndWhile
 EndFunction
+
+Group EnumSex
+	int Property ESexMale = 0 Auto Const
+	int Property ESexFemale = 1 Auto Const
+EndGroup
