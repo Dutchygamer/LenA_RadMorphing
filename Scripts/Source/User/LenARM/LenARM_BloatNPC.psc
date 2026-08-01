@@ -438,7 +438,7 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	endif
 	
 	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
-	LenARM_Main.KitanaMask_Kill(distanceToPlayer, milkToAdd)
+	LenARM_Main.MessyPopNPC_PlayerReward(distanceToPlayer, milkToAdd)
 EndFunction
 
 ; 
