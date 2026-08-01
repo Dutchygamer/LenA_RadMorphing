@@ -12,17 +12,20 @@ Scriptname LenARM:LenARM_Main extends Quest
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
 ; ------------------------
-; [OBSOLETE]
-SliderSet[] SliderSets
+; ; [OBSOLETE]
+; SliderSet[] SliderSets
 
-; flattened two-dimensional array[idxSliderSet][idxSliderName]
-string[] SliderNames
+; ; [OBSOLETE]
+; ; flattened two-dimensional array[idxSliderSet][idxSliderName]
+; string[] SliderNames
 
-; flattened two-dimensional array[idxSliderSet][idxSlot]
-int[] UnequipSlots
+; ; [OBSOLETE]
+; ; flattened two-dimensional array[idxSliderSet][idxSlot]
+; int[] UnequipSlots
 
-; flattened two-dimensional array[idxSliderSet][idxSliderName]
-float[] OriginalMorphs
+; ; [OBSOLETE]
+; ; flattened two-dimensional array[idxSliderSet][idxSliderName]
+; float[] OriginalMorphs
 
 ;TODO
 ; HUDFramework plugin
@@ -1153,7 +1156,6 @@ EndFunction
 float Function CalculateMorphs(int idxSlider, float morphPercentage, float targetMorph)
 	float morphBonus = 0.0
 	
-	; string matchingSlider = SliderNames[idxSlider]
 	string matchingSlider = LenARM_SliderSet.GetSliderName(idxSlider)
 
 	; player is suffering from experimental radpurge failure
@@ -1204,7 +1206,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		morphBonus += (CurrentBalloonsPerk * 0.1)
 	endif
 
-	return (OriginalMorphs[idxSlider] + morphBonus + (morphPercentage * targetMorph))
+	return (LenARM_SliderSet.GetOriginalMorphs(idxSlider) + morphBonus + (morphPercentage * targetMorph))
 EndFunction
 
 ; ------------------------
@@ -1216,8 +1218,9 @@ Function SetMorphs(int idxSet, LenARM_SliderSet:SliderSet sliderSet, float morph
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
 	While (idxSlider < sliderNameOffset + sliderSet.NumberOfSliderNames)
 		float newMorph = CalculateMorphs(idxSlider, morphPercentage, sliderSet.TargetMorph)
+		string matchingSlider = LenARM_SliderSet.GetSliderName(idxSlider)
 
-		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[idxSlider], kwMorph, newMorph)
+		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, matchingSlider, kwMorph, newMorph)
 		; LenARM_Debug.Log("    setting slider '" + SliderNames[idxSlider] + "' to " + newMorph + " (base value is " + OriginalMorphs[idxSlider] + ") (base morph is " + sliderSet.BaseMorph + ") (target is " + sliderSet.TargetMorph + ")")
 		
 		idxSlider += 1
@@ -1264,8 +1267,12 @@ Function RestoreOriginalMorphs()
 	; restore base values
 	int i = 0
 	int sex = PlayerRef.GetLeveledActorBase().GetSex()
-	While (i < SliderNames.Length)
-		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, SliderNames[i], kwMorph, OriginalMorphs[i])
+
+	string[] sliderNames = LenARM_SliderSet.GetAllSliderNames()
+
+	While (i < sliderNames.Length)
+		float originalMorphs = LenARM_SliderSet.GetOriginalMorphs(i)
+		BodyGen.SetMorph(PlayerRef, sex==ESexFemale, sliderNames[i], kwMorph, originalMorphs)
 		i += 1
 	EndWhile
 	BodyGen.UpdateMorphs(PlayerRef)
@@ -1663,6 +1670,7 @@ Function UnequipSlots()
 
 		;TODO temp(?)
 		LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
+		int[] unequipSlots = LenARM_SliderSet.GetAllUnequipSlots()
 
 		; check for each sliderSet
 		While (idxSet < currentSliderSets.Length)
@@ -1675,16 +1683,16 @@ Function UnequipSlots()
 				
 				; check each slot that should get unequipped
 				While (idxSlot < unequipSlotOffset + sliderSet.NumberOfUnequipSlots)
-					Actor:WornItem item = PlayerRef.GetWornItem(UnequipSlots[idxSlot])
+					Actor:WornItem item = PlayerRef.GetWornItem(unequipSlots[idxSlot])
 					
 					; check if item in the slot is clothes / armor
 					bool isArmor = LenARM_Util.IsItemArmor(item)
 					; we can unequip if we currently aren't wearing a full-body suit, or we are wearing a full-body suit and the slot to unequip is slot 3
-					bool canUnequip = (item.item && (!hasFullBodyItem || (hasFullBodyItem && UnequipSlots[idxSlot] == 3)))
+					bool canUnequip = (item.item && (!hasFullBodyItem || (hasFullBodyItem && unequipSlots[idxSlot] == 3)))
 
 					; when item is an armor and we can unequip it, do so
 					If (isArmor && canUnequip)
-						LenARM_Debug.Log("  unequipping slot " + UnequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
+						LenARM_Debug.Log("  unequipping slot " + unequipSlots[idxSlot] + " (" + item.item.GetName() + " / " + item.modelName + ")")
 
 						PlayerRef.UnequipItem(item.item, false, true)
 
@@ -2139,11 +2147,6 @@ Function ForgetState(bool isCalledByUser=false)
 		
 		; reset the mod's state
 		LenARM_SliderSet.ResetVariables()
-		; SliderSets = none
-		; SliderNames = none
-		; UnequipSlots = none
-
-		; OriginalMorphs = none
 		
 		CurrentRads = 0.0
 		HasReachedMaxMorphs = false
@@ -2175,29 +2178,29 @@ Function Debug_ShowLowestSliderPercentage()
 	; ; LenARM_Debug.Note("DN050 registered")
 	; ; RegisterForRemoteEvent(DN050, "OnStageSet")
 	
-	; ;TODO for now hijacked to activate HUDFramework plugin
-	; hud = HUDFramework.GetInstance()
-	; If (hud)
+	;TODO for now hijacked to activate HUDFramework plugin
+	hud = HUDFramework.GetInstance()
+	If (hud && !HUD.IsWidgetRegistered("MHK.swf"))
 
-	; 	float fX = 500 ;1000
-	; 	float fY = 300 ;70
+		float fX = 10 ;500 ;1000
+		float fY = 10 ;300 ;70
 
-	; 	LenARM_Debug.Note("HUDFramework is installed!")
-    ;     ; Register the widget, setting its position to 10, 70 on the screen.
-    ;     ; Load the widget automatically after registration, and auto-load it whenever the game loads.
-    ;     hud.RegisterWidget(Self as ScriptObject, BloatExposure_Widget, fX, fY, abLoadNow = True, abAutoLoad = True)
-    ;     ; hud.RegisterWidget(Self as ScriptObject, BloatExposure_Widget, 10.0, 10.0, abLoadNow = True, abAutoLoad = True)
-    ;     hud.SetWidgetPosition(BloatExposure_Widget, 10.0, 70.0)
-    ;     hud.SetWidgetScale(BloatExposure_Widget, 1.0, 1.0)
-    ;     hud.SetWidgetOpacity(BloatExposure_Widget, 1.0)
-	; Else
-	; 	LenARM_Debug.Note("HUDFramework is not installed!")
-	; EndIf
+		LenARM_Debug.Note("HUDFramework is installed!")
+        ; Register the widget, setting its position to 10, 70 on the screen.
+        ; Load the widget automatically after registration, and auto-load it whenever the game loads.
+        hud.RegisterWidget(Self as ScriptObject, "MHK.swf", fX, fY, abLoadNow = True) ;, abAutoLoad = True)
+        ; ; hud.RegisterWidget(Self as ScriptObject, BloatExposure_Widget, 10.0, 10.0, abLoadNow = True, abAutoLoad = True)
+        ; hud.SetWidgetPosition(BloatExposure_Widget, 10.0, 70.0)
+        ; hud.SetWidgetScale(BloatExposure_Widget, 1.0, 1.0)
+        ; hud.SetWidgetOpacity(BloatExposure_Widget, 1.0)
+	Else
+		LenARM_Debug.Note("HUDFramework is not installed!")
+	EndIf
 
-	float lowestPercentage = LenARM_SliderSet.Debug_GetLowestSliderPercentage()
+	; float lowestPercentage = LenARM_SliderSet.Debug_GetLowestSliderPercentage()
 
-	;TODO ik dump TotalRads hier ff als test in
-	LenARM_Debug.MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
+	; ;TODO ik dump TotalRads hier ff als test in
+	; LenARM_Debug.MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
 EndFunction
 
 
@@ -2206,36 +2209,54 @@ EndFunction
 ; ------------------------
 ; This function is called by HUDFramework when the widget is loaded.
 Function HUD_WidgetLoaded(string asWidget)
-    If (asWidget == BloatExposure_Widget)
-		; LenARM_Debug.Note("Widget registered!")
+    If (asWidget == "MHK.swf")
+		LenARM_Debug.Note("Widget registered!")
 
-		float[] huh = hud.GetWidgetPosition(BloatExposure_Widget)
-		LenARM_Debug.Note("Widget registered!" + huh[0] + "; " + huh[1])
+		; float[] huh = hud.GetWidgetPosition(BloatExposure_Widget)
+		; LenARM_Debug.Note("Widget registered!" + huh[0] + "; " + huh[1])
 
 
-		; hud.SetWidgetScale(BloatExposure_Widget, 1, 1, False)
-		; hud.SetWidgetPosition(BloatExposure_Widget, 10, 70, False)
-		; hud.SetWidgetOpacity(BloatExposure_Widget, 1.0, False)
+		; ; ; hud.SetWidgetScale(BloatExposure_Widget, 1, 1, False)
+		; ; ; hud.SetWidgetPosition(BloatExposure_Widget, 10, 70, False)
+		; ; ; hud.SetWidgetOpacity(BloatExposure_Widget, 1.0, False)
 
-		int hudValue = (PlayerRef.GetValue(avBloating) as int)
+		; ; int hudValue = (PlayerRef.GetValue(avBloating) as int)
 
-        hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
+        ; ; hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
+		; hud.SendMessageString(BloatExposure_Widget, ECommand_UpdateBloat, "pffft")
 		
 		StartTimer(UpdateDelay, ETimerHUD)
     EndIf
 EndFunction
+; Unused but HUDFramework will call it and complain if it's not here
+Function HUD_WidgetUnloaded(string asWidget)
+EndFunction
 
 Function UpdateHUD()
-	int hudValue = (PlayerRef.GetValue(avBloating) as int)
+	RepositionWidget()
+	UpdateWidget()
+	; int hudValue = (PlayerRef.GetValue(avBloating) as int)
 	
-	; LenARM_Debug.Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget) + "; bloat: " + hudValue)
-	LenARM_Debug.Note("bloat: " + hudValue)
+	; ; LenARM_Debug.Note("enabled: " + hud.IsWidgetLoaded(BloatExposure_Widget) + "; bloat: " + hudValue)
+	; LenARM_Debug.Note("bloat: " + hudValue)
 
-	hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
+	; hud.SendMessage(BloatExposure_Widget, ECommand_UpdateBloat, hudValue)
 
-	; hud.SendMessage(Self.DEF_w_PA1_identifier, Self.command_stats_update, playerref.GetValue(PPowerArmorHeadCondition), playerref.GetValue(PPowerArmorTorsoCondition), playerref.GetValue(PPowerArmorRightArmCondition), playerref.GetValue(PPowerArmorLeftArmCondition), playerref.GetValue(PPowerArmorRightLegCondition), playerref.GetValue(PPowerArmorLeftLegCondition))
+	; ; hud.SendMessage(Self.DEF_w_PA1_identifier, Self.command_stats_update, playerref.GetValue(PPowerArmorHeadCondition), playerref.GetValue(PPowerArmorTorsoCondition), playerref.GetValue(PPowerArmorRightArmCondition), playerref.GetValue(PPowerArmorLeftArmCondition), playerref.GetValue(PPowerArmorRightLegCondition), playerref.GetValue(PPowerArmorLeftLegCondition))
 
 	StartTimer(UpdateDelay, ETimerHUD)
+EndFunction
+
+Function RepositionWidget()
+	hud.SetWidgetPosition("MHK.swf", 10, 10)
+EndFunction
+
+Function UpdateWidget()
+	int hudValue = (PlayerRef.GetValue(avBloating) as int)
+	
+	LenARM_Debug.Note("bloat: " + hudValue)
+
+	hud.SendMessageString("MHK.swf", 100, "pffft")
 EndFunction
 
 

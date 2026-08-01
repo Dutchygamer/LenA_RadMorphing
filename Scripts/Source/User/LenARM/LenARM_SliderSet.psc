@@ -101,6 +101,40 @@ EndFunction
 
 
 ;
+; Get the list of all UnequipSlots.
+;
+int[] Function GetAllUnequipSlots()
+	; LenARM_Debug.TechnicalNote("GetAllSliderSets")
+	return UnequipSlots
+EndFunction
+
+;
+; Get UnequipSlots with id @idxSlider
+;
+int Function GetUnequipSlots(int idxSlider)
+	return UnequipSlots[idxSlider]
+EndFunction
+
+
+
+;
+; Get the list of all OriginalMorphs.
+;
+float[] Function GetAllOriginalMorphs()
+	; LenARM_Debug.TechnicalNote("GetAllSliderSets")
+	return OriginalMorphs
+EndFunction
+
+;
+; Get OriginalMorphs with id @idxSlider
+;
+float Function GetOriginalMorphs(int idxSlider)
+	return OriginalMorphs[idxSlider]
+EndFunction
+
+
+
+;
 ; Read the slider sets from the MCM config, and store them into the local variables.
 ; Will perform the initial local variables setup if these are not yet initialized.
 ; Will cleanup no longer existing slider sets if these existed in the local variables but are no longer in the MCM config.
