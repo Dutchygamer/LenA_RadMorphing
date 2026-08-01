@@ -86,8 +86,10 @@ int kitanaMaskPopDetectRadius = 512 ;384
 int kitanaMaskSelfMorphTimer = 10
 int kitanaMaskSelfMorphMessyTimer = 30
 
+; all [OBSOLETE]
 int maxNPCBloatStages = 5
 int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
+; all [OBSOLETE]
 
 ;TODO zou deze om kunnen zetten naar AVs...
 ; does player have (or has had) molecow disease?
@@ -207,10 +209,12 @@ Group Properties
 	Message Property LenARM_PAPerkSwitchMessage Auto
 	Message Property LenARM_PAEjectMessage Auto
 
+	; all [OBSOLETE]
 	Perk[] Property RadsPerkArray Auto
 	Perk Property RadsPerkFull Auto
 	
 	Perk[] Property BalloonsPerkArray Auto
+	; all [OBSOLETE]
 	
 	;TODO in geval de lokale bool random wordt unset
 	; Perk Property LenARM_BloatSuitPerk Auto Const
@@ -237,10 +241,13 @@ Group Properties
 	MagicEffect Property MooMilkAddictionEffect Auto Const
 	MagicEffect Property MS19SurpressantEffect Auto
 	
+	; [OBSOLETE]
 	Keyword property ActorTypeBloatingAgent auto
 	Keyword property ArmorTypeBloatingSuit auto
 	
+	; [OBSOLETE]
 	Form Property BloatNPCPopExplosion Auto
+	; [OBSOLETE]
 	Form Property BloatGrenadeExplosion Auto
 	; [OBSOLETE]
 	Form Property BloatingSuit Auto
@@ -263,6 +270,7 @@ Group LenARM
 	LenARM_Debug Property LenARM_Debug Auto Const
 	LenARM_SFX Property LenARM_SFX Auto Const
 	LenARM_SliderSet Property LenARM_SliderSet Auto Const
+	LenARM_Perks Property LenARM_Perks Auto Const
 EndGroup
 
 ; ------------------------
@@ -618,8 +626,8 @@ Function Startup()
 			ApplyBalloonsPerk()
 		; else clear any existing perks
 		Else
-			ClearAllRadsPerks(PlayerRef)
-			ClearAllBalloonsPerks(PlayerRef)
+			LenARM_Perks.ClearAllRadsPerks(PlayerRef)
+			LenARM_Perks.ClearAllBalloonsPerks(PlayerRef)
 		endif
 
 		; start timer
@@ -1245,7 +1253,7 @@ Function ResetMorphs()
 	PlayerRef.RestoreValue(avBloating, RadsToHeal)
 
 	; reset the rad perks
-	ClearAllRadsPerks(PlayerRef)
+	LenARM_Perks.ClearAllRadsPerks(PlayerRef)
 
 	; reset saved morphs in SliderSets
 	LenARM_SliderSet.ResetSliderSetMorphs()
@@ -1521,7 +1529,7 @@ EndFunction
 bool Function ApplyRadsPerk()
 	; when we have 0 rads, clear all existing perks and don't apply a new one
 	if (TotalRads == 0)
-		ClearAllRadsPerks(PlayerRef)
+		LenARM_Perks.ClearAllRadsPerks(PlayerRef)
 		return false
 	endif
 
@@ -1550,10 +1558,11 @@ bool Function ApplyRadsPerk()
 
 	; when we have enough rads that we should have a difference in perk level, change perks
 	if (CurrentRadsPerk != perkLevel)
-		ClearOldRadsPerks(PlayerRef, perkLevel)
+		LenARM_Perks.ClearOldRadsPerks(PlayerRef, perkLevel)
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
-			PlayerRef.AddPerk(RadsPerkArray[perkLevel])
+			LenARM_Perks.ApplyRadsPerk(PlayerRef, perkLevel)
+			; PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
 			if (LenARM_Util.HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
@@ -1564,7 +1573,8 @@ bool Function ApplyRadsPerk()
 				hasChanged = true
 			endif
 		Else
-			PlayerRef.AddPerk(RadsPerkFull)			
+			LenARM_Perks.ApplyRadsPerkMax(PlayerRef)
+			; PlayerRef.AddPerk(RadsPerkFull)			
 		endif
 		
 		CurrentRadsPerk = perkLevel
@@ -1575,52 +1585,6 @@ bool Function ApplyRadsPerk()
 	return hasChanged
 EndFunction
 
-int Function GetCurrentRadsPerkLevel(Actor akTarget)
-    int i = 0
-    While (i <= 4)
-		; when akTarget has the radsPerk, return its id
-        If (akTarget.HasPerk(RadsPerkArray[i]))
-			return i
-        EndIf
-        i += 1
-    EndWhile
-	
-	; fallback in case we actor has no radsPerk
-	return 0
-EndFunction
-
-; ------------------------
-; Loops through all possible radsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
-; Does not apply the matching radsPerk, you must do that manually.
-; Use -1 to clear all radPerks from an Actor.
-; ------------------------
-Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
-    int i = 0
-	; loop through the standard perks, remove when not matching new perk level
-	;TODO kan je niet gewoon RadsPerkArray.Length doen?
-    While (i <= 4)
-        If (i != newPerkLevel && akTarget.HasPerk(RadsPerkArray[i]))
-			; LenARM_Debug.Log("Removing radsperk of level " + i)
-			akTarget.RemovePerk(RadsPerkArray[i])
-        EndIf
-        i += 1
-    EndWhile
-	
-	; remove the full perk when not matching full perk level
-	if (newPerkLevel != 5)
-		akTarget.RemovePerk(RadsPerkFull)
-	endif
-	
-	; if (newPerkLevel > -1)
-    ; 	LenARM_Debug.Log("RadsPerk Level " + newPerkLevel + " applied")    
-	; endif
-EndFunction
-
-Function ClearAllRadsPerks(Actor akTarget)
-    ClearOldRadsPerks(akTarget, -1)
-EndFunction
-
-
 ; ------------------------
 ; Check the total carried balloons, and apply the matching balloonsPerk to the player
 ; ------------------------
@@ -1629,7 +1593,7 @@ Function ApplyBalloonsPerk()
 
 	; when we have less then 10 balloons, clear all existing perks and don't apply a new one
 	if (currentCount < 1)
-		ClearAllBalloonsPerks(PlayerRef)
+		LenARM_Perks.ClearAllBalloonsPerks(PlayerRef)
 	
 		; reset counter as well
 		CurrentBalloonsPerk = 0
@@ -1645,34 +1609,12 @@ Function ApplyBalloonsPerk()
 	if (CurrentBalloonsPerk != currentCount)
 		; subtract 1 from our count as the Perks start from 0
 		int newBalloonsPerk = currentCount -1
-		ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
-		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
-		PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
+		LenARM_Perks.ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
+		LenARM_Perks.ApplyBalloonsPerk(PlayerRef, newBalloonsPerk)
+		; PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
 		
 		CurrentBalloonsPerk = currentCount
 	endif
-EndFunction
-
-; ------------------------
-; Loops through all possible balloonsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
-; Does not apply the matching balloonsPerk, you must do that manually.
-; Use -1 to clear all balloonsPerks from an Actor.
-; ------------------------
-Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
-    int i = 0	
-	; loop through the standard perks, remove when not matching new perk level
-	;TODO kan je niet gewoon BalloonsPerkArray.Length doen?
-    While (i <= 3)
-        If (i != newPerkLevel && akTarget.HasPerk(BalloonsPerkArray[i]))
-			; LenARM_Debug.Log("Removing radsperk of level " + i)
-			akTarget.RemovePerk(BalloonsPerkArray[i])
-        EndIf
-        i += 1
-    EndWhile
-EndFunction
-
-Function ClearAllBalloonsPerks(Actor akTarget)
-    ClearOldBalloonsPerks(akTarget, -1)
 EndFunction
 
 
