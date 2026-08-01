@@ -14,7 +14,11 @@ SPELL Property crCoreMeltdownCloak01 Auto Const
 ActorValue  property SpeedMult Auto const
 
 ; -- other public props --
+;[OBSOLETE]
 LenARM_Main Property LenARM_Main Auto
+
+LenARM_BloatNPC Property LenARM_BloatNPC Auto
+LenARM_Perks Property LenARM_Perks Auto Const
 actorValue property NPCBloatStage auto	
 actorValue property NPCBloatImmunity auto	
 weapon[] property WeaponsToUnequip auto	
@@ -73,7 +77,7 @@ endState
 Event OnEffectStart(Actor akTarget, Actor akCaster)
 	int sex = akTarget.GetLeveledActorBase().GetSex()
     ; for now only work on females
-    if (sex == LenARM_Main.ESexFemale)
+    if (sex == LenARM_BloatNPC.ESexFemale)
 	    RegisterForHitEvent(akCaster)     
     endif
 EndEvent
@@ -103,7 +107,7 @@ Function startSelfDestructAndWait(Actor selfRef)
 
     ; start bloating
     int currentBloatStage = (selfRef.getValue(NPCBloatStage) as int)
-    LenARM_Main.BloatActorLegendary(selfRef, currentBloatStage, 6)
+    LenARM_BloatNPC.BloatActorLegendary(selfRef, currentBloatStage, 6)
 
 endFunction
 
@@ -119,7 +123,7 @@ EndFunction
 
 ; when done unregister remote events
 Event OnEffectFinish(Actor akTarget, Actor akCaster)
-	; LenARM_Main.TechnicalNote(""NPCBloatScript finished!")
+	; LenARM_Debug.TechnicalNote(""NPCBloatScript finished!")
     UnRegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
 EndEvent
 
@@ -134,7 +138,7 @@ Event ObjectReference.OnUnload(ObjectReference akSender)
 endEvent
 
 EVENT OnDying(ACTOR akKiller)
-	; LenARM_Main.TechnicalNote("DEAD")
+	; LenARM_Debug.TechnicalNote("DEAD")
     ResetActor(victim)
     if (HazardSoundId != 0)
         Sound.StopInstance(HazardSoundId)
@@ -143,10 +147,10 @@ ENDEVENT
 
 
 Function ResetActor(Actor akTarget)
-	; LenARM_Main.TechnicalNote("reset!")
+	; LenARM_Debug.TechnicalNote("reset!")
     
     ; clear overlays
-    LenARM_Main.ClearAllRadsPerks(akTarget)
+    LenARM_Perks.ClearAllRadsPerks(akTarget)
     ; reset bloating immunity
     akTarget.SetValue(NPCBloatImmunity, 0)
 
