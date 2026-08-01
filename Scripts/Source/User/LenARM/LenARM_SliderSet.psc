@@ -313,7 +313,6 @@ float Function GetAdditiveLimit(LenARM_SliderSet:SliderSet sliderSet)
 EndFunction
 
 
-
 ;
 ; Debug function to show the lowest SliderSet's current value
 ;

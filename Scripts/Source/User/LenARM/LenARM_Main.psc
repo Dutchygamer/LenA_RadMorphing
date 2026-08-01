@@ -1677,12 +1677,12 @@ EndFunction
 
 
 ;TODO onderstaand kan pas over naar Util als we de SliderSets kunnen inladen daaro
+; ^ willen we dat tho?
 
 ; ------------------------
 ; Check for each slider whether pieces of clothing / armor should get unequipped
 ; For more info on usage of the slots: https://www.creationkit.com/fallout4/index.php?title=ArmorAddon
 ; ------------------------
-;TODO hernoem naar UnequipSlots_Player
 Function UnequipSlots()
 	; don't bother unequipping if player is in power armor
 	If (PlayerRef.IsInPowerArmor())
@@ -1777,7 +1777,6 @@ Function TriggerUnequipSlots()
 	StartTimer(0.1, ETimerUnequipSlots)
 EndFunction
 
-;TODO hernoem naar UnequipAll_Player
 Function UnequipAll()
 	; don't bother unequipping if player is in power armor
 	If (PlayerRef.IsInPowerArmor())
@@ -1936,6 +1935,9 @@ Function SuitInjectBloatingAgent()
 	endif
 EndFunction
 
+;
+; On equipping the Bloating Suit check what we need to do
+;
 Function BloatingSuitEquipped()
 	;LenARM_Debug.TechnicalNote("Bloating Outfit equipped!")
 	hasBloatingSuitEquipped = true
@@ -1944,6 +1946,9 @@ Function BloatingSuitEquipped()
 	forceUpdate = true
 EndFunction
 
+;
+; On unequipping the Bloating Suit check what we need to do
+;
 Function BloatingSuitUnequipped()
 	;LenARM_Debug.TechnicalNote("Bloating Outfit unequipped!")
 	hasBloatingSuitEquipped = false
@@ -1953,6 +1958,9 @@ Function BloatingSuitUnequipped()
 EndFunction
 
 ;TODO kunnen we deze slimmer maken dat deze alleen loopt als je daadwerkelijk bloat suit equipped hebt, ipv altijd?
+;
+; Periodically check if we need to add MooMilk ammo to the player when they have the Bloating Suit equipped
+;
 Function BloatSuitGiveAmmo()
 	if (!hasBloatingSuitEquipped || !canGiveBloatingSuitAmmo)
 		StartTimer(5, ETimerBloatSuit)
@@ -1982,8 +1990,6 @@ Function BloatSuitGiveAmmo()
 	; bit longer timer as we don't switch perks often
 	StartTimer(5, ETimerBloatSuit)
 EndFunction
-
-
 
 
 ;
@@ -2193,49 +2199,9 @@ Function RadPurgeFailSelfMorphAndPop()
 	TryPop()
 EndFunction
 
-
-float Function GetLowestSliderPercentage()
-	int idxSet = 0
-	float lowestPercentage = 0
-
-	;TODO temp(?)
-	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
-
-	; loop through the slidersets
-	While (idxSet < currentSliderSets.Length)
-		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
-		
-		; only check the slidersets that have actual sliders
-		If (sliderSet.NumberOfSliderNames > 0)
-			; use sliderSet's currentMorph, unless we are additive, then use baseMorph as well
-			float sliderPercentage = sliderSet.CurrentMorph
-			If (GetIsAdditive(sliderSet))
-				sliderPercentage += sliderSet.BaseMorph
-			EndIf
-
-			; limit the percentage to 100% if we get irradiated when already at max
-			if (sliderPercentage > 1)
-				sliderPercentage = 1
-			endIf
-
-			; as we setup lowestPercentage as 0, we want to set it to a value first, else Math.Min will always return 0
-			if (lowestPercentage == 0)
-				lowestPercentage = sliderPercentage
-			else
-				lowestPercentage = Math.Min(sliderPercentage, lowestPercentage)
-			endif
-		endif
-
-		idxSet += 1
-	EndWhile	
-
-	return lowestPercentage
-EndFunction
-
-
-; ------------------------
-; Debug functions from the Debug MCM menu
-; ------------------------
+; 
+; Debug method to 'forget' the mod's state to fully reset it without restoring player morphs
+; 
 Function ForgetState(bool isCalledByUser=false)
 	LenARM_Debug.Log("ForgetState: isCalledByUser=" + isCalledByUser + "; ForgetStateCalledByUserCount=" + ForgetStateCalledByUserCount + "; IsForgetStateBusy=" + IsForgetStateBusy)
 
@@ -2322,7 +2288,7 @@ Function Debug_ShowLowestSliderPercentage()
 	; 	LenARM_Debug.Note("HUDFramework is not installed!")
 	; EndIf
 
-	float lowestPercentage = GetLowestSliderPercentage()
+	float lowestPercentage = LenARM_SliderSet.Debug_GetLowestSliderPercentage()
 
 	;TODO ik dump TotalRads hier ff als test in
 	LenARM_Debug.MessageBox((lowestPercentage * 100) + "% ; " + (TotalRads * 1000))
@@ -2389,14 +2355,23 @@ EndFunction
 ; 	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 ; EndFunction
 
+; 
+; Debug method to add 1 Irradiated Bloodpack to the player
+; 
 Function GiveIrradiatedBlood()
 	PlayerRef.AddItem(GlowingOneBlood, 50)
 EndFunction
 
+; 
+; Debug method to add 1 Experimental RadPurge to the player
+; 
 Function GiveExperimentalMorphDrugs()
 	PlayerRef.AddItem(ResetMorphsExperimentalPotion, 1)
 EndFunction
 
+; 
+; Debug method to add 1 RadPurge to the player
+; 
 Function GiveMorphDrugs()
 	PlayerRef.AddItem(ResetMorphsPotion, 1)
 EndFunction
