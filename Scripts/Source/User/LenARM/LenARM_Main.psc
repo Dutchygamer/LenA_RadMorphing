@@ -1451,6 +1451,7 @@ Function Pop()
 	; apply the debuffs on the player and reset the player's rads by ingesting the respective potions
 	PlayerRef.EquipItem(PoppedPotion, abSilent = true)
 	RestorePlayerRads()
+	PlayerRef.CreateDetectionEvent(PlayerRef, 50)
 
 	; unset the IsPopping flag before we undo the paralysing
 	IsPopping = false
@@ -1618,9 +1619,6 @@ Function ApplyBalloonsPerk()
 EndFunction
 
 
-;TODO onderstaand kan pas over naar Util als we de SliderSets kunnen inladen daaro
-; ^ willen we dat tho?
-
 ; ------------------------
 ; Check for each slider whether pieces of clothing / armor should get unequipped
 ; For more info on usage of the slots: https://www.creationkit.com/fallout4/index.php?title=ArmorAddon
@@ -1700,6 +1698,7 @@ Function UnequipSlots()
 								LenARM_DropClothesMessage.Show()
 							endif
 							LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EDropClothesSound)
+							PlayerRef.CreateDetectionEvent(PlayerRef, 10)
 							found = true
 						EndIf
 					EndIf
@@ -1770,6 +1769,7 @@ Function UnequipAll()
 	; LenARM_Debug.Log("FINISHED UnequipAll")
 EndFunction
 
+;TODO obsolete
 ;TODO hernoem naar UnequipAll_NPC
 Function UnequipAllNPC(Actor akTarget)
 	; don't bother unequipping if akTarget is in power armor

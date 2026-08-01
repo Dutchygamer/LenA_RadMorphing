@@ -349,6 +349,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		; for the unequip state we also want to strip all clothes and armor
 		If (!canForcedMessy && (currentPopState == PopStripState || currentPopState == PopStates))
 			UnequipAllNPC(akTarget)
+			akTarget.CreateDetectionEvent(PlayerRef, 10)
 		endif
 
 		Utility.Wait(0.7) ;(0.3) ;(1.0)
@@ -421,6 +422,7 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; sadly no way to give the XP to the player even if we tell the player is the killer
 	akTarget.Dismember("Torso", true, true, true)
 	akTarget.Kill(PlayerRef)
+	akTarget.CreateDetectionEvent(PlayerRef, 100)
 
 	; unparalyze the actor
 	; do this for messy bloatpopping too otherwise after respawning the NPC will still be paralyzed
@@ -443,7 +445,8 @@ Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 
 	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EPopSound)
 	; spread the joy to nearby NPCs
-	akTarget.PlaceAtMe(BloatNPCPopExplosion)		
+	akTarget.PlaceAtMe(BloatNPCPopExplosion)	
+	akTarget.CreateDetectionEvent(PlayerRef, 50)	
 
 	; reset all the morphs back to 0
 	BodyGen.UpdateMorphs(akTarget)
