@@ -1,5 +1,9 @@
 Scriptname LenARM:LenARM_AbLegendaryBloatScript extends ActiveMagicEffect
 
+; ------------------------
+; ------------------------
+; MagicEffect input params
+
 ; -- AbLegendaryScript public props --
 SPELL Property LegendaryPowerUp Auto Const
 ActorValue Property Health Auto Const
@@ -14,9 +18,6 @@ SPELL Property crCoreMeltdownCloak01 Auto Const
 ActorValue  property SpeedMult Auto const
 
 ; -- other public props --
-;[OBSOLETE]
-LenARM_Main Property LenARM_Main Auto
-
 LenARM_BloatNPC Property LenARM_BloatNPC Auto
 LenARM_Perks Property LenARM_Perks Auto Const
 actorValue property NPCBloatStage auto	
@@ -24,10 +25,19 @@ actorValue property NPCBloatImmunity auto
 weapon[] property WeaponsToUnequip auto	
 Sound Property HazardSound Auto Const
 
-; -- internal props --
+
+; ------------------------
+; ------------------------
+; variables
+
 int ChaseSpeed = 140
 Actor victim
 int HazardSoundId = 0
+
+
+; ------------------------
+; ------------------------
+; methods
 
 ; default state; waiting to trigger legendary effect
 auto State Waiting

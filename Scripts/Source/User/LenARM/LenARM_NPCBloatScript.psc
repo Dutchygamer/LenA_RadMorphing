@@ -1,25 +1,38 @@
 ScriptName LenARM:LenARM_NPCBloatScript extends ActiveMagicEffect
 
-;[OBSOLETE]
-LenARM_Main Property LenARM_Main Auto
+; ------------------------
+; ------------------------
+; MagicEffect input params
 
-LenARM_BloatNPC Property LenARM_BloatNPC Auto
-LenARM_Util Property LenARM_Util Auto
-LenARM_Perks Property LenARM_Perks Auto Const
-; LenARM:LenARM_BloatNPC
+Group LenARM
+    LenARM_BloatNPC Property LenARM_BloatNPC Auto
+    LenARM_Util Property LenARM_Util Auto
+    LenARM_Perks Property LenARM_Perks Auto Const
+EndGroup
 
-actorValue property NPCBloatStage auto	
-actorValue property NPCBloatImmunity auto	
-actorValue property NPCConcentratedBloatCount auto
-int property StageToAdd = 1 auto
-bool property IsConcentrated = false auto
-bool property IsMessy = false auto
+Group Properties
+    actorValue property NPCBloatStage auto	
+    actorValue property NPCBloatImmunity auto	
+    actorValue property NPCConcentratedBloatCount auto
+    int property StageToAdd = 1 auto
+    bool property IsConcentrated = false auto
+    bool property IsMessy = false auto
+EndGroup
 
+
+; ------------------------
+; ------------------------
+; variables
 
 int maxNPCBloatStages = 5
 int popNPCBloatStage = -1
 
 Actor victim
+
+
+; ------------------------
+; ------------------------
+; methods
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
     ; when in Power Armor, dead or immune to bloating don't morph
