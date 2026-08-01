@@ -1769,54 +1769,6 @@ Function UnequipAll()
 	; LenARM_Debug.Log("FINISHED UnequipAll")
 EndFunction
 
-;TODO obsolete
-;TODO hernoem naar UnequipAll_NPC
-Function UnequipAllNPC(Actor akTarget)
-	; don't bother unequipping if akTarget is in power armor
-	If (akTarget.IsInPowerArmor())
-		return
-	EndIf
-
-	bool found = false
-	int idxSlot = 0
-
-	; these are all the slots we want to unequip
-	int[] allSlots = new int[0]	
-	allSlots.Add(3)  ; body
-	allSlots.Add(11) ; chest armor
-	allSlots.Add(12) ; arm armor
-	allSlots.Add(13) ; arm armor
-	allSlots.Add(14) ; leg armor
-	allSlots.Add(15) ; leg armor
-
-	; check for each slot
-	While (idxSlot < allSlots.Length)
-		int slot = allSlots[idxSlot]
-		
-		Actor:WornItem item = akTarget.GetWornItem(slot)
-		
-		; check if item in the slot is not an actor or the pipboy
-		bool isArmor = LenARM_Util.IsItemArmor(item)
-
-		; when item is an armor and we can unequip it, do so
-		If (isArmor)
-			; LenARM_Debug.Log("  unequipping slot " + slot + " (" + item.item.GetName() + " / " + item.modelName + ")")
-
-			akTarget.UnequipItem(item.item, false, true)
-			
-			; when the item is no longer equipped and we haven't already unequipped anything (goes across all slots),
-			; play the strip sound if available
-			If (!found && !akTarget.IsEquipped(item.item))
-				LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EDropClothesSound)
-				found = true
-			EndIf
-		EndIf
-		
-		idxSlot += 1	
-	EndWhile
-EndFunction
-
-;TODO hernoem naar ReEquipAll_Player
 Function ReEquipAll()
 	int idxItem = 0
 	While (idxItem < PoppingUnequippedItems.Length)
