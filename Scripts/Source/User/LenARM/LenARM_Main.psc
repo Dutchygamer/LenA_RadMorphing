@@ -2275,27 +2275,26 @@ Function UpdateHUD()
 EndFunction
 
 
-;TODO MCM debug ding moet nog om naar Utils
-; ; ------------------------
-; ; Debug function to check which slots the current equipped clothes / armor occupies
-; ; ------------------------
-; Function ShowEquippedClothes()
-; 	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
-; 	string[] items = new string[0]
-; 	int slot = 0
-; 	While (slot < 62)
-; 		Actor:WornItem item = PlayerRef.GetWornItem(slot)
-; 		If (item != None && item.item != None)
-; 			items.Add(slot + ": " + item.item.GetName())
-; 			; LenARM_Debug.Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
-; 		Else
-; 			; LenARM_Debug.Log("  Slot " + slot + " is empty")
-; 		EndIf
-; 		slot += 1
-; 	EndWhile
+; ------------------------
+; Debug function to check which slots the current equipped clothes / armor occupies
+; ------------------------
+Function ShowEquippedClothes()
+	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
+	string[] items = new string[0]
+	int slot = 0
+	While (slot < 62)
+		Actor:WornItem item = PlayerRef.GetWornItem(slot)
+		If (item != None && item.item != None)
+			items.Add(slot + ": " + item.item.GetName())
+			; LenARM_Debug.Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
+		Else
+			; LenARM_Debug.Log("  Slot " + slot + " is empty")
+		EndIf
+		slot += 1
+	EndWhile
 
-; 	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
-; EndFunction
+	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
+EndFunction
 
 ; 
 ; Debug method to add 1 Irradiated Bloodpack to the player

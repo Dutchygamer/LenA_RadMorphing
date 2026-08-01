@@ -68,7 +68,9 @@ float Function GetRandomDelay(int min = 2, int max = 6)
 EndFunction
 
 
-
+;
+; Initialized DD_FL_All FormList with @value
+;
 Function Init_DD_FL_All(FormList value)
 	DD_FL_All = value
 EndFunction
@@ -133,28 +135,6 @@ bool Function IsItemArmor(Actor:WornItem item)
 
 	; anything else is armor
 	return true
-EndFunction
-
-;TODO roep aan vanuit MCM
-; 
-; Check which slots the current equipped clothes / armor occupies
-; 
-Function ShowEquippedClothes(Actor akSender)
-	LenARM_Debug.TechnicalNote("ShowEquippedClothes")
-	string[] items = new string[0]
-	int slot = 0
-	While (slot < 62)
-		Actor:WornItem item = akSender.GetWornItem(slot)
-		If (item != None && item.item != None)
-			items.Add(slot + ": " + item.item.GetName())
-			; Log("  " + slot + ": " + item.item.GetName() + " (" + item.modelName + ")")
-		Else
-			; Log("  Slot " + slot + " is empty")
-		EndIf
-		slot += 1
-	EndWhile
-
-	LenARM_Debug.MessageBox(LL_FourPlay.StringJoin(items, "\n"))
 EndFunction
 
 
