@@ -1,9 +1,9 @@
 Scriptname LenARM:LenARM_Perks extends Quest
 
+; ------------------------
+; ------------------------
+; Quest input params
 
-; ------------------------
-; Register the .esp Quest properties so we can act on them
-; ------------------------
 Group Properties
 	Perk[] Property RadsPerkArray Auto
 	Perk Property RadsPerkFull Auto
@@ -11,7 +11,18 @@ Group Properties
 	Perk[] Property BalloonsPerkArray Auto
 EndGroup
 
+; ------------------------
+; ------------------------
+; methods
 
+; For some reason doc comments from the first function after variable declarations are not picked up.
+Function DummyFunction()
+EndFunction
+
+
+;
+; Gets the current RadsPerk 'level' of @akTarget
+;
 int Function GetCurrentRadsPerkLevel(Actor akTarget)
     int i = 0
     While (i <= 4)
@@ -26,20 +37,25 @@ int Function GetCurrentRadsPerkLevel(Actor akTarget)
 	return 0
 EndFunction
 
-
+;
+; Adds RadsPerk with 'level' @perkLevel to @akTarget
+;
 Function ApplyRadsPerk(Actor akTarget, int perkLevel)
 	akTarget.AddPerk(RadsPerkArray[perkLevel])	
 EndFunction
+
+;
+; Adds Full RadsPerk to @akTarget
+;
 Function ApplyRadsPerkMax(Actor akTarget)
 	akTarget.AddPerk(RadsPerkFull)	
 EndFunction
 
-
-; ------------------------
-; Loops through all possible radsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
-; Does not apply the matching radsPerk, you must do that manually.
-; Use -1 to clear all radPerks from an Actor.
-; ------------------------
+; 
+; Loops through all possible RadsPerks, removing those that are active on @akTarget if they don't match @newPerkLevel.
+; Does not apply the matching RadsPerk, you must do that manually.
+; Use @newPerkLevel -1 to clear all RadPerks from @akTarget.
+; 
 Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
     int i = 0
 	; loop through the standard perks, remove when not matching new perk level
@@ -62,23 +78,26 @@ Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
 	; endif
 EndFunction
 
+;
+; Clears all RadsPerks from @akTarget
+;
 Function ClearAllRadsPerks(Actor akTarget)
     ClearOldRadsPerks(akTarget, -1)
 EndFunction
 
 
-
-
-
+;
+; Adds BalloonsPerk with 'level' @perkLevel to @akTarget
+;
 Function ApplyBalloonsPerk(Actor akTarget, int perkLevel)
 	akTarget.AddPerk(BalloonsPerkArray[perkLevel])	
 EndFunction
 
-; ------------------------
-; Loops through all possible balloonsPerks, removing those that are active on the Actor if they don't match the newPerkLevel.
-; Does not apply the matching balloonsPerk, you must do that manually.
-; Use -1 to clear all balloonsPerks from an Actor.
-; ------------------------
+; 
+; Loops through all possible BalloonsPerks, removing those that are active on @akTarget if they don't match @newPerkLevel.
+; Does not apply the matching BalloonsPerk, you must do that manually.
+; Use @newPerkLevel -1 to clear all BalloonsPerks from @akTarget.
+; 
 Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
     int i = 0	
 	; loop through the standard perks, remove when not matching new perk level
@@ -92,6 +111,9 @@ Function ClearOldBalloonsPerks(Actor akTarget, int newPerkLevel)
     EndWhile
 EndFunction
 
+;
+; Clears all BalloonsPerks from @akTarget
+;
 Function ClearAllBalloonsPerks(Actor akTarget)
     ClearOldBalloonsPerks(akTarget, -1)
 EndFunction
