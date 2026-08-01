@@ -5,6 +5,7 @@ LenARM_Main Property LenARM_Main Auto
 
 LenARM_BloatNPC Property LenARM_BloatNPC Auto
 LenARM_Util Property LenARM_Util Auto
+LenARM_Perks Property LenARM_Perks Auto Const
 ; LenARM:LenARM_BloatNPC
 
 actorValue property NPCBloatStage auto	
@@ -67,7 +68,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         ; if not dead by now (ie messy popped), do some additional actions
         if (!akTarget.IsDead())
             if (IsConcentrated)
-                ; LenARM_Main.TechnicalNote("concentrated +1")
+                ; LenARM_Debug.TechnicalNote("concentrated +1")
                 akTarget.SetValue(NPCConcentratedBloatCount, (concentratedBloatCount + 1))
             endif
 
@@ -98,7 +99,7 @@ EndEvent
 
 ; when done unregister remote events
 Event OnEffectFinish(Actor akTarget, Actor akCaster)
-	; LenARM_Main.TechnicalNote("NPCBloatScript finished!")
+	; LenARM_Debug.TechnicalNote("NPCBloatScript finished!")
     UnRegisterForRemoteEvent(akTarget as ObjectReference, "OnUnload")
 EndEvent
 
@@ -111,20 +112,19 @@ Event ObjectReference.OnUnload(ObjectReference akSender)
 EndEvent
 
 Event OnDying(Actor akKiller)
-	; LenARM_Main.TechnicalNote("DEAD")
+	; LenARM_Debug.TechnicalNote("DEAD")
     ; don't attempt to dispel here as we will be dispelled when actor finished dying
     ResetActor(victim, false)
 EndEvent
 
 
 Function ResetActor(Actor akTarget, bool shouldDispel)
-	; LenARM_Main.TechnicalNote("reset!")
+	; LenARM_Debug.TechnicalNote("reset!")
 
     ; don't stay paralyzed
     LenARM_Util.UnParalyzeActor(akTarget)
-    ;TODO main ref?
-    ; ; clear overlays
-    ; LenARM_Main.ClearAllRadsPerks(akTarget)    
+    ; clear overlays
+    LenARM_Perks.ClearAllRadsPerks(akTarget)    
     ; reset concentrated bloated counter
     akTarget.SetValue(NPCConcentratedBloatCount, 0)
     ; reset bloating immunity

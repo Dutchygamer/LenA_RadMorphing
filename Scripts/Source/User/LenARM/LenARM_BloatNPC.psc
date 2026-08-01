@@ -41,10 +41,10 @@ EndGroup
 int maxNPCBloatStages = 5
 int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
 
-;TODO ergens vandaan krijgen
-int PopStates = 5
-;TODO ergens vandaan krijgen
-int PopStripState = 1
+; from MCM
+int PopStates
+int PopStripState
+bool ForceNPCBloatPopping
 
 ; ------------------------
 ; ------------------------
@@ -107,6 +107,11 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 	if (akTarget.IsDead())
 		return
 	endif
+
+	; load directly from MCM
+	PopStates = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStates:General")
+	PopStripState = MCM.GetModSettingInt("LenA_RadMorphing", "iPopStripState:General")
+	ForceNPCBloatPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bForceNPCBloatPopping:General")
 
 	; calculate the target bloatStage
 	; -1 means bloat to pop
@@ -220,8 +225,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	; when configured to always messy pop NPCs the permanent pop chance is 100%
 	; this overrules any other options
-	;TODO main ref?
-	if (1 == 0); ForceNPCBloatPopping)
+	if (ForceNPCBloatPopping)
 		messyPopChance = 1
 	; when hit by concentrated shot the permanent pop chance is 50%
 	elseif (isConcentrated)
@@ -435,24 +439,6 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	
 	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
 	LenARM_Main.KitanaMask_Kill(distanceToPlayer, milkToAdd)
-
-	;TODO main ref?
-	; ; bloat player and give temp buff if kitana mask is equipped and within range
-	; ; this takes priority over having the bloating suit equipped as well
-	; if (hasKitanaMaskEquipped)
-	; 	; always bloat player independent of distance
-	; 	int bloatingAmount = (milkToAdd * 20)
-	; 	KitanaMaskSelfMorph_Kill(bloatingAmount)
-
-	; 	if (distanceToPlayer < kitanaMaskPopDetectRadius)
-	; 		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
-	; 		PlayerRef.EquipItem(BloatMaskPoppedNPCBuff, abSilent = true)
-	; 	endif
-	; ; give player a temp buff if bloating suit is equipped and within range
-	; elseif (hasBloatingSuitEquipped && distanceToPlayer < bloatingSuitPopDetectRadius)
-	; 	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ENPCPopComment)
-	; 	PlayerRef.EquipItem(BloatSuitPoppedNPCBuff, abSilent = true)
-	; endif
 EndFunction
 
 ; 
@@ -472,8 +458,6 @@ Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 	BodyGen.UpdateMorphs(akTarget)
 
 	LenARM_Perks.ClearAllRadsPerks(akTarget)
-	;TODO waarom dit?
-	; akTarget.EquipItem(PoppedPotion, abSilent = true)
 	
 	;TODO main ref?
 	; ; restart self-morph timer when requirements not yet met
@@ -528,8 +512,6 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 EndFunction
 
 
-
-;TODO hernoem naar UnequipAll_NPC
 Function UnequipAllNPC(Actor akTarget)
 	; don't bother unequipping if akTarget is in power armor
 	If (akTarget.IsInPowerArmor())
