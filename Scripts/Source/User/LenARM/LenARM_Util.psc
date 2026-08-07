@@ -10,6 +10,7 @@ EndGroup
 
 Group Properties
 	ActorValue Property ParalysisAV Auto Const
+	Keyword property ArmorTypeUnstrippable auto
 EndGroup
 
 ; ------------------------
@@ -100,7 +101,8 @@ bool Function HasTorsoEquipped(Actor akTarget)
 		Actor:WornItem item = akTarget.GetWornItem(slot)
 		
 		; check if item in the slot is not an actor or the pipboy
-		bool isArmor = IsItemArmor(item)
+		; include unstrippable items in this check
+		bool isArmor = IsItemArmor(item, true)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor && !found)
@@ -117,11 +119,15 @@ EndFunction
 ; Checks if @item is an armor piece
 ; PipBoy, actors and DD items are ignored
 ;
-bool Function IsItemArmor(Actor:WornItem item)
+bool Function IsItemArmor(Actor:WornItem item, bool includeUnstrippable = false)
 	;return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 
 	; sanity check
 	if (!item.item)
+		return false
+	endif
+	; ignore unstrippable armor when we should not include it
+	if (!includeUnstrippable && item.item.HasKeyword(ArmorTypeUnstrippable))
 		return false
 	endif
 	; ignore equipped actors and the pipboy
