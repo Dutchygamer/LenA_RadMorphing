@@ -12,21 +12,6 @@ Scriptname LenARM:LenARM_Main extends Quest
 ; All the local variables the mod uses.
 ; Do not rename these without a very good reason; you will break the current active ingame scripts and clutter up the savegame with unused variables.
 ; ------------------------
-; ; [OBSOLETE]
-; SliderSet[] SliderSets
-
-; ; [OBSOLETE]
-; ; flattened two-dimensional array[idxSliderSet][idxSliderName]
-; string[] SliderNames
-
-; ; [OBSOLETE]
-; ; flattened two-dimensional array[idxSliderSet][idxSlot]
-; int[] UnequipSlots
-
-; ; [OBSOLETE]
-; ; flattened two-dimensional array[idxSliderSet][idxSliderName]
-; float[] OriginalMorphs
-
 ;TODO
 ; HUDFramework plugin
 HUDFramework hud
@@ -63,9 +48,6 @@ bool PopUseFullSounds
 int PopWarnings
 bool IsPopping
 
-; [OBSOLETE]
-bool ForceNPCBloatPopping
-
 bool TutorialDisplayed_DroppedClothes = false
 bool TutorialDisplayed_MaxedOutMorphs = false
 bool TutorialDisplayed_Popped = false
@@ -88,11 +70,6 @@ int kitanaMaskPopDetectRadius = 512 ;384
 
 int kitanaMaskSelfMorphTimer = 10
 int kitanaMaskSelfMorphMessyTimer = 30
-
-; all [OBSOLETE]
-int maxNPCBloatStages = 5
-int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
-; all [OBSOLETE]
 
 ;TODO zou deze om kunnen zetten naar AVs...
 ; does player have (or has had) molecow disease?
@@ -163,26 +140,6 @@ Group Properties
 	Scene Property DLC04SettlementDoctor_EndScene Auto Const
 	GenericDoctorsScript Property DLC04SettlementDoctor Auto Const
 	
-	; all [OBSOLETE]
-	Sound Property LenARM_DropClothesSound Auto Const
-	Sound Property LenARM_MorphSound Auto Const
-	Sound Property LenARM_MorphSound_Med Auto Const
-	Sound Property LenARM_MorphSound_High Auto Const
-	Sound Property LenARM_FullSound Auto Const
-	Sound Property LenARM_RadPerkSwitchSound Auto Const
-	Sound Property LenARM_SwellSound Auto Const
-	Sound Property LenARM_SwellPopSound Auto Const
-	Sound Property LenARM_PrePopSound Auto Const
-	Sound Property LenARM_PrePopMessySound Auto Const
-	Sound Property LenARM_PopSound Auto Const
-	Sound Property LenARM_PopMessySound Auto Const
-	Sound Property LenARM_PurgeFailSound Auto Const
-	Sound Property LenARM_FullGroanSound Auto Const
-	Sound Property LenARM_BloatSuitMilkSound Auto Const
-	Sound Property LenARM_NPCPopComment Auto Const
-	Sound Property LenARM_FXBloatHitSound_High Auto Const
-	; all [OBSOLETE]
-
 	Message Property LenARM_DropClothesMessage Auto
 	Message Property LenARM_MaxedOutMorphsMessage Auto
 	Message Property LenARM_MaxedOutMorphsWithPoppingMessage Auto
@@ -212,13 +169,6 @@ Group Properties
 	Message Property LenARM_PAPerkSwitchMessage Auto
 	Message Property LenARM_PAEjectMessage Auto
 
-	; all [OBSOLETE]
-	Perk[] Property RadsPerkArray Auto
-	Perk Property RadsPerkFull Auto
-	
-	Perk[] Property BalloonsPerkArray Auto
-	; all [OBSOLETE]
-	
 	;TODO in geval de lokale bool random wordt unset
 	; Perk Property LenARM_BloatSuitPerk Auto Const
 	; Perk Property LenARM_KitanaMaskPerk Auto Const
@@ -226,15 +176,11 @@ Group Properties
 	Perk Property PoppingExpertPerk1 Auto
 	Perk Property PoppingExpertPerk2 Auto
 	
-	; [OBSOLETE]
-	ActorValue Property ParalysisAV Auto Const
 	ActorValue Property LuckAV Auto Const
 	Potion Property GlowingOneBlood Auto Const
 	Potion Property PoppedPotion Auto Const	
 	Potion Property ResetMorphsExperimentalPotion Auto Const	
 	Potion Property ResetMorphsPotion Auto Const
-	; [OBSOLETE]
-	Potion Property ResetRadsPotion Auto Const
 	Potion Property BloatSuitInjectAgent Auto Const
 	Potion Property BloatSuitPoppedNPCBuff Auto Const
 	Potion Property BloatMaskPoppedNPCBuff Auto Const
@@ -244,16 +190,8 @@ Group Properties
 	MagicEffect Property MooMilkAddictionEffect Auto Const
 	MagicEffect Property MS19SurpressantEffect Auto
 	
-	; [OBSOLETE]
-	Keyword property ActorTypeBloatingAgent auto
 	Keyword property ArmorTypeBloatingSuit auto
 	
-	; [OBSOLETE]
-	Form Property BloatNPCPopExplosion Auto
-	; [OBSOLETE]
-	Form Property BloatGrenadeExplosion Auto
-	; [OBSOLETE]
-	Form Property BloatingSuit Auto
 	Form Property KitanaMask Auto
 	
 	Ammo Property ThirstZapperBloatAmmo Auto Const
@@ -522,7 +460,7 @@ Function OnMCMSettingChange(string modName, string id)
 		ElseIf (id == "bForceNPCBloatPopping:General")
 			LenARM_Debug.Note("Other changes")
 
-			MCM_Read_NPCPopping()
+			; MCM_Read_NPCPopping()
 		; sliders config has been changed; this will trigger mod restart
 		else
 			If (LL_Fourplay.StringSubstring(id, 0, 1) == "s")
@@ -555,7 +493,7 @@ Function Startup()
 		MCM_Read_UpdateDelay()
 		MCM_Read_RadsThresholds()
 		MCM_Read_PlayerPopping()
-		MCM_Read_NPCPopping()
+		; MCM_Read_NPCPopping()
 		MCM_Read_MaxRadiationMultiplier()		
 		MCM_Read_RadPerks()
 
@@ -669,9 +607,9 @@ Function MCM_Read_PlayerPopping()
 	PopUseFullSounds = MCM.GetModSettingBool("LenA_RadMorphing", "bPopUseFullSounds:General")
 EndFunction
 
-Function MCM_Read_NPCPopping()	
-	ForceNPCBloatPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bForceNPCBloatPopping:General")
-EndFunction
+; Function MCM_Read_NPCPopping()	
+; 	ForceNPCBloatPopping = MCM.GetModSettingBool("LenA_RadMorphing", "bForceNPCBloatPopping:General")
+; EndFunction
 
 Function MCM_Read_MaxRadiationMultiplier()	
 	MaxRadiationMultiplier = MCM.GetModSettingInt("LenA_RadMorphing", "iMaxRadiationMultiplier:General")
