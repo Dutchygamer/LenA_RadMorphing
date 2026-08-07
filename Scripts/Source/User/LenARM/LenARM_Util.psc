@@ -102,7 +102,7 @@ bool Function HasTorsoEquipped(Actor akTarget)
 		
 		; check if item in the slot is not an actor or the pipboy
 		; include unstrippable items in this check
-		bool isArmor = IsItemArmor(item, true)
+		bool isArmor = IsItemArmor_Internal(item, true)
 
 		; when item is an armor and we can unequip it, do so
 		If (isArmor && !found)
@@ -119,7 +119,15 @@ EndFunction
 ; Checks if @item is an armor piece
 ; PipBoy, actors and DD items are ignored
 ;
-bool Function IsItemArmor(Actor:WornItem item, bool includeUnstrippable = false)
+bool Function IsItemArmor(Actor:WornItem item)
+	return IsItemArmor_Internal(item, false)
+EndFunction
+
+;
+; Checks if @item is an armor piece
+; PipBoy, actors and DD items are ignored
+;
+bool Function IsItemArmor_Internal(Actor:WornItem item, bool includeUnstrippable)
 	;return (item.item && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Actors" && LL_Fourplay.StringSubstring(item.modelName, 0, 6) != "Pipboy")
 
 	; sanity check
