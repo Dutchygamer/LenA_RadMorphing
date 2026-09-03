@@ -316,6 +316,7 @@ Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference 
 		return
 	EndIf
 
+	;TODO kijk of we niet nog andere nipple blockers equipped hebben?
 	If (akBaseObject as Armor && hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
 		;Note("nippleblocker found")
 		hasNippleBlockers = false
@@ -634,6 +635,7 @@ Function Shutdown(bool withRestore=true)
 	
 		; stop listening for equipping items
 		UnregisterForRemoteEvent(PlayerRef, "OnItemEquipped")
+		UnregisterForRemoteEvent(PlayerRef, "OnItemUnequipped")
 		
 		; stop listening for doctor scene
 		;TODO moeten de andere scenes hier ook niet bij staan?
@@ -642,7 +644,8 @@ Function Shutdown(bool withRestore=true)
 		
 		; stop listening for main quest changes
 		UnregisterForRemoteEvent(MQ102, "OnStageSet")
-		
+		UnregisterForRemoteEvent(DN050, "OnStageSet")
+
 		If (withRestore)
 			StartTimer(Math.Max(UpdateDelay + 0.5, 2.0), ETimerShutdownRestoreMorphs)
 		Else
@@ -1511,12 +1514,11 @@ bool Function ApplyRadsPerk()
 			; PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
-			if (LenARM_Util.HasTorsoEquipped(PlayerRef) && perkLevel != 0 && CurrentRadsPerk != 0)
-				;LenARM_Debug.Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
-				LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ERadPerkSwitchSound)
-				
-				; only here set our bool to true
-				hasChanged = true
+			if (perkLevel != 0 && CurrentRadsPerk != 0)
+				if (LenARM_Util.HasTorsoEquipped(PlayerRef))
+					;LenARM_Debug.Note("stretch sound for perkLevel " + perkLevel + "; CurrentRadsPerk " + CurrentRadsPerk)
+					LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.ERadPerkSwitchSound)				
+				endif
 			endif
 		Else
 			LenARM_Perks.ApplyRadsPerkMax(PlayerRef)
@@ -1525,7 +1527,8 @@ bool Function ApplyRadsPerk()
 		
 		CurrentRadsPerk = perkLevel
 		; enable bloating suit ammo when we switch perks
-		canGiveBloatingSuitAmmo = true		
+		canGiveBloatingSuitAmmo = true
+		hasChanged = true
 	endif
 
 	return hasChanged
@@ -1847,7 +1850,7 @@ Function KitanaMaskEquipped()
 
 		; 100 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 100)
-		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFXBloatHitSound_High)
 		
 		KitanaMask_TriggerPuffyNipples_NoTimer()
 		StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
@@ -1897,7 +1900,7 @@ Function KitanaMaskSelfMorph_Timer()
 	LenARM_BloatingMask_PeriodicMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFXBloatHitSound_High)
 	
 	; skip puffy nipples as we already have that when we get here
 	
@@ -1914,7 +1917,7 @@ Function KitanaMaskSelfMorph_Unequip()
 	LenARM_BloatingMask_UnsafeUnequipMessage.Show()
 	; 50 rads worth of bloating
 	PlayerRef.DamageValue(avBloating, 50)
-	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFXBloatHitSound_High)
 	
 	; skip puffy nipples as we already have that when we get here
 
@@ -1970,7 +1973,7 @@ Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
 
 	; bloat player
 	PlayerRef.DamageValue(avBloating, bloatingAmount)
-	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFXBloatHitSound_High)
 	kitanaMaskMessyPoppedCount += 1
 
 	; when player has popped enough NPCs to safely unequip mask, give out perk and display special message
@@ -2009,7 +2012,7 @@ Function DN050SelfMorph()
 	if (DN050.GetStage() == 30)
 		; 20 rads worth of bloating
 		PlayerRef.DamageValue(avBloating, 20)
-		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
+		LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFXBloatHitSound_High)
 		; give player puffy nipples for a bit
 		hasKitanaMaskPoppedNPC = true
 		
@@ -2038,7 +2041,7 @@ Function RadPurgeFailSelfMorph()
 	Utility.Wait(1.0)
 	; bloat player
 	PlayerRef.DamageValue(avBloating, 9999)
-	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EMorphSound_High)
+	LenARM_SFX.ActorPlaySound(PlayerRef, LenARM_SFX.EFXBloatHitSound_High)
 	
 	KitanaMask_TriggerPuffyNipples()
 EndFunction
