@@ -85,6 +85,8 @@ bool isPoppingExpert = false
 bool hasKitanaMaskPoppedNPC = false
 bool isRadPurgeFailure = false
 
+bool isInPowerArmor = false
+
 ; do we want to force a morphs update during next run even if there has been no rads changes?
 bool forceUpdate = false
 
@@ -805,6 +807,18 @@ Function TimerMorphTick()
 	; more in case player manually gives perk via console instead of doing it the normal way.
 	if (PlayerRef.HasPerk(PoppingExpertPerk2) && isPoppingExpert == false)
 		isPoppingExpert = true
+	endif
+
+	; check if player is in PA and set bool accordingly when not set yet
+	if (PlayerRef.IsInPowerArmor() && isInPowerArmor == false)
+		isInPowerArmor = true
+		;LenARM_Debug.Note("in PA")
+	; check if player is no longer in PA and unset bool accordingly when still set
+	; this will also force an update
+	elseif (PlayerRef.IsInPowerArmor() == false && isInPowerArmor)
+		isInPowerArmor = false
+		forceUpdate = true
+		;LenARM_Debug.Note("not in PA")
 	endif
 
 	; if rads haven't changed, restart timer and do nothing
