@@ -1143,6 +1143,8 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasNippleBlockers)
 			morphBonus += 0.25
 		endif
+		; player has balloonsperks
+		morphBonus += (CurrentBalloonsPerk * 0.075)
 	; permanent double melon increase
 	elseif (matchingSlider == "DoubleMelon")
 		; player is popping expert
