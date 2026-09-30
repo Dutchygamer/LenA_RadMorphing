@@ -15,7 +15,7 @@ bool Property PoweredUp Auto
 ; -- RobotSelfDestructScript public props --
 weapon Property SelfDestructBot Auto Const
 SPELL Property crCoreMeltdownCloak01 Auto Const
-ActorValue  property SpeedMult Auto const
+ActorValue property SpeedMult Auto const
 
 ; -- other public props --
 LenARM_BloatNPC Property LenARM_BloatNPC Auto
@@ -33,6 +33,7 @@ Sound Property HazardSound Auto Const
 int ChaseSpeed = 140
 Actor victim
 int HazardSoundId = 0
+int PopTimerId = 1337
 
 
 ; ------------------------
@@ -115,10 +116,8 @@ Function startSelfDestructAndWait(Actor selfRef)
     ; make ourselves immune to further bloating until we are done
     selfRef.SetValue(NPCBloatImmunity, 1)
 
-    ; start bloating
-    int currentBloatStage = (selfRef.getValue(NPCBloatStage) as int)
-    LenARM_BloatNPC.BloatActorLegendary(selfRef, currentBloatStage, 6)
-
+    ; start bloating in 5 seconds
+    StartTimer(5, PopTimerId)
 endFunction
 
 ;Do whatever is necessary to allow the robot to Self-Destruct again.
@@ -128,6 +127,24 @@ Function ResetSelfDestruct()
     Actor selfRef = self.GetTargetActor()
     selfRef.RemoveSpell(crCoreMeltdownCloak01)
 EndFunction
+
+
+
+; register timer
+Event OnTimer(int tid)
+	If (tid == PopTimerId)
+		PopActor()
+	EndIf
+EndEvent
+
+Function PopActor()
+    actor selfRef = self.GetTargetActor()
+
+    ; start bloating
+    int currentBloatStage = (selfRef.getValue(NPCBloatStage) as int)
+    LenARM_BloatNPC.BloatActorLegendary(selfRef, currentBloatStage, 6)
+EndFunction
+
 
 
 
@@ -142,17 +159,11 @@ EndEvent
 Event ObjectReference.OnUnload(ObjectReference akSender)
     Actor akTarget = (akSender as Actor)
     ResetActor(akTarget)
-    if (HazardSoundId != 0)
-        Sound.StopInstance(HazardSoundId)
-    EndIf    
 endEvent
 
 EVENT OnDying(ACTOR akKiller)
 	; LenARM_Debug.TechnicalNote("DEAD")
     ResetActor(victim)
-    if (HazardSoundId != 0)
-        Sound.StopInstance(HazardSoundId)
-    EndIf    
 ENDEVENT
 
 
@@ -163,6 +174,12 @@ Function ResetActor(Actor akTarget)
     LenARM_Perks.ClearAllRadsPerks(akTarget)
     ; reset bloating immunity
     akTarget.SetValue(NPCBloatImmunity, 0)
+
+    CancelTimer(PopTimerId)
+    
+    if (HazardSoundId != 0)
+        Sound.StopInstance(HazardSoundId)
+    EndIf 
 
     ; disspell yourself when done with resetting
     self.Dispel()
