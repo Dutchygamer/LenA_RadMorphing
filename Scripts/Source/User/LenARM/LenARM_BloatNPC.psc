@@ -132,7 +132,7 @@ Function BloatActor_Internal(Actor akTarget, int currentBloatStage, int toAdd, i
 	endIf
 
 	; when bloatType is normal or concentrated keep bloating the actor until the bloatStage is equal to target
-	if (bloatType <= EBloatTypeConcentrated)
+	if (bloatType != EBloatTypeMessy) ; <= EBloatTypeConcentrated || bloatType == EBloatTypeLegendary)
 		while (nextBloatStage <= targetBloatStage)
 			; don't bloat actor that is dead
 			if (akTarget.IsDead())
@@ -208,8 +208,8 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	bool isConcentrated = bloatType == EBloatTypeConcentrated
 	bool isForcedMessy = bloatType == EBloatTypeMessy
-	; when bloatpopping a HalluciGen Agent NPC always make it legendary
-	bool isLegendary = bloatType == EBloatTypeLegendary || akTarget.HasKeyword(ActorTypeBloatingAgent)
+	bool isLegendary = bloatType == EBloatTypeLegendary
+	bool isHalluciGenAgent = akTarget.HasKeyword(ActorTypeBloatingAgent)
 
 	; when we pop a non-essential hostile enemy, 10% chance that we pop in a more permanent way
 	float messyPopChance = 0.1
@@ -231,13 +231,13 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	bool isHostile = akTarget.IsHostileToActor(PlayerRef) == true
 	bool isEssential = actorBaseTarget.IsEssential()
-	bool canForcedMessy = (isForcedMessy || isLegendary) && isHostile
+	bool canForcedMessy = (isForcedMessy || isLegendary || isHalluciGenAgent) && isHostile
+
 	; only allow messy pops when:
 	; - target is not player
 	; - target is hostile to player
 	; - target is not essential (protected is fine)
-	; - random die roll is below our messyPopChance
-	
+	; - random die roll is below our messyPopChance	
 	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat() <= messyPopChance)
 	; messy popping essential NPCs will lead to some very weird things hence we don't support that
 	; if you want to messy pop an essential NPC (ie that Hubologist cook from Nuka World) first use console command `setessential <baseid> 0` on them
@@ -272,7 +272,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 	; paralyze actor first if not legendary
 	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
-	if (!isLegendary)
+	if ((isLegendary || isHalluciGenAgent) == false)
 		LenARM_Util.ParalyzeActor(akTarget)
 	endif
 	
@@ -295,12 +295,15 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		if (canForcedMessy)
 			playAltMorphSound = true
 
-			; forced messy pop bloats actor at normal rate but twice as large and immediately strips them
+			; forced messy pop bloats actor at normal rate but twice as large
 			if (!isLegendary)
 				popStatesToUse = PopStates
 				multiplier *= 2.0
-				UnequipAllNPC(akTarget)
-			; legendary pop bloats actor at normal rate but even larger then forced messy but doesn't strip them
+				; when not an HalluciGen agent, strip them too
+				if (!isHalluciGenAgent)
+					UnequipAllNPC(akTarget)
+				endif
+			; legendary pop bloats actor at normal rate but even larger then forced messy
 			else
 				popStatesToUse = PopStates
 				multiplier *= 2.5
@@ -322,7 +325,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 			; endif	
 
 			; killing legendary bloating enemies will just pop them directly
-			if (isLegendary)
+			if (isLegendary || isHalluciGenAgent)
 				; we need to do some calculations so we go back to the original NPC's morphs
 				float reset = (1.0 + totalPopMultiplier) * -1
 				SetBloatMorphs(akTarget, reset, shouldPop = false)
