@@ -828,16 +828,25 @@ Function TimerMorphTick()
 		return
 	endif
 
+	;TODO nee dis niet goed...
+	; nu pakt ie altijd de volledige bloats en verlaagt dat met 25%, waardoor ie nu altijd lager gaat uitkomen dan wat ie hoort te zijn
+	; hij zou alleen het verschil moeten verlagen, wat de reden was dat het op radsDifference zat
+	; echter dat gebruiken we niet voor CurrentRads...
+	; zou je CurrentRads niet direct naar rawMorphInput moeten setten maar naar (CurrentRads + modifiedMorphInput) ?
+
 	; calculate the amount of rads taken
 	; the longer the timer interval, the larger this will be
-	float radsDifference = rawMorphInput - CurrentRads
-
-	; when we have bloating suit equipped, reduce accumulated bloating by 25%
-	if (hasBloatingSuitEquipped)
-		;LenARM_Debug.Note("reduced morphs from " + radsDifference + " to " + (radsDifference * 0.75))
-		radsDifference = radsDifference * 0.75
-	endif
+	float radsDifference = rawMorphInput - CurrentRads	
+	;TODO dit voor nu ff disabled want deze werkt dus alleen voor de Perks nu :')
+	; ; when we have bloating suit equipped, reduce accumulated bloating by 25%
+	; if (hasBloatingSuitEquipped)
+	; 	;LenARM_Debug.Note("reduced morphs from " + radsDifference + " to " + (radsDifference * 0.75))
+	; 	radsDifference = radsDifference * 0.75
+	; endif
 	
+	; float hurmf = CurrentRads + radsDifference
+	; LenARM_Debug.TechnicalNote("radsDifference raw: " + (rawMorphInput - CurrentRads) + "; radsDifference mod: " + (radsDifference) + "new morphs: " + rawMorphInput + "; mod morphs: " + hurmf)
+
 	; when already on max morphs and popping is enabled, then any large amount of additional morphs (50 rads worth) will force an update
 	; this is only relevant for CheckPopWarnings
 	if (maxedOutMorphs && EnablePopping && (radsDifference >= 0.05))
@@ -845,7 +854,7 @@ Function TimerMorphTick()
 	endif
 
 	; update our internal storage with the new morphs
-	CurrentRads = rawMorphInput
+	CurrentRads = rawMorphInput ;+= radsDifference ;modifiedMorphInput
 
 	; TODO de else is de huidige waarheid gezien we alleen doctor only sliders ondersteunen nu
 	; when we have no doctor-only reset sliders, TotalRads should always match our current rads
@@ -860,7 +869,7 @@ Function TimerMorphTick()
 	; TotalRads = rawMorphInput
 	
 	; TODO more debug shenenigens...
-	; LenARM_Debug.Log("raw morph input: " + rawMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
+	; LenARM_Debug.TechnicalNote("raw morph input: " + modifiedMorphInput + "; radsDifference: " + radsDifference + "; CurrentRads: " + CurrentRads + "; TotalRads: " + TotalRads)
 
 	int idxSet = 0
 
@@ -882,6 +891,10 @@ Function TimerMorphTick()
 
 			; only use sliderSets which have actual entries
 			If (sliderSet.NumberOfSliderNames > 0)
+
+				;TODO well fuck...
+				; hier gebruikt ie ook rawMorphInput voor de morphs, maar die moeten we dus ook aanpassen >.>
+
 				float calculatedMorphPercentage = CalculateMorphPercentage(rawMorphInput, sliderSet)
 
 				; only try to apply the morphs if either
@@ -1509,7 +1522,7 @@ bool Function ApplyRadsPerk()
 	bool hasChanged = false
 
 	; LenARM_Debug.Log((TotalRads * 1000) + "; " + ((TotalRads * 1000) / 200) + "; " + perkLevel)
-	; LenARM_Debug.Log("radsperk; CurrentRads: " + (CurrentRads * 1000) + "; TotalRads: " + (TotalRads * 1000))
+	; LenARM_Debug.TechnicalNote("radsperk; perkLevel:" + perkLevel + "; CurrentRads: " + (CurrentRads * 1000) + "; TotalRads: " + (TotalRads * 1000))
 
 	; limit to 4 just in case (we have 5 perks, starting from 0)
     If (perkLevel > 4)
@@ -1527,7 +1540,6 @@ bool Function ApplyRadsPerk()
 		; grab the perk from the array if we aren't on maxed out morphs, else use the dedicated perk
 		if (perkLevel != 5)
 			LenARM_Perks.ApplyRadsPerk(PlayerRef, perkLevel)
-			; PlayerRef.AddPerk(RadsPerkArray[perkLevel])
 
 			; play clothes stretch sound when we have something equipped on the torso and we aren't going from none to first or from final to none
 			if (perkLevel != 0 && CurrentRadsPerk != 0)
@@ -1538,7 +1550,6 @@ bool Function ApplyRadsPerk()
 			endif
 		Else
 			LenARM_Perks.ApplyRadsPerkMax(PlayerRef)
-			; PlayerRef.AddPerk(RadsPerkFull)			
 		endif
 		
 		CurrentRadsPerk = perkLevel
@@ -1576,7 +1587,6 @@ Function ApplyBalloonsPerk()
 		int newBalloonsPerk = currentCount -1
 		LenARM_Perks.ClearOldBalloonsPerks(PlayerRef, newBalloonsPerk)
 		LenARM_Perks.ApplyBalloonsPerk(PlayerRef, newBalloonsPerk)
-		; PlayerRef.AddPerk(BalloonsPerkArray[newBalloonsPerk])		
 		
 		CurrentBalloonsPerk = currentCount
 	endif
@@ -1635,6 +1645,9 @@ Function UnequipSlots()
 			
 			; continue when the morphs are larger then the unequip threshold
 			If (sliderSet.BaseMorph + sliderSet.CurrentMorph > sliderSet.ThresholdUnequip)
+
+				; LenARM_Debug.TechnicalNote("unequipping; currentRads: " + CurrentRads + "; currentRadsPerk: " + CurrentRadsPerk)
+
 				int unequipSlotOffset = LenARM_SliderSet.SliderSet_GetUnequipSlotOffset(idxSet)
 				int idxSlot = unequipSlotOffset
 				
