@@ -724,11 +724,6 @@ EndFunction
 float Function GetNewRads()
 	float newRads = PlayerRef.GetValue(Rads)
 
-	; when we have bloating suit equipped, reduce accumulated bloating by 25%
-	if (hasBloatingSuitEquipped)
-		newRads *= 0.75
-	endif
-
 	; divide rads by 1000 as 1 here equals 1000 displayed rads
 	return newRads / 1000
 EndFunction
@@ -737,11 +732,6 @@ EndFunction
 float Function GetNewBloating()
 	float newBloating = (PlayerRef.GetValue(avBloating) as float)
 	
-	; when we have bloating suit equipped, reduce accumulated bloating by 25%
-	if (hasBloatingSuitEquipped)
-		newBloating *= 0.75
-	endif
-
 	; divide bloating by 1000 as 1 here equals 1000 displayed 'rads'
 	return newBloating / 1000
 EndFunction
@@ -773,11 +763,6 @@ float Function CheckCarriedBalloons()
 		; each balloon is 5 rads worth of morphs
 		float newBalloons = carriedBalloons * 0.005
 
-		; when we have bloating suit equipped, reduce accumulated bloating by 25%
-		if (hasBloatingSuitEquipped)
-			newBalloons *= 0.75
-		endif
-		
 		return newBalloons
 	endif
 EndFunction
@@ -2010,8 +1995,11 @@ EndFunction
 ; Bloat player by certain amount when bloat-popping an NPC
 ;
 Function KitanaMaskSelfMorph_Kill(int bloatingAmount = 100)
-	; cap at 150 bloating max
-	if (bloatingAmount > 150)
+	; cap at 100 bloating max when wearing milking armor
+	if (hasBloatingSuitEquipped && bloatingAmount > 100)
+		bloatingAmount = 100
+	; else cap at 150 bloating max
+	elseif (bloatingAmount > 150)
 		bloatingAmount = 150
 	endif
 	;LenARM_Debug.Note(bloatingAmount)
