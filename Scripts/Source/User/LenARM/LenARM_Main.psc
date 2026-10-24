@@ -84,6 +84,8 @@ bool isPoppingExpert = false
 ; aka give puffy nipples
 bool hasKitanaMaskPoppedNPC = false
 bool isRadPurgeFailure = false
+; is player currently getting direct bloating damage?
+bool getsBloatingDamage = false
 
 bool isInPowerArmor = false
 
@@ -193,6 +195,7 @@ Group Properties
 	MagicEffect Property MS19SurpressantEffect Auto
 	
 	Keyword property ArmorTypeBloatingSuit auto
+	Keyword property LenA_BloatMagicEffect auto
 	
 	Form Property KitanaMask Auto
 	
@@ -720,6 +723,12 @@ EndFunction
 ; ------------------------
 float Function GetNewRads()
 	float newRads = PlayerRef.GetValue(Rads)
+
+	; when we have bloating suit equipped, reduce accumulated bloating by 25%
+	if (hasBloatingSuitEquipped)
+		newRads *= 0.75
+	endif
+
 	; divide rads by 1000 as 1 here equals 1000 displayed rads
 	return newRads / 1000
 EndFunction
@@ -727,6 +736,12 @@ EndFunction
 ; ------------------------
 float Function GetNewBloating()
 	float newBloating = (PlayerRef.GetValue(avBloating) as float)
+	
+	; when we have bloating suit equipped, reduce accumulated bloating by 25%
+	if (hasBloatingSuitEquipped)
+		newBloating *= 0.75
+	endif
+
 	; divide bloating by 1000 as 1 here equals 1000 displayed 'rads'
 	return newBloating / 1000
 EndFunction
@@ -756,7 +771,14 @@ float Function CheckCarriedBalloons()
 	; when player has (or has had) molecow disease check our carried balloons
 	else
 		; each balloon is 5 rads worth of morphs
-		return carriedBalloons * 0.005
+		float newBalloons = carriedBalloons * 0.005
+
+		; when we have bloating suit equipped, reduce accumulated bloating by 25%
+		if (hasBloatingSuitEquipped)
+			newBalloons *= 0.75
+		endif
+		
+		return newBalloons
 	endif
 EndFunction
 
@@ -821,6 +843,16 @@ Function TimerMorphTick()
 		;LenARM_Debug.Note("not in PA")
 	endif
 
+	; if player is receiving direct bloating damage set bool accordingly when not set yet
+	if (PlayerRef.HasMagicEffectWithKeyword(LenA_BloatMagicEffect) && getsBloatingDamage == false)
+		getsBloatingDamage = true
+		;forceUpdate = true
+	; if player is no longer receiving direct bloating damage unset bool accordingly when still set
+	elseif (PlayerRef.HasMagicEffectWithKeyword(LenA_BloatMagicEffect) == false && getsBloatingDamage)
+		getsBloatingDamage = false
+		;forceUpdate = true
+	endif
+
 	; if rads haven't changed, restart timer and do nothing
 	; skipped if have forceUpdate = true
 	If (!forceUpdate && rawMorphInput == CurrentRads)
@@ -828,24 +860,11 @@ Function TimerMorphTick()
 		return
 	endif
 
-	;TODO nee dis niet goed...
-	; nu pakt ie altijd de volledige bloats en verlaagt dat met 25%, waardoor ie nu altijd lager gaat uitkomen dan wat ie hoort te zijn
-	; hij zou alleen het verschil moeten verlagen, wat de reden was dat het op radsDifference zat
-	; echter dat gebruiken we niet voor CurrentRads...
-	; zou je CurrentRads niet direct naar rawMorphInput moeten setten maar naar (CurrentRads + modifiedMorphInput) ?
-
 	; calculate the amount of rads taken
 	; the longer the timer interval, the larger this will be
-	float radsDifference = rawMorphInput - CurrentRads	
-	;TODO dit voor nu ff disabled want deze werkt dus alleen voor de Perks nu :')
-	; ; when we have bloating suit equipped, reduce accumulated bloating by 25%
-	; if (hasBloatingSuitEquipped)
-	; 	;LenARM_Debug.Note("reduced morphs from " + radsDifference + " to " + (radsDifference * 0.75))
-	; 	radsDifference = radsDifference * 0.75
-	; endif
-	
-	; float hurmf = CurrentRads + radsDifference
-	; LenARM_Debug.TechnicalNote("radsDifference raw: " + (rawMorphInput - CurrentRads) + "; radsDifference mod: " + (radsDifference) + "new morphs: " + rawMorphInput + "; mod morphs: " + hurmf)
+	float radsDifference = rawMorphInput - CurrentRads
+
+	; LenARM_Debug.TechnicalNote("rawMorphInput: " + rawMorphInput + "; radsDifference: " + radsDifference)
 
 	; when already on max morphs and popping is enabled, then any large amount of additional morphs (50 rads worth) will force an update
 	; this is only relevant for CheckPopWarnings
@@ -885,9 +904,6 @@ Function TimerMorphTick()
 		; check each sliderset whether we need to update the morphs
 		While (idxSet < currentSliderSets.Length)
 			LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
-
-			;TODO kijken of Papyrus iets ondersteund ala continue in een loop
-			;hij herkent continue niet als een valid iets, dus ik betwijfel het
 
 			; only use sliderSets which have actual entries
 			If (sliderSet.NumberOfSliderNames > 0)
@@ -1148,16 +1164,16 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 		if (hasBloatingSuitEquipped)
 			morphBonus += 0.3
 		endif
-		; player has popped NPC with kitana mask
-		if (hasKitanaMaskPoppedNPC)
+		; player has popped NPC with kitana mask or is getting direct bloating damage
+		if (hasKitanaMaskPoppedNPC || getsBloatingDamage)
 			morphBonus += 0.5
 		endif
 		; player has nipple piercing equipped
 		if (hasNippleBlockers)
 			morphBonus += 0.25
 		endif
-		; player has balloonsperks
-		morphBonus += (CurrentBalloonsPerk * 0.075)
+		; ; player has balloonsperks
+		; morphBonus += (CurrentBalloonsPerk * 0.075)
 	; permanent double melon increase
 	elseif (matchingSlider == "DoubleMelon")
 		; player is popping expert
