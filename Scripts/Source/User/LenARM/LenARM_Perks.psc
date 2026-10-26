@@ -57,6 +57,11 @@ EndFunction
 ; Use @newPerkLevel -1 to clear all RadPerks from @akTarget.
 ; 
 Function ClearOldRadsPerks(Actor akTarget, int newPerkLevel)
+	; safety net for NPC usage
+	if (akTarget == NONE)
+		return
+	endif
+
     int i = 0
 	; loop through the standard perks, remove when not matching new perk level
 	;TODO kan je niet gewoon RadsPerkArray.Length doen?
