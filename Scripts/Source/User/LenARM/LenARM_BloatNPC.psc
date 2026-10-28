@@ -517,7 +517,25 @@ Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 EndFunction
 
 
-Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)	
+
+; 
+; force resets all NPC's morphs for all sliderSets back to 0.
+; use in case an NPC is stuck with morphs after resetting.
+; will reset every effected slider back to 0, resetting the NPC back to your default body.
+; any earlier applied base morphs from morphs.ini will unfortunately be lost.
+; for obvious reasons do not use this on the player!
+;
+Function Debug_ResetNPCMorphs(Actor akTarget)
+	SetBloatMorphs(akTarget, morphPercentage = 0, shouldPop = false, forceReset = true)
+
+	; reset all the morphs back to 0
+	BodyGen.UpdateMorphs(akTarget)
+
+	LenARM_Perks.ClearAllRadsPerks(akTarget)
+EndFunction
+
+
+Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop, bool forceReset = false)	
 	int idxSet = 0
 
 	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
@@ -538,9 +556,12 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop)
 					toApplyPercentage = toApplyPercentage / 2.0
 				endif
 
-				;TODO not the most efficient way tho...	
-				; grab NPC's current morphs for the slider
-				float npcMorph = BodyGen.GetMorph(akTarget, True, slider, None)
+				; grab NPC's current morphs for the slider, unless we're force-resetting then just grab 0				
+				float npcMorph = 0;
+				if (!forceReset)
+					;TODO not the most efficient way tho...	
+					npcMorph = BodyGen.GetMorph(akTarget, True, slider, None)
+				endif
 
 				; calculate the new morphs based on current morphs + what we need to add
 				float newMorph = npcMorph + (toApplyPercentage * sliderSet.targetMorph)
