@@ -31,6 +31,28 @@ Group Properties
     
 	Ammo Property ThirstZapperBloatAmmo Auto Const
 	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const		
+
+	
+	; ; -- AbLegendaryScript public props --
+	; SPELL Property LegendaryPowerUp Auto Const
+	; ActorValue Property Health Auto Const
+	; Float Property HealthThreshhold Auto Const
+
+	; -- RobotSelfDestructScript public props --
+	weapon Property SelfDestructBot Auto Const
+	SPELL Property crCoreMeltdownCloak01 Auto Const
+	; ActorValue property SpeedMult Auto const
+
+	; ; -- other public props --
+	; LenARM_BloatNPC Property LenARM_BloatNPC Auto
+	; LenARM_Perks Property LenARM_Perks Auto Const
+	; actorValue property NPCBloatStage auto	
+	; actorValue property NPCBloatImmunity auto	
+	weapon[] property WeaponsToUnequip auto	
+	Sound Property HazardSound Auto Const
+	Sound Property BloatMineTick Auto Const
+	actorValue property Confidence auto const
+	; Idle property InjectIdle Auto Const
 EndGroup
 
 
@@ -40,6 +62,9 @@ EndGroup
 
 int maxNPCBloatStages = 5
 int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
+
+int ChaseSpeed = 140
+int HazardSoundId = 0
 
 ; from MCM
 int PopStates
@@ -238,7 +263,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 	; - target is hostile to player
 	; - target is not essential (protected is fine)
 	; - random die roll is below our messyPopChance	
-	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat() <= messyPopChance)
+	bool shouldMessyPop = (akTarget != PlayerRef && isHostile && !isEssential && utility.RandomFloat(0,1) <= messyPopChance)
 	; messy popping essential NPCs will lead to some very weird things hence we don't support that
 	; if you want to messy pop an essential NPC (ie that Hubologist cook from Nuka World) first use console command `setessential <baseid> 0` on them
 
@@ -270,17 +295,39 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		milkToAdd += 1
 	endif
 
-	; paralyze actor first if not legendary
+	; paralyze actor first if not legendary or HalluciGen agent
 	LenARM_SFX.ActorPlaySound(akTarget, LenARM_SFX.EMorphSound_Full)
 	if ((isLegendary || isHalluciGenAgent) == false)
 		LenARM_Util.ParalyzeActor(akTarget)
+	; when legendary or HalluciGen agent force melee attacks while triggering bloatgas hazard
+	else
+	    Debug.Notification("pop time!")
+	    Debug.Trace("[LenARM] pop time!")
+        akTarget.setValue(confidence, 4) ; go aggressive
+		BloatMineTick.Play(akTarget)
+
+		; remove all potential NPC weapons and force-switch to fake weapon so they run after you
+		bool hasUnequipped = False
+		int i = 0
+		While (!hasUnequipped && (i < WeaponsToUnequip.Length))        
+			if (akTarget.IsEquipped(WeaponsToUnequip[i]))
+				akTarget.removeitem(WeaponsToUnequip[i], 1, true)
+				hasUnequipped = True
+			endif
+			i = i + 1
+		EndWhile
+		akTarget.equipItem(SelfDestructBot, abSilent=true, abPreventRemoval=true)
+
+		; add a hazard field
+		akTarget.AddSpell(crCoreMeltdownCloak01)
+		HazardSoundId = HazardSound.Play(akTarget)
 	endif
-	
+
 	; add bloating ammo to actor's inventory
 	akTarget.AddItem(ThirstZapperBloatAmmo, 1, abSilent = true)
 
 	int currentPopState = 1
-	float multiplier = 1.0/8.0 ;same multiplier as for player
+	float multiplier = 1.0/8.0 ; same multiplier as for player
 	float totalPopMultiplier = 0
 
 	; do a random delay before appying the morphs (and morph sounds) on the akTarget
@@ -367,6 +414,11 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		; if (hasKitanaMaskEquipped && kitanaMaskMessyPoppedRequirementMet == false)
 		; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 		; endif
+
+		if (HazardSoundId != 0)
+			Sound.StopInstance(HazardSoundId)
+		EndIf 
+
 		return
 	endif
 
@@ -435,6 +487,10 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	
 	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
 	LenARM_Main.MessyPopNPC_PlayerReward(distanceToPlayer, milkToAdd)
+	
+    if (HazardSoundId != 0)
+        Sound.StopInstance(HazardSoundId)
+    EndIf 
 EndFunction
 
 ; 
