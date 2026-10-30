@@ -4,37 +4,20 @@ Scriptname LenARM:LenARM_AbHallucigenAgentScript extends ActiveMagicEffect
 ; ------------------------
 ; MagicEffect input params
 
-; -- AbLegendaryScript public props --
-; SPELL Property LegendaryPowerUp Auto Const
 ActorValue Property Health Auto Const
 Float Property HealthThreshhold Auto Const
-
-; ; -- RobotSelfDestructScript public props --
-; weapon Property SelfDestructBot Auto Const
-; SPELL Property crCoreMeltdownCloak01 Auto Const
-; ActorValue property SpeedMult Auto const
-
-; -- other public props --
 LenARM_BloatNPC Property LenARM_BloatNPC Auto
 LenARM_Perks Property LenARM_Perks Auto Const
-actorValue property NPCBloatStage auto	
-; actorValue property NPCBloatImmunity auto	
-; weapon[] property WeaponsToUnequip auto	
-; Sound Property HazardSound Auto Const
-; actorValue property Confidence auto const
-; Idle property InjectIdle Auto Const
+actorValue property NPCBloatStage auto
 
 
 ; ------------------------
 ; ------------------------
 ; variables
 
-; int ChaseSpeed = 140
 Actor victim
-; int HazardSoundId = 0
 float ChanceToBerserk = 0.5 Const
 bool PoweredUp = false
-; int PopTimerId = 1337
 
 
 ; ------------------------
@@ -43,20 +26,6 @@ bool PoweredUp = false
 
 ; default state; waiting to trigger legendary effect
 auto State Waiting
-
-    ; ;TODO kijken of dit dan werkt?
-    ; ; je zou dan hier alle bloating effects in kunnen gooien en erop checken of die applied zijn
-    ; ; en dan dezelfde logica als in OnHit triggeren
-    ; ; theorie is dat ie dit kent...
-    ; Event OnItemEquipped(Form akBaseObject, ObjectReference akReference)
-	;     Debug.Notification("hit! " + akBaseObject)
-	;     Debug.Trace("[LenARM] " + "hit! " + akBaseObject)
-	;     ; if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && !PlayerRef.HasMagicEffect(MS19SurpressantEffect))
-
-    ;     ; else
-    ;     ;     RegisterForHitEvent(akTarget)
-    ;     ; endif
-    ; EndEvent
 
     Event OnHit(ObjectReference akTarget, ObjectReference akAggressor, Form akSource, Projectile akProjectile, bool abPowerAttack, bool abSneakAttack, bool abBashAttack, bool abHitBlocked, string apMaterial)
         ;TODO check of niet al aan bloaten, doe dan niets en re-register ook niet
@@ -92,15 +61,7 @@ state SelfDestruct
         ; start bloating
         int currentBloatStage = (selfRef.getValue(NPCBloatStage) as int)
         ; LenARM_BloatNPC.BloatActorMessy(selfRef, currentBloatStage, 6)
-        LenARM_BloatNPC.BloatActorLegendary(selfRef, currentBloatStage, 6)
-        
-        ; ;TODO doet niets?
-        ; selfRef.PlayIdle(InjectIdle)
-		; utility.wait(1)
-        ; selfRef.SetValue(SpeedMult, ChaseSpeed)
-        ; selfRef.setValue(confidence, 4) ; go aggressive
-                
-        ; startSelfDestructAndWait(selfRef)
+        LenARM_BloatNPC.BloatActorLegendary(selfRef, currentBloatStage, 6)        
     EndEvent    
 endState
 
@@ -122,47 +83,6 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 		; RegisterForRemoteEvent(akCaster, "OnItemEquipped") ;for hunger effects
     endif
 EndEvent
-
-; Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
-;     ;TODO kijken of dit dan werkt?
-;     ; je zou dan hier alle bloating effects in kunnen gooien en erop checken of die applied zijn
-;     ; en dan dezelfde logica als in OnHit triggeren
-;     ; theorie is dat ie dit kent...
-;     Debug.Notification("hit! " + akBaseObject)
-;     Debug.Trace("[LenARM] " + "hit! " + akBaseObject)
-;     ; if (akBaseObject as Potion && PlayerRef.HasMagicEffect(LenARM_MS19MoleratEffect) && !PlayerRef.HasMagicEffect(MS19SurpressantEffect))
-
-;     ; else
-;     ;     RegisterForHitEvent(akTarget)
-;     ; endif
-; EndEvent
-
-; ;self destruct process start
-; Function startSelfDestructAndWait(Actor selfRef)
-;     ; remove all potential NPC weapons and force-switch to fake weapon so they run after you
-;     bool hasUnequipped = False
-;     int i = 0
-;     While (!hasUnequipped && (i < WeaponsToUnequip.Length))        
-;         if (selfRef.IsEquipped(WeaponsToUnequip[i]))
-;             selfRef.removeitem(WeaponsToUnequip[i], 1, true)
-;             hasUnequipped = True
-;         endif
-;         i = i + 1
-;     EndWhile
-
-;     selfRef.equipItem(SelfDestructBot, abSilent=true, abPreventRemoval=true)
-;     ; add a hazard field
-;     selfRef.AddSpell(crCoreMeltdownCloak01)
-;     HazardSoundId = HazardSound.Play(selfRef)
-
-;     ; make ourselves immune to further bloating until we are done
-;     selfRef.SetValue(NPCBloatImmunity, 1)
-
-;     ; start bloating
-;     int currentBloatStage = (selfRef.getValue(NPCBloatStage) as int)
-;     ; LenARM_BloatNPC.BloatActorMessy(selfRef, currentBloatStage, 6)
-;     LenARM_BloatNPC.BloatActorLegendary(selfRef, currentBloatStage, 6)
-; endFunction
 
 
 ;TODO waarom doen we dit zowel hiero als in Waiting state?
