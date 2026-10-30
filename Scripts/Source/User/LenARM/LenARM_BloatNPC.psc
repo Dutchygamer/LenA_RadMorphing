@@ -32,24 +32,12 @@ Group Properties
 	Ammo Property ThirstZapperBloatAmmo Auto Const
 	Ammo Property ThirstZapperBloatAmmo_Concentrated Auto Const		
 
-	
-	; ; -- AbLegendaryScript public props --
-	; SPELL Property LegendaryPowerUp Auto Const
-	; ActorValue Property Health Auto Const
-	; Float Property HealthThreshhold Auto Const
-
 	; -- RobotSelfDestructScript public props --
 	weapon Property SelfDestructBot Auto Const
 	SPELL Property crCoreMeltdownCloak01 Auto Const
 	; ActorValue property SpeedMult Auto const
 
-	; ; -- other public props --
-	; LenARM_BloatNPC Property LenARM_BloatNPC Auto
-	; LenARM_Perks Property LenARM_Perks Auto Const
-	; actorValue property NPCBloatStage auto	
-	; actorValue property NPCBloatImmunity auto	
 	weapon[] property WeaponsToUnequip auto	
-	Sound Property HazardSound Auto Const
 	Sound Property BloatMineTick Auto Const
 	actorValue property Confidence auto const
 	; Idle property InjectIdle Auto Const
@@ -64,7 +52,6 @@ int maxNPCBloatStages = 5
 int popNPCBloatStage = 6 ; should be maxNPCBloatStages + 1
 
 int ChaseSpeed = 140
-int HazardSoundId = 0
 
 ; from MCM
 int PopStates
@@ -301,8 +288,8 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		LenARM_Util.ParalyzeActor(akTarget)
 	; when legendary or HalluciGen agent force melee attacks while triggering bloatgas hazard
 	else
-	    Debug.Notification("pop time!")
-	    Debug.Trace("[LenARM] pop time!")
+	    ; Debug.Notification("pop time!")
+	    ; Debug.Trace("[LenARM] pop time!")
         akTarget.setValue(confidence, 4) ; go aggressive
 		BloatMineTick.Play(akTarget)
 
@@ -320,7 +307,6 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 
 		; add a hazard field
 		akTarget.AddSpell(crCoreMeltdownCloak01)
-		HazardSoundId = HazardSound.Play(akTarget)
 	endif
 
 	; add bloating ammo to actor's inventory
@@ -415,9 +401,7 @@ Function BloatPopActor(Actor akTarget, int bloatType)
 		; 	StartTimer(kitanaMaskSelfMorphTimer, ETimerKitanaMask)
 		; endif
 
-		if (HazardSoundId != 0)
-			Sound.StopInstance(HazardSoundId)
-		EndIf 
+		BloatPopActor_HandleDeath(akTarget)
 
 		return
 	endif
@@ -473,6 +457,8 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	; do this for messy bloatpopping too otherwise after respawning the NPC will still have the morphs
 	BodyGen.UpdateMorphs(akTarget)
 
+	BloatPopActor_HandleDeath(akTarget)
+
 	; dismember and kill actor
 	; sadly no way to give the XP to the player even if we tell the player is the killer
 	akTarget.Dismember("Torso", true, true, true)
@@ -488,9 +474,6 @@ Function BloatPopActor_HandleMessy(Actor akTarget, int milkToAdd, bool canForced
 	float distanceToPlayer = PlayerRef.GetDistance(akTarget)
 	LenARM_Main.MessyPopNPC_PlayerReward(distanceToPlayer, milkToAdd)
 	
-    if (HazardSoundId != 0)
-        Sound.StopInstance(HazardSoundId)
-    EndIf 
 EndFunction
 
 ; 
@@ -515,6 +498,12 @@ Function BloatPopActor_HandleNormal(Actor akTarget, int milkToAdd)
 	; restart self-morph timer when requirements not yet met
 	LenARM_Main.KitanaMaskRestartTimer()
 EndFunction
+
+
+Function BloatPopActor_HandleDeath(Actor akTarget)
+	akTarget.RemoveSpell(crCoreMeltdownCloak01)
+EndFunction
+
 
 
 
