@@ -76,6 +76,7 @@ int kitanaMaskSelfMorphMessyTimer = 30
 bool hasHadMoleCowDisease = false
 ; does player have nipple blockers equipped?
 bool hasNippleBlockers = false
+int nippleBlockerCount = 0
 ; does player have moomilk addiction?
 bool hasMooMilkAddiction = false
 ; does player have popping expert perk?
@@ -273,13 +274,18 @@ EndFunction
 Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
 	; only check if we need to unequip anything when we equip clothing or armor and are not in power armor
 	If (akBaseObject as Armor && !PlayerRef.IsInPowerArmor())
-		; if player didn't had any nipple blockers equipped but now has, set the bool to true
-		if (!hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
-			;Note("nippleblocker found")
-			hasNippleBlockers = true
+		; if armor is a nipple blocker, update our counter and potentially set the flag
+		if (NippleBlockers.Find(akBaseObject) > -1)
+			nippleBlockerCount += 1
+			; LenARM_Debug.Note("nippleblockercount: " + nippleBlockerCount)
+			
+			; when equipping first nipple blocker set the flag
+			if (nippleBlockerCount > 0 && !hasNippleBlockers)
+				hasNippleBlockers = true
 
-			; force update morphs on next run
-			forceUpdate = true
+				; force update morphs on next run
+				forceUpdate = true
+			endif
 		endif
 
 		; LenARM_Debug.Log("Actor.OnItemEquipped: " + akBaseObject.GetName() + " (" + akBaseObject.GetSlotMask() + ")")
@@ -317,17 +323,28 @@ EndEvent
 ; On equipping / ingestion of an item, check if we must do something with it
 ; ------------------------
 Event Actor.OnItemUnequipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
+	; only check if we need to unequip anything when we unequip clothing or armor and are not in power armor
 	If (PlayerRef.IsInPowerArmor())
 		return
 	EndIf
 
-	;TODO kijk of we niet nog andere nipple blockers equipped hebben?
+	; if armor is a nipple blocker and we have the nippleBlocker flag set, update our counter and potentially unset the flag
 	If (akBaseObject as Armor && hasNippleBlockers && NippleBlockers.Find(akBaseObject) > -1)
-		;Note("nippleblocker found")
-		hasNippleBlockers = false
+		nippleBlockerCount -= 1
+		; safety net
+		if (nippleBlockerCount < 0)
+			nippleBlockerCount = 0
+		endif
 
-		; force update morphs on next run
-		forceUpdate = true
+		; LenARM_Debug.Note("nippleblockercount: " + nippleBlockerCount)
+
+		; when unequipping last nipple blocker unset the flag
+		if (nippleBlockerCount < 1)
+			hasNippleBlockers = false
+
+			; force update morphs on next run
+			forceUpdate = true
+		endif
 	endif
 
 	; when unequipping the Kitana mask check if player has messy popped enough NPCs
