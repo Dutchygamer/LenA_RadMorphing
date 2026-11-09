@@ -531,8 +531,9 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop, b
 
 	; apply it to all morphs from slidersets which aren't excluded
 	While (idxSet < currentSliderSets.Length)
-		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]		
-		If (sliderSet.NumberOfSliderNames > 0);  && (!shouldPop || (shouldPop && !sliderSet.ExcludeFromPopping)))
+		LenARM_SliderSet:SliderSet sliderSet = currentSliderSets[idxSet]
+		; when popping don't apply sliders we should exclude
+		If (sliderSet.NumberOfSliderNames > 0 && (!shouldPop || (shouldPop && !sliderSet.ExcludeFromPopping)))
 			int sliderNameOffset = LenARM_SliderSet.SliderSet_GetSliderNameOffset(idxSet)
 			int idxSlider = sliderNameOffset
 			int sex = akTarget.GetLeveledActorBase().GetSex()
@@ -540,10 +541,10 @@ Function SetBloatMorphs(Actor akTarget, float morphPercentage, bool shouldPop, b
 				string slider = LenARM_SliderSet.GetSliderName(idxSlider)
 
 				float toApplyPercentage = morphPercentage
-				;TODO for now hardcoded to half these sliders as these look wonky when large morphed
-				if (slider == "PregnancyBelly" || slider == "BigBelly")
-					toApplyPercentage = toApplyPercentage / 2.0
-				endif
+				; ;TODO for now hardcoded to half these sliders as these look wonky when large morphed
+				; if (slider == "PregnancyBelly" || slider == "BigBelly")
+				; 	toApplyPercentage = toApplyPercentage / 2.0
+				; endif
 
 				; grab NPC's current morphs for the slider, unless we're force-resetting then just grab 0				
 				float npcMorph = 0;
