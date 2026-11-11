@@ -88,7 +88,9 @@ bool isRadPurgeFailure = false
 ; is player currently getting direct bloating damage?
 bool getsBloatingDamage = false
 
+;TODO we doen er niks mee? setten het alleen maar doen niks met de waarde?
 bool isInPowerArmor = false
+bool shouldExitPowerArmor = false
 
 ; do we want to force a morphs update during next run even if there has been no rads changes?
 bool forceUpdate = false
@@ -833,16 +835,24 @@ Function TimerMorphTick()
 		isPoppingExpert = true
 	endif
 
-	; check if player is in PA and set bool accordingly when not set yet
-	if (PlayerRef.IsInPowerArmor() && isInPowerArmor == false)
-		isInPowerArmor = true
-		;LenARM_Debug.Note("in PA")
+	if (PlayerRef.IsInPowerArmor())
+		; check if player is in PA and set bool accordingly when not set yet
+		if (isInPowerArmor == false)
+			isInPowerArmor = true
+		endif
+		; if player is supposed to get kicked out of their PA, do so.
+		; do this outside of the place where we set shouldExitPowerArmor in case at that specific moment the player can't get out of the PA.
+		; this way it should check each update loop instead of only once.
+		if (shouldExitPowerArmor)
+			PlayerRef.SwitchtoPowerArmor(none)
+			isInPowerArmor = false
+			forceUpdate = true
+		endif
 	; check if player is no longer in PA and unset bool accordingly when still set
 	; this will also force an update
 	elseif (PlayerRef.IsInPowerArmor() == false && isInPowerArmor)
 		isInPowerArmor = false
 		forceUpdate = true
-		;LenARM_Debug.Note("not in PA")
 	endif
 
 	; if player is receiving direct bloating damage set bool accordingly when not set yet
@@ -897,7 +907,6 @@ Function TimerMorphTick()
 	int morphableSliders = 0
 	int maxedOutSliders = 0
 
-	;TODO temp(?)
 	LenARM_SliderSet:SliderSet[] currentSliderSets = LenARM_SliderSet.GetAllSliderSets()
 
 	; when player is not in PA calculate and update body morphs.
@@ -1059,10 +1068,12 @@ Function TimerMorphTick()
 		if (hasChangedPerk && PlayerRef.IsInPowerArmor())
 			if (CurrentRadsPerk >= 4)
 				LenARM_PAEjectMessage.Show()
-				PlayerRef.SwitchtoPowerArmor(none)
-				forceUpdate = true
+				shouldExitPowerArmor = true
+				; PlayerRef.SwitchtoPowerArmor(none)
+				; forceUpdate = true
 			else
 				LenARM_PAPerkSwitchMessage.Show()
+				shouldExitPowerArmor = false
 			endif
 		endif
 	endif
@@ -1150,7 +1161,7 @@ float Function CalculateMorphs(int idxSlider, float morphPercentage, float targe
 	endif
 
 	; permanent breast size increase
-	if (matchingSlider == "Breasts")
+	if (matchingSlider == "Breasts"); || matchingSlider == "Belly" || matchingSlider == "BigBelly")
 		; player has (or has had) molecow disease
 		if (hasHadMoleCowDisease)
 			morphBonus += 0.15
@@ -1231,7 +1242,9 @@ Function ResetMorphs()
 	; re-enable the display of the max-morphs message
 	HasReachedMaxMorphs = false;
 	; reset the pop warnings
-	PopWarnings = 0
+	PopWarnings = 0	
+	; reset get kicked out of PA flag
+	shouldExitPowerArmor = false
 
 	; reset the current and total rads
 	; we need to reset both else they will start mismatching the next timerMorphTick and give wonky behaviour
